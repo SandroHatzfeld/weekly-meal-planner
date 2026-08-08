@@ -11,6 +11,7 @@ export default function registerPage() {
 				<input type="email" id="email" name="email" />
 				<label htmlFor="password">Passwort</label>
 				<input type="password" id="password" name="password" />
+				<input type="submit" value="Registrieren" />
 			</form>
 		</div>
 	)
