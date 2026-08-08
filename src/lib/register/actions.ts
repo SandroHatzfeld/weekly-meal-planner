@@ -9,7 +9,7 @@ export const registerUser = async (formData: FormData) => {
 	const formEmail = formData.get("email")
 	const formPassword = formData.get("password")
 	// check if type of formdata is string
-	if (typeof formName !== "string" || typeof formEmail !== "string" || typeof formPassword !== "string") return null
+	if (typeof formName !== "string" || typeof formEmail !== "string" || typeof formPassword !== "string") return 
 
 	const passwordHash = await hashPassword(formPassword)
 
