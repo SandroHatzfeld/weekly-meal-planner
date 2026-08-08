@@ -9,7 +9,7 @@ export const loginUser = async (formData: FormData) => {
 	if(typeof formEmail !== "string" || typeof formPassword !== "string") return
 
 	try {
-		await signIn("credentials", {email: formEmail, password: formPassword, redirectTo: "/dashboard"})
+		await signIn("credentials", {email: formEmail, password: formPassword, redirectTo: "/"})
 	} catch (error) {
 		console.log(error);
 		
