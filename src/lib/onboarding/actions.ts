@@ -1,6 +1,6 @@
 "use server"
 
-import { auth } from "../auth"
+import { auth } from "../../../auth.config"
 import { prisma } from "../prisma"
 import { redirect } from "next/navigation"
 

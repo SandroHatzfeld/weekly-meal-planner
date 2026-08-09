@@ -1,17 +1,14 @@
-import { auth } from "@/lib/auth"
+import { auth } from "@/lib/auth/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 
 export default async function Dashboard() {
 	const currentSession = await auth()
-	if (!currentSession || !currentSession.user) {
-		redirect("/login")
-	} 
 
-	const isUserOnboarded = await prisma.planMember.findFirst({where: { userId: currentSession.user?.id}})
-	if(!isUserOnboarded) {
+	const isUserOnboarded = await prisma.planMember.findFirst({ where: { userId: currentSession!.user.id } })
+	if (!isUserOnboarded) {
 		redirect("/onboarding")
 	}
 
-	return <div>{currentSession.user?.email}</div>
+	return <div>{currentSession!.user.email}</div>
 }
