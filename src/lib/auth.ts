@@ -1,10 +1,10 @@
 import { PrismaAdapter } from "@auth/prisma-adapter"
-import NextAuth from "next-auth"
+import NextAuth, { NextAuthConfig } from "next-auth"
 import CredentialProvider from "next-auth/providers/credentials"
 import { prisma } from "./prisma"
 import { verifyPassword } from "./password"
 
-export const authOptions = {
+export const authOptions: NextAuthConfig = {
 	adapter: PrismaAdapter(prisma),
 	session: { strategy: "jwt" as const },
 	providers: [
@@ -30,6 +30,18 @@ export const authOptions = {
 			},
 		}),
 	],
+	callbacks: {
+		async jwt({token, user}) {
+			if (user?.id) {
+				token.id = user.id
+			}
+			return token
+		},
+		async session({session, token}) {
+			session.user.id = token.id
+			return session
+		},
+	},
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth(authOptions)
