@@ -1,5 +1,6 @@
 "use server"
 
+import { AuthError } from "next-auth"
 import { signIn } from "../auth"
 
 export const loginUser = async (formData: FormData) => {
@@ -11,7 +12,11 @@ export const loginUser = async (formData: FormData) => {
 	try {
 		await signIn("credentials", {email: formEmail, password: formPassword, redirectTo: "/"})
 	} catch (error) {
-		console.log(error);
+		if(error instanceof AuthError) {
+			console.log(error)
+			return
+		}
+		throw error
 		
 	}
 }
