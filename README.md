@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Weekly Meal Planner
 
-## Getting Started
+Gerichte planen, Rezepte sammeln und gemeinsam einkaufen – mit Live-Updates für alle Mitglieder eines Plans.
+Rewrite von BringPlanner v2 (PHP/MySQL) mit Next.js, Prisma/PostgreSQL, Auth.js und Socket.io.
 
-First, run the development server:
+## Lokale Entwicklung
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Postgres-Dev-Instanz
+docker run --name bringplanner-dev-db -e POSTGRES_PASSWORD=devpass -e POSTGRES_DB=bringplanner_dev -p 5432:5432 -d postgres:17-alpine
+
+cp .env.example .env        # DATABASE_URL + AUTH_SECRET (npx auth secret) eintragen
+npm install
+npx prisma migrate deploy   # bzw. `npx prisma migrate dev` bei Schema-Änderungen
+npm run dev                 # startet server.js (Next.js + Socket.io) auf :3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ohne `RESEND_API_KEY` werden E-Mails (Verifizierung, Einladungen) nur in die Konsole geloggt – der Link kann von dort kopiert werden.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Architektur
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `server.js` – Custom Server: Next.js und Socket.io teilen sich den HTTP-Server. Die Socket.io-Instanz liegt auf `globalThis.__wmpIO` und wird über `src/lib/realtime.ts` aus Server Actions/Route Handlern angesprochen.
+- **Socket-Auth:** Der Client holt sich bei jedem (Re-)Connect ein kurzlebiges, HMAC-signiertes Ticket von `/api/socket/ticket` (Membership-Check gegen die DB). `server.js` prüft nur die Signatur.
+- **Rooms:** `plan:{id}` (alle Änderungs-Events), `dish:{id}` (Presence beim Bearbeiten), `user:{id}` (Force-Disconnect beim Entfernen/Verlassen).
+- **Konflikt-Schutz:** Dishes per Optimistic Lock über `updatedAt`, Grocery-Toggles ohne Lock (letzter Stand gewinnt).
+- **Auth:** Credentials + JWT. Der `jwt`-Callback prüft bei jedem Request die Mitgliedschaften und liest `activePlanId` (Fallback: ältester Plan).
 
-## Learn More
+## Externe API (Home Assistant & Co.)
 
-To learn more about Next.js, take a look at the following resources:
+API-Token unter *Einstellungen → API-Tokens* erstellen, dann mit `Authorization: Bearer <token>`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Methode | Pfad | Body |
+|---|---|---|
+| GET | `/api/external/plans` | |
+| GET | `/api/external/plans/:planId/lists` | |
+| GET | `/api/external/lists/:listId/grocery-items` | |
+| POST | `/api/external/lists/:listId/grocery-items` | `{ "name": "Milch", "details": "2 L" }` |
+| PATCH | `/api/external/lists/:listId/grocery-items/:itemId` | `{ "checked": true }` |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployment
 
-## Deploy on Vercel
+```bash
+cp .env.example .env   # Werte setzen, APP_PORT auf einen freien Host-Port (sudo ss -tlnp)
+docker compose run --rm app npx prisma migrate deploy
+docker compose up -d --build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Nginx braucht die WebSocket-Upgrade-Header, sonst fällt Socket.io auf Polling zurück:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```nginx
+location / {
+    proxy_pass http://localhost:3010;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```

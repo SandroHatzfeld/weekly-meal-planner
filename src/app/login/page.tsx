@@ -1,18 +1,16 @@
-import { loginUser } from "@/lib/login/actions"
-import React from "react"
+import LoginForm from "@/components/auth/LoginForm"
+import Link from "next/link"
 
-export default function loginPage() {
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+	const { callbackUrl } = await searchParams
 
 	return (
-		<div>
+		<main className="auth-page">
 			<h1>Einloggen</h1>
-			<form action={loginUser}>
-				<label htmlFor="email">E-Mail</label>
-				<input type="text" id="email" name="email"/>
-				<label htmlFor="password">Passwort</label>
-				<input type="password" id="password" name="password"/>
-				<input type="submit" value="Anmelden" />
-			</form>
-		</div>
+			<LoginForm callbackUrl={typeof callbackUrl === "string" ? callbackUrl : "/"} />
+			<p>
+				Noch kein Account? <Link href="/register">Registrieren</Link>
+			</p>
+		</main>
 	)
 }

@@ -1,17 +1,16 @@
-"use client"
-import { onboardUser } from "@/lib/onboarding/actions"
+import OnboardingForm from "@/components/main/OnboardingForm"
+import { requireUser } from "@/lib/session"
+import Link from "next/link"
 
-export default function OnboardingPage() {
+export default async function OnboardingPage() {
+	const user = await requireUser()
+	const isFirstPlan = !user.activePlanId
+
 	return (
-		<div>
-			<h1>Erstelle deinen ersten Plan</h1>
-			<form action={onboardUser}>
-				<label htmlFor="planName">Wie soll dein Plan heißen?</label>
-				<input type="text" name="planName" id="planName"/>
-				<label htmlFor="listName">Wie heißt deine erste Einkaufsliste?</label>
-				<input type="text" name="listName" id="listName" defaultValue={"Einkaufsliste"}/>
-				<input type="submit" value="Plan erstellen"/>
-			</form>
-		</div>
+		<main className="auth-page">
+			<h1>{isFirstPlan ? "Erstelle deinen ersten Plan" : "Neuen Plan erstellen"}</h1>
+			<OnboardingForm />
+			{!isFirstPlan && <Link href="/">Zurück</Link>}
+		</main>
 	)
 }

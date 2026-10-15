@@ -1,18 +1,14 @@
-import { registerUser } from "@/lib/register/actions"
+import RegisterForm from "@/components/auth/RegisterForm"
+import Link from "next/link"
 
-export default function registerPage() {
+export default function RegisterPage() {
 	return (
-		<div>
-			<h1>Registieren</h1>
-			<form action={registerUser}>
-				<label htmlFor="name">Benutername</label>
-				<input type="text" id="name" name="name" />
-				<label htmlFor="email">E-Mail</label>
-				<input type="email" id="email" name="email" />
-				<label htmlFor="password">Passwort</label>
-				<input type="password" id="password" name="password" />
-				<input type="submit" value="Registrieren" />
-			</form>
-		</div>
+		<main className="auth-page">
+			<h1>Registrieren</h1>
+			<RegisterForm />
+			<p>
+				Schon registriert? <Link href="/login">Einloggen</Link>
+			</p>
+		</main>
 	)
 }

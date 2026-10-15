@@ -1,0 +1,33 @@
+import DishBoard from "@/components/dishes/DishBoard"
+import { addDays, formatDay, parseDateKey, startOfWeek, todayKey } from "@/lib/dates"
+import { dishesInRange } from "@/lib/dishes/queries"
+import { requireActivePlan } from "@/lib/session"
+import Link from "next/link"
+
+export default async function WeekPage({ searchParams }: PageProps<"/week">) {
+	const { planId } = await requireActivePlan()
+	const { start } = await searchParams
+	const weekStart = startOfWeek(typeof start === "string" && parseDateKey(start) ? start : todayKey())
+	const days = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
+	const dishes = await dishesInRange(planId, days[0], days[6])
+
+	return (
+		<div className="space-y-4">
+			<div className="flex items-center gap-2">
+				<Link className="btn-secondary" href={`/week?start=${addDays(weekStart, -7)}`}>
+					←
+				</Link>
+				<h2 className="text-xl font-semibold">
+					{formatDay(days[0], { day: "2-digit", month: "2-digit" })} – {formatDay(days[6], { day: "2-digit", month: "2-digit", year: "numeric" })}
+				</h2>
+				<Link className="btn-secondary" href={`/week?start=${addDays(weekStart, 7)}`}>
+					→
+				</Link>
+				<Link className="btn-link ml-auto" href="/week">
+					Heute
+				</Link>
+			</div>
+			<DishBoard planId={planId} days={days} initialDishes={dishes} mode="week" today={todayKey()} />
+		</div>
+	)
+}

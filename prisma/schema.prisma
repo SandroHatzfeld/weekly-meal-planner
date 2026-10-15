@@ -18,16 +18,18 @@ datasource db {
  */
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  passwordHash String
-  name         String
-  activePlanId String?
-  createdAt    DateTime     @default(now())
-  memberships  PlanMember[]
-  recipes      Recipe[]
-  apiTokens    ApiToken[]
-  activePlan   Plan?        @relation(fields: [activePlanId], references: [id], onDelete: SetNull)
+  id                 String                   @id @default(cuid())
+  email              String                   @unique
+  passwordHash       String
+  name               String
+  activePlanId       String?
+  emailVerified      DateTime?
+  createdAt          DateTime                 @default(now())
+  memberships        PlanMember[]
+  verificationTokens EmailVerificationToken[]
+  recipes            Recipe[]
+  apiTokens          ApiToken[]
+  activePlan         Plan?                    @relation(fields: [activePlanId], references: [id], onDelete: SetNull)
 }
 
 model Plan {
@@ -37,9 +39,7 @@ model Plan {
   invites        PlanInvite[]
   dishes         Dish[]
   activeForUsers User[]
-  groceryItems   GroceryItem[]
-
-  groceryLists GroceryList[]
+  groceryLists   GroceryList[]
 }
 
 model PlanMember {
@@ -73,6 +73,9 @@ model PlanInvite {
   invitedBy String
   createdAt DateTime     @default(now())
   plan      Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  // pro Plan maximal ein aktiver Generic-Invite
+  @@unique([planId], where: raw("type = 'GENERIC' AND status = 'PENDING'"))
 }
 
 enum InviteType {
@@ -123,6 +126,7 @@ model Dish {
   imageUrl       String?
   steps          String[]      @default([])
   date           DateTime
+  updatedAt      DateTime      @updatedAt // Optimistic Locking
   plan           Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
   sourceRecipe   Recipe?       @relation(fields: [sourceRecipeId], references: [id], onDelete: SetNull)
   groceryItems   GroceryItem[]
@@ -148,7 +152,6 @@ model GroceryItem {
   createdAt DateTime    @default(now())
   list      GroceryList @relation(fields: [listId], references: [id], onDelete: Cascade)
   dish      Dish?       @relation(fields: [dishId], references: [id], onDelete: SetNull)
-  plans Plan[]
 }
 
 /**
@@ -163,4 +166,17 @@ model ApiToken {
   lastUsedAt DateTime?
   createdAt  DateTime  @default(now())
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/**
+ * E-Mail-Verifizierung
+ */
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
