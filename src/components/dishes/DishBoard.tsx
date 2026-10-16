@@ -2,15 +2,17 @@
 
 import { usePlanEvent } from "@/components/realtime/SocketProvider"
 import { formatDay } from "@/lib/dates"
-import { createDish, moveDish } from "@/lib/dishes/actions"
+import { moveDish } from "@/lib/dishes/actions"
 import type { DishDTO } from "@/lib/dto"
 import Link from "next/link"
+import AddDish from "./AddDish"
 import { useState } from "react"
 
 type DishBoardProps = {
 	planId: string
 	days: string[]
 	initialDishes: DishDTO[]
+	lists?: { id: string; name: string }[]
 	mode: "week" | "month"
 	monthKey?: string
 	today: string
@@ -18,7 +20,7 @@ type DishBoardProps = {
 
 const upsert = (dishes: DishDTO[], dish: DishDTO) => [...dishes.filter((existing) => existing.id !== dish.id), dish]
 
-export default function DishBoard({ planId, days, initialDishes, mode, monthKey, today }: DishBoardProps) {
+export default function DishBoard({ planId, days, initialDishes, lists = [], mode, monthKey, today }: DishBoardProps) {
 	const [dishes, setDishes] = useState(initialDishes)
 	const [dragId, setDragId] = useState<string | null>(null)
 
@@ -68,7 +70,7 @@ export default function DishBoard({ planId, days, initialDishes, mode, monthKey,
 						</div>
 						<div className="flex flex-1 flex-wrap items-center gap-2">
 							{dishChips(day)}
-							<AddDish planId={planId} day={day} onCreated={(dish) => setDishes((current) => upsert(current, dish))} />
+							<AddDish planId={planId} day={day} lists={lists} onCreated={(dish) => setDishes((current) => upsert(current, dish))} />
 						</div>
 					</li>
 				))}
@@ -95,41 +97,5 @@ export default function DishBoard({ planId, days, initialDishes, mode, monthKey,
 				</div>
 			))}
 		</div>
-	)
-}
-
-function AddDish({ planId, day, onCreated }: { planId: string; day: string; onCreated: (dish: DishDTO) => void }) {
-	const [open, setOpen] = useState(false)
-	const [name, setName] = useState("")
-
-	if (!open) {
-		return (
-			<button type="button" className="btn-link text-sm" onClick={() => setOpen(true)}>
-				+ Gericht
-			</button>
-		)
-	}
-
-	return (
-		<form
-			className="flex flex-wrap items-center gap-1"
-			onSubmit={async (event) => {
-				event.preventDefault()
-				const dish = await createDish(planId, name, day)
-				if (dish) onCreated(dish)
-				setName("")
-				setOpen(false)
-			}}
-		>
-			<input autoFocus className="input w-48" value={name} onChange={(event) => setName(event.target.value)} placeholder="Name" />
-			<div className="flex gap-1">
-				<button type="submit" className="btn text-xs">
-					Hinzufügen
-				</button>
-				<button type="button" className="btn-link text-xs" onClick={() => setOpen(false)}>
-					Abbrechen
-				</button>
-			</div>
-		</form>
 	)
 }

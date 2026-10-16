@@ -1,6 +1,7 @@
 import DishBoard from "@/components/dishes/DishBoard"
 import { addDays, formatDay, parseDateKey, startOfWeek, todayKey } from "@/lib/dates"
 import { dishesInRange } from "@/lib/dishes/queries"
+import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
 import Link from "next/link"
 
@@ -10,6 +11,12 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
 	const weekStart = startOfWeek(typeof start === "string" && parseDateKey(start) ? start : todayKey())
 	const days = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
 	const dishes = await dishesInRange(planId, days[0], days[6])
+	// für die Zutatenauswahl, wenn ein Rezept-Vorschlag gewählt wird
+	const lists = await prisma.groceryList.findMany({
+		where: { planId },
+		select: { id: true, name: true },
+		orderBy: { createdAt: "asc" },
+	})
 
 	return (
 		<div className="space-y-4">
@@ -27,7 +34,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
 					Heute
 				</Link>
 			</div>
-			<DishBoard planId={planId} days={days} initialDishes={dishes} mode="week" today={todayKey()} />
+			<DishBoard planId={planId} days={days} initialDishes={dishes} lists={lists} mode="week" today={todayKey()} />
 		</div>
 	)
 }

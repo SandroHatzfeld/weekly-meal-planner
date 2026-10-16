@@ -8,7 +8,8 @@ import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
 import { requireMember } from "../session"
 import { toGroceryItemDTO } from "../dto"
-import { canViewRecipe } from "./access"
+import { canViewRecipe, coMemberIds } from "./access"
+import { ingredientLabel } from "./format"
 
 export type IngredientInput = { name: string; amount: string; unit: string }
 export type RecipeInput = {
@@ -119,5 +120,32 @@ export const planRecipe = async (
 	emitToPlan(target.planId, "dish-created", toDishDTO(dish))
 	for (const item of dish.groceryItems) emitToPlan(target.planId, "grocery-item-created", toGroceryItemDTO(item))
 
-	return { dishId: dish.id }
+	return { dishId: dish.id, dish: toDishDTO(dish) }
+}
+
+export type RecipeSuggestion = {
+	id: string
+	name: string
+	ownerName: string | null // null = eigenes Rezept
+	ingredients: { id: string; label: string }[]
+}
+
+// Vorschläge beim direkten Anlegen in der Wochenansicht: Rezeptbücher aller Plan-Mitglieder
+export const searchRecipes = async (planId: string, query: string): Promise<RecipeSuggestion[]> => {
+	const { user } = await requireMember(planId)
+	const term = query.trim()
+	if (term.length < 2) return []
+
+	const recipes = await prisma.recipe.findMany({
+		where: { userId: { in: await coMemberIds(user.id, planId) }, name: { contains: term, mode: "insensitive" } },
+		include: { ingredients: true, user: { select: { name: true } } },
+		orderBy: { name: "asc" },
+		take: 8,
+	})
+	return recipes.map((recipe) => ({
+		id: recipe.id,
+		name: recipe.name,
+		ownerName: recipe.userId === user.id ? null : recipe.user.name,
+		ingredients: recipe.ingredients.map((ingredient) => ({ id: ingredient.id, label: ingredientLabel(ingredient) })),
+	}))
 }

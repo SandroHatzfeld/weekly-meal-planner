@@ -3,6 +3,7 @@ import { DeleteRecipeButton } from "@/components/recipes/RecipeForm"
 import { todayKey } from "@/lib/dates"
 import { prisma } from "@/lib/prisma"
 import { canViewRecipe } from "@/lib/recipes/access"
+import { ingredientLabel } from "@/lib/recipes/format"
 import { requireActivePlan } from "@/lib/session"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -54,7 +55,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 					<ul className="list-disc pl-5">
 						{recipe.ingredients.map((ingredient) => (
 							<li key={ingredient.id}>
-								{[ingredient.amount?.toLocaleString("de-DE"), ingredient.unit, ingredient.name].filter(Boolean).join(" ")}
+								{ingredientLabel(ingredient)}
 							</li>
 						))}
 					</ul>
@@ -75,7 +76,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 					recipeId={recipe.id}
 					ingredients={recipe.ingredients.map((ingredient) => ({
 						id: ingredient.id,
-						label: [ingredient.amount?.toLocaleString("de-DE"), ingredient.unit, ingredient.name].filter(Boolean).join(" "),
+						label: ingredientLabel(ingredient),
 					}))}
 					plans={plans}
 					defaultPlanId={planId}

@@ -75,6 +75,16 @@ body {
   .dish-chip {
     @apply block truncate rounded bg-emerald-100 px-2 py-1 text-emerald-950 no-underline hover:no-underline dark:bg-emerald-900 dark:text-emerald-50;
   }
+  .suggestions {
+    @apply mt-1 w-full overflow-hidden sm:absolute sm:top-full sm:left-0 sm:z-10 sm:w-72 rounded border border-(--border) bg-(--surface) shadow-lg;
+  }
+  .suggestions li {
+    @apply flex cursor-pointer items-center justify-between gap-2 px-2 py-1;
+  }
+  .suggestions li.active,
+  .suggestions li:hover {
+    @apply bg-emerald-100 dark:bg-emerald-900;
+  }
   .badge {
     @apply rounded bg-black/5 px-2 py-0.5 text-xs dark:bg-white/10;
   }
