@@ -13,7 +13,7 @@ export default function PlanSwitcher({ plans, activePlanId }: { plans: { id: str
 	return (
 		<select
 			aria-label="Plan wechseln"
-			className="input w-auto"
+			className="input w-auto min-w-0 max-w-48"
 			value={activePlanId}
 			disabled={pending}
 			onChange={(event) => {

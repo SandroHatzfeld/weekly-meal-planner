@@ -14,7 +14,7 @@ export default function TabBar({ tabs }: { tabs: Tabs[] }) {
 					<Link
 						key={tab.tabTarget}
 						href={tab.tabTarget}
-						className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm text-inherit hover:no-underline ${active ? "border-emerald-600 font-semibold" : "border-transparent opacity-70 hover:opacity-100"}`}
+						className={`flex-1 whitespace-nowrap border-b-2 px-2 py-2 text-center sm:flex-none sm:px-3 text-sm text-inherit hover:no-underline ${active ? "border-emerald-600 font-semibold" : "border-transparent opacity-70 hover:opacity-100"}`}
 					>
 						{tab.tabName}
 					</Link>

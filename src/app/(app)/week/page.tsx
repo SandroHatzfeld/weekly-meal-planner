@@ -17,7 +17,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
 				<Link className="btn-secondary" href={`/week?start=${addDays(weekStart, -7)}`}>
 					←
 				</Link>
-				<h2 className="text-xl font-semibold">
+				<h2 className="whitespace-nowrap text-base font-semibold sm:text-xl">
 					{formatDay(days[0], { day: "2-digit", month: "2-digit" })} – {formatDay(days[6], { day: "2-digit", month: "2-digit", year: "numeric" })}
 				</h2>
 				<Link className="btn-secondary" href={`/week?start=${addDays(weekStart, 7)}`}>

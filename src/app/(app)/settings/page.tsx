@@ -1,4 +1,5 @@
 import { ApiTokens, GenericInvite, InviteForm, LeavePlanButton, PlanNameForm, RemoveMemberButton, RevokeInviteButton } from "@/components/settings/SettingsControls"
+import { signOut } from "@/lib/auth/auth"
 import { appUrl } from "@/lib/mail"
 import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
@@ -88,6 +89,17 @@ export default async function SettingsPage() {
 					}))}
 				/>
 			</section>
+
+			<form
+				action={async () => {
+					"use server"
+					await signOut({ redirectTo: "/login" })
+				}}
+			>
+				<button type="submit" className="btn-secondary">
+					Abmelden
+				</button>
+			</form>
 		</div>
 	)
 }

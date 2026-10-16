@@ -39,38 +39,59 @@ export default function DishBoard({ planId, days, initialDishes, mode, monthKey,
 		if (updated) setDishes((current) => upsert(current, updated))
 	}
 
-	return (
-		<div className={mode === "week" ? "grid gap-3 md:grid-cols-7" : "grid grid-cols-7 gap-1"}>
-			{mode === "month" &&
-				["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((weekday) => (
-					<div key={weekday} className="text-center text-xs font-semibold opacity-60">
-						{weekday}
-					</div>
+	const dishChips = (day: string) =>
+		dishesOn(day).map((dish) => (
+			<Link
+				key={dish.id}
+				href={`/dishes/${dish.id}`}
+				draggable
+				onDragStart={() => setDragId(dish.id)}
+				className="dish-chip"
+			>
+				{dish.name}
+			</Link>
+		))
+
+	// Woche: vertikale Liste, ein Tag pro Zeile
+	if (mode === "week") {
+		return (
+			<ul className="flex flex-col gap-2">
+				{days.map((day) => (
+					<li
+						key={day}
+						onDragOver={(event) => event.preventDefault()}
+						onDrop={() => handleDrop(day)}
+						className={`card flex flex-col gap-2 sm:flex-row sm:items-center ${day === today ? "ring-2 ring-emerald-600" : ""}`}
+					>
+						<div className="font-semibold sm:w-44 sm:shrink-0">
+							{formatDay(day, { weekday: "long", day: "2-digit", month: "2-digit" })}
+						</div>
+						<div className="flex flex-1 flex-wrap items-center gap-2">
+							{dishChips(day)}
+							<AddDish planId={planId} day={day} onCreated={(dish) => setDishes((current) => upsert(current, dish))} />
+						</div>
+					</li>
 				))}
+			</ul>
+		)
+	}
+
+	return (
+		<div className="grid grid-cols-7 gap-1">
+			{["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((weekday) => (
+				<div key={weekday} className="text-center text-xs font-semibold opacity-60">
+					{weekday}
+				</div>
+			))}
 			{days.map((day) => (
 				<div
 					key={day}
 					onDragOver={(event) => event.preventDefault()}
 					onDrop={() => handleDrop(day)}
-					className={`card flex flex-col gap-1 ${mode === "month" ? "min-h-24 p-1 text-xs" : "min-h-32"} ${day === today ? "ring-2 ring-emerald-600" : ""} ${monthKey && !day.startsWith(monthKey) ? "opacity-40" : ""}`}
+					className={`card flex min-h-24 flex-col gap-1 p-1 text-xs ${day === today ? "ring-2 ring-emerald-600" : ""} ${monthKey && !day.startsWith(monthKey) ? "opacity-40" : ""}`}
 				>
-					<div className="font-semibold">
-						{mode === "week"
-							? formatDay(day, { weekday: "long", day: "2-digit", month: "2-digit" })
-							: formatDay(day, { day: "numeric" })}
-					</div>
-					{dishesOn(day).map((dish) => (
-						<Link
-							key={dish.id}
-							href={`/dishes/${dish.id}`}
-							draggable
-							onDragStart={() => setDragId(dish.id)}
-							className="dish-chip"
-						>
-							{dish.name}
-						</Link>
-					))}
-					{mode === "week" && <AddDish planId={planId} day={day} onCreated={(dish) => setDishes((current) => upsert(current, dish))} />}
+					<div className="font-semibold">{formatDay(day, { day: "numeric" })}</div>
+					{dishChips(day)}
 				</div>
 			))}
 		</div>
@@ -83,7 +104,7 @@ function AddDish({ planId, day, onCreated }: { planId: string; day: string; onCr
 
 	if (!open) {
 		return (
-			<button type="button" className="btn-link mt-auto self-start text-sm" onClick={() => setOpen(true)}>
+			<button type="button" className="btn-link text-sm" onClick={() => setOpen(true)}>
 				+ Gericht
 			</button>
 		)
@@ -91,7 +112,7 @@ function AddDish({ planId, day, onCreated }: { planId: string; day: string; onCr
 
 	return (
 		<form
-			className="mt-auto flex flex-col gap-1"
+			className="flex flex-wrap items-center gap-1"
 			onSubmit={async (event) => {
 				event.preventDefault()
 				const dish = await createDish(planId, name, day)
@@ -100,7 +121,7 @@ function AddDish({ planId, day, onCreated }: { planId: string; day: string; onCr
 				setOpen(false)
 			}}
 		>
-			<input autoFocus className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Name" />
+			<input autoFocus className="input w-48" value={name} onChange={(event) => setName(event.target.value)} placeholder="Name" />
 			<div className="flex gap-1">
 				<button type="submit" className="btn text-xs">
 					Hinzufügen
