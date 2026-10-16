@@ -45,3 +45,5 @@ src/generated/prisma
 .agents
 .claude
 .windsurf
+# hochgeladene Bilder (lokale Entwicklung)
+/data

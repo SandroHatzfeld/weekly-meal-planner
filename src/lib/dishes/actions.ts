@@ -2,6 +2,7 @@
 
 import { parseDateKey } from "../dates"
 import { toDishDTO, type DishDTO } from "../dto"
+import { deleteImageIfUnused, resolveImage } from "../images"
 import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
 import { requireMember } from "../session"
@@ -37,13 +38,15 @@ export const updateDish = async (dishId: string, input: DishInput, loadedUpdated
 	const existing = await memberOfDish(dishId)
 	const date = parseDateKey(input.date)
 	if (!input.name.trim() || !date) return { ok: false, error: "Name und Datum sind Pflicht" }
+	const image = await resolveImage(input.imageUrl)
+	if ("error" in image) return { ok: false, error: image.error }
 
 	const { count } = await prisma.dish.updateMany({
 		where: { id: dishId, updatedAt: new Date(loadedUpdatedAt) },
 		data: {
 			name: input.name.trim(),
 			description: input.description.trim() || null,
-			imageUrl: input.imageUrl.trim() || null,
+			imageUrl: image.imageUrl,
 			steps: input.steps.map((step) => step.trim()).filter(Boolean),
 			date,
 		},
@@ -54,6 +57,7 @@ export const updateDish = async (dishId: string, input: DishInput, loadedUpdated
 		return { ok: false, conflict: true, current: current ? toDishDTO(current) : null }
 	}
 
+	if (existing.imageUrl !== image.imageUrl) await deleteImageIfUnused(existing.imageUrl)
 	const dish = toDishDTO(await prisma.dish.findUniqueOrThrow({ where: { id: dishId } }))
 	// an den Plan-Room, damit auch Betrachter ohne offene Bearbeitung die Änderung sehen
 	emitToPlan(existing.planId, "dish-updated", dish)
@@ -72,5 +76,6 @@ export const moveDish = async (dishId: string, dateKey: string) => {
 export const deleteDish = async (dishId: string) => {
 	const existing = await memberOfDish(dishId)
 	await prisma.dish.delete({ where: { id: dishId } })
+	await deleteImageIfUnused(existing.imageUrl)
 	emitToPlan(existing.planId, "dish-deleted", { id: dishId })
 }

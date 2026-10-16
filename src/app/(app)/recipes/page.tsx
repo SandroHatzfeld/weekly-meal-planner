@@ -22,7 +22,7 @@ export default async function RecipesPage({ searchParams }: PageProps<"/recipes"
 				<h2 className="text-xl font-semibold">Rezepte</h2>
 				<form className="ml-auto flex gap-2">
 					<input name="q" defaultValue={query} placeholder="Suchen…" className="input" />
-					<label className="flex items-center gap-1 text-sm">
+					<label className="flex items-center gap-1 text-sm whitespace-nowrap">
 						<input type="checkbox" name="mine" value="1" defaultChecked={mine === "1"} /> nur meine
 					</label>
 					<button type="submit" className="btn-secondary">
@@ -33,16 +33,31 @@ export default async function RecipesPage({ searchParams }: PageProps<"/recipes"
 					+ Neues Rezept
 				</Link>
 			</div>
-			<ul className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+			<ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
 				{recipes.map((recipe) => (
 					<li key={recipe.id}>
-						<Link href={`/recipes/${recipe.id}`} className="card block h-full hover:ring-2 hover:ring-emerald-600">
-							{recipe.imageUrl && (
+						<Link
+							href={`/recipes/${recipe.id}`}
+							className="group relative block aspect-square overflow-hidden rounded-lg border border-(--border) bg-emerald-100 no-underline hover:no-underline focus-visible:ring-2 focus-visible:ring-emerald-600 dark:bg-emerald-900"
+						>
+							{recipe.imageUrl ? (
 								// eslint-disable-next-line @next/next/no-img-element
-								<img src={recipe.imageUrl} alt="" className="mb-2 h-32 w-full rounded object-cover" />
+								<img
+									src={recipe.imageUrl}
+									alt=""
+									loading="lazy"
+									className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-105"
+								/>
+							) : (
+								<span aria-hidden="true" className="absolute inset-0 flex items-center justify-center pb-10 text-5xl font-semibold text-emerald-700/40 dark:text-emerald-300/40">
+									{recipe.name.charAt(0).toUpperCase()}
+								</span>
 							)}
-							<div className="font-semibold">{recipe.name}</div>
-							<div className="text-xs opacity-60">{recipe.user.id === user.id ? "Mein Rezept" : `von ${recipe.user.name}`}</div>
+							{/* Verlauf, damit der Text auf jedem Bild lesbar bleibt */}
+							<div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-3 pt-8 pb-2 text-white">
+								<div className="line-clamp-2 leading-tight font-semibold">{recipe.name}</div>
+								<div className="truncate text-xs opacity-80">{recipe.user.id === user.id ? "Mein Rezept" : `von ${recipe.user.name}`}</div>
+							</div>
 						</Link>
 					</li>
 				))}

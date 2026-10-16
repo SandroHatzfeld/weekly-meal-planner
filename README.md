@@ -55,5 +55,8 @@ location / {
     proxy_set_header Connection "upgrade";
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Proto $scheme;
+    client_max_body_size 10m; # Bild-Uploads (nginx-Standard ist 1 MB)
 }
 ```
+
+Hochgeladene und per URL übernommene Bilder liegen im Docker-Volume `uploads` (`/app/data/uploads`) und werden über `/api/images/…` nur an eingeloggte Nutzer ausgeliefert.

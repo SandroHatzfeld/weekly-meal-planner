@@ -8,6 +8,7 @@ import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
 import { requireMember } from "../session"
 import { toGroceryItemDTO } from "../dto"
+import { deleteImageIfUnused, resolveImage } from "../images"
 import { canViewRecipe, coMemberIds } from "./access"
 import { ingredientLabel } from "./format"
 
@@ -29,7 +30,6 @@ const requireSessionUser = async () => {
 const normalize = (input: RecipeInput) => ({
 	name: input.name.trim(),
 	description: input.description.trim() || null,
-	imageUrl: input.imageUrl.trim() || null,
 	steps: input.steps.map((step) => step.trim()).filter(Boolean),
 	ingredients: input.ingredients
 		.filter((ingredient) => ingredient.name.trim())
@@ -47,8 +47,10 @@ export const createRecipe = async (input: RecipeInput) => {
 	const user = await requireSessionUser()
 	const data = normalize(input)
 	if (!data.name) return { error: "Bitte gib einen Namen an" }
+	const image = await resolveImage(input.imageUrl)
+	if ("error" in image) return image
 	const recipe = await prisma.recipe.create({
-		data: { ...data, userId: user.id, ingredients: { create: data.ingredients } },
+		data: { ...data, imageUrl: image.imageUrl, userId: user.id, ingredients: { create: data.ingredients } },
 	})
 	redirect(`/recipes/${recipe.id}`)
 }
@@ -60,20 +62,27 @@ export const updateRecipe = async (recipeId: string, input: RecipeInput) => {
 	if (!data.name) return { error: "Bitte gib einen Namen an" }
 	const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } })
 	if (!recipe || recipe.userId !== user.id) return { error: "Nur eigene Rezepte können bearbeitet werden" }
+	const image = await resolveImage(input.imageUrl)
+	if ("error" in image) return image
 
 	await prisma.$transaction([
 		prisma.recipeIngredient.deleteMany({ where: { recipeId } }),
 		prisma.recipe.update({
 			where: { id: recipeId },
-			data: { ...data, ingredients: { create: data.ingredients } },
+			data: { ...data, imageUrl: image.imageUrl, ingredients: { create: data.ingredients } },
 		}),
 	])
+	if (recipe.imageUrl !== image.imageUrl) await deleteImageIfUnused(recipe.imageUrl)
 	redirect(`/recipes/${recipeId}`)
 }
 
 export const deleteRecipe = async (recipeId: string) => {
 	const user = await requireSessionUser()
-	await prisma.recipe.deleteMany({ where: { id: recipeId, userId: user.id } })
+	const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } })
+	if (!recipe || recipe.userId !== user.id) return
+	await prisma.recipe.delete({ where: { id: recipeId } })
+	// geplante Gerichte können das Bild als Snapshot weiter nutzen -> wird dann behalten
+	await deleteImageIfUnused(recipe.imageUrl)
 	redirect("/recipes")
 }
 

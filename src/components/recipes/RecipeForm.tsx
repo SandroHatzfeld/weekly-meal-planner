@@ -1,6 +1,8 @@
 "use client"
 
 import { createRecipe, deleteRecipe, updateRecipe, type RecipeInput } from "@/lib/recipes/actions"
+import ImageField from "@/components/forms/ImageField"
+import StepsField from "@/components/forms/StepsField"
 import { useState } from "react"
 
 const emptyRecipe: RecipeInput = { name: "", description: "", imageUrl: "", steps: [], ingredients: [] }
@@ -35,8 +37,7 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 			<input id="name" value={recipe.name} onChange={(event) => setRecipe({ ...recipe, name: event.target.value })} required />
 			<label htmlFor="description">Beschreibung</label>
 			<textarea id="description" rows={3} value={recipe.description} onChange={(event) => setRecipe({ ...recipe, description: event.target.value })} />
-			<label htmlFor="imageUrl">Bild-URL</label>
-			<input id="imageUrl" type="url" value={recipe.imageUrl} onChange={(event) => setRecipe({ ...recipe, imageUrl: event.target.value })} />
+			<ImageField value={recipe.imageUrl} onChange={(imageUrl) => setRecipe((current) => ({ ...current, imageUrl }))} />
 
 			<fieldset className="space-y-2">
 				<legend className="font-semibold">Zutaten</legend>
@@ -64,8 +65,7 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 				</button>
 			</fieldset>
 
-			<label htmlFor="steps">Schritte (einer pro Zeile)</label>
-			<textarea id="steps" rows={8} value={recipe.steps.join("\n")} onChange={(event) => setRecipe({ ...recipe, steps: event.target.value.split("\n") })} />
+			<StepsField initial={initial.steps} onChange={(steps) => setRecipe((current) => ({ ...current, steps }))} />
 			{error && <p className="error">{error}</p>}
 			<button type="submit" disabled={saving}>
 				Speichern

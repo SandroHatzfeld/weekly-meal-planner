@@ -4,6 +4,8 @@ services:
     env_file: .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-mealplanner}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mealplanner}
+    volumes:
+      - uploads:/app/data/uploads # hochgeladene Bilder
     depends_on:
       postgres:
         condition: service_healthy
@@ -28,3 +30,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

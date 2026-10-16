@@ -1,5 +1,7 @@
 "use client"
 
+import ImageField from "@/components/forms/ImageField"
+import StepsField from "@/components/forms/StepsField"
 import { usePlanEvent, useSocket } from "@/components/realtime/SocketProvider"
 import { deleteDish, updateDish, type DishInput } from "@/lib/dishes/actions"
 import type { DishDTO, GroceryItemDTO } from "@/lib/dto"
@@ -153,10 +155,9 @@ export default function DishEditor({ initialDish, initialItems, lists, sourceRec
 				<input id="date" type="date" value={form.date} onChange={(event) => update({ date: event.target.value })} required />
 				<label htmlFor="description">Beschreibung</label>
 				<textarea id="description" rows={3} value={form.description} onChange={(event) => update({ description: event.target.value })} />
-				<label htmlFor="imageUrl">Bild-URL</label>
-				<input id="imageUrl" type="url" value={form.imageUrl} onChange={(event) => update({ imageUrl: event.target.value })} />
-				<label htmlFor="steps">Schritte (einer pro Zeile)</label>
-				<textarea id="steps" rows={6} value={form.steps.join("\n")} onChange={(event) => update({ steps: event.target.value.split("\n") })} />
+				<ImageField value={form.imageUrl} onChange={(imageUrl) => update({ imageUrl })} />
+				{/* key: nach Neu-Laden/Speichern mit dem aktuellen Stand neu initialisieren */}
+				<StepsField key={dish.updatedAt} initial={dish.steps} onChange={(steps) => update({ steps })} />
 				{message && <p className="text-sm">{message}</p>}
 				<div className="flex gap-2">
 					<button type="submit" disabled={saving || !dirty}>
@@ -176,10 +177,6 @@ export default function DishEditor({ initialDish, initialItems, lists, sourceRec
 				</div>
 			</form>
 
-			{dish.imageUrl && (
-				// eslint-disable-next-line @next/next/no-img-element
-				<img src={dish.imageUrl} alt={dish.name} className="max-h-64 rounded object-cover" />
-			)}
 			{sourceRecipe && (
 				<p className="text-sm">
 					Aus Rezept: <Link href={`/recipes/${sourceRecipe.id}`}>{sourceRecipe.name}</Link>
