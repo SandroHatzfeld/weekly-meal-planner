@@ -126,14 +126,17 @@ export default function ShopList({ planId, lists, initialListId, initialItems }:
 									.sort((a, b) => Number(a.checked) - Number(b.checked))
 									.map((item) => (
 										<li key={item.id} className="flex items-center gap-2 py-1">
-											<input type="checkbox" checked={item.checked} onChange={() => toggle(item)} className="size-4" />
-											<span className={`flex-1 ${item.checked ? "line-through opacity-50" : ""}`}>
-												{item.name} {item.details && <span className="text-sm opacity-70">{item.details}</span>}
-											</span>
+											{/* ganze Zeile antippbar, nicht nur die Checkbox */}
+											<label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-1.5">
+												<input type="checkbox" checked={item.checked} onChange={() => toggle(item)} className="size-5 shrink-0 accent-emerald-700" />
+												<span className={`min-w-0 break-words ${item.checked ? "line-through opacity-50" : ""}`}>
+													{item.name} {item.details && <span className="text-sm opacity-70">{item.details}</span>}
+												</span>
+											</label>
 											{lists.length > 1 && (
 												<select
 													aria-label="In andere Liste verschieben"
-													className="input w-auto py-0 text-xs"
+													className="input w-auto max-w-36 shrink-0 py-2 text-sm"
 													value={item.listId}
 													onChange={async (event) => {
 														const moved = await moveGroceryItem(item.id, event.target.value)
@@ -149,8 +152,8 @@ export default function ShopList({ planId, lists, initialListId, initialItems }:
 											)}
 											<button
 												type="button"
-												aria-label="Löschen"
-												className="btn-link text-xs"
+												aria-label={`${item.name} löschen`}
+												className="btn-link flex size-9 shrink-0 items-center justify-center"
 												onClick={async () => {
 													setItems((current) => current.filter((existing) => existing.id !== item.id))
 													await deleteGroceryItem(item.id)

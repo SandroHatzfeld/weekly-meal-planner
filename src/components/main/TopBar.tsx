@@ -18,7 +18,7 @@ export default function TopBar({ plans, activePlanId, userName }: TopBarProps) {
 	]
 
 	return (
-		<header className="border-b border-black/10 bg-white/70 dark:border-white/10 dark:bg-black/30">
+		<header className="sticky top-0 z-20 border-b border-black/10 bg-white/95 backdrop-blur-md dark:border-white/10 dark:bg-neutral-950/95">
 			<div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
 				<h1 className="text-lg font-semibold">Mealplanner</h1>
 				<PlanSwitcher plans={plans} activePlanId={activePlanId} />
