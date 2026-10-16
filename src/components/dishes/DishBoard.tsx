@@ -23,6 +23,10 @@ const upsert = (dishes: DishDTO[], dish: DishDTO) => [...dishes.filter((existing
 export default function DishBoard({ planId, days, initialDishes, lists = [], mode, monthKey, today }: DishBoardProps) {
 	const [dishes, setDishes] = useState(initialDishes)
 	const [dragId, setDragId] = useState<string | null>(null)
+	// Monatsansicht: heute, falls im angezeigten Monat, sonst der Erste des Monats
+	const [selectedDay, setSelectedDay] = useState(() =>
+		monthKey && !today.startsWith(monthKey) ? `${monthKey}-01` : today,
+	)
 
 	// Live-Updates direkt aus dem Payload, kein Refetch
 	usePlanEvent("dish-created", (dish) => setDishes((current) => upsert(current, dish)))
@@ -78,24 +82,69 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], mod
 		)
 	}
 
+	const selectedDishes = dishesOn(selectedDay)
+
 	return (
-		<div className="grid grid-cols-7 gap-1">
-			{["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((weekday) => (
-				<div key={weekday} className="text-center text-xs font-semibold opacity-60">
-					{weekday}
-				</div>
-			))}
-			{days.map((day) => (
-				<div
-					key={day}
-					onDragOver={(event) => event.preventDefault()}
-					onDrop={() => handleDrop(day)}
-					className={`card flex min-h-24 flex-col gap-1 p-1 text-xs ${day === today ? "ring-2 ring-emerald-600" : ""} ${monthKey && !day.startsWith(monthKey) ? "opacity-40" : ""}`}
-				>
-					<div className="font-semibold">{formatDay(day, { day: "numeric" })}</div>
-					{dishChips(day)}
-				</div>
-			))}
+		<div className="space-y-4">
+			<div className="grid grid-cols-7 gap-1">
+				{["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((weekday) => (
+					<div key={weekday} className="text-center text-xs font-semibold opacity-60">
+						{weekday}
+					</div>
+				))}
+				{days.map((day) => (
+					<div
+						key={day}
+						onClick={() => setSelectedDay(day)}
+						onDragOver={(event) => event.preventDefault()}
+						onDrop={() => handleDrop(day)}
+						className={`card flex min-h-14 cursor-pointer flex-col gap-1 p-1 text-xs ${day === today ? "ring-2 ring-emerald-600" : ""} ${day === selectedDay ? "bg-emerald-50 dark:bg-emerald-950" : ""} sm:min-h-24 ${monthKey && !day.startsWith(monthKey) ? "opacity-40" : ""}`}
+					>
+						{/* Button für Tastaturbedienung, die ganze Zelle ist zusätzlich klickbar */}
+						<button
+							type="button"
+							className="self-start font-semibold"
+							aria-pressed={day === selectedDay}
+							aria-label={formatDay(day, { weekday: "long", day: "numeric", month: "long" })}
+						>
+							{formatDay(day, { day: "numeric" })}
+						</button>
+						<div className="hidden flex-col gap-1 sm:flex">{dishChips(day)}</div>
+						{/* mobil ist für Namen kein Platz: ein Punkt pro Gericht, Details in der Liste darunter */}
+						<div className="flex flex-wrap gap-0.5 sm:hidden" aria-hidden="true">
+							{dishesOn(day).map((dish) => (
+								<span key={dish.id} className="size-1.5 rounded-full bg-emerald-600" />
+							))}
+						</div>
+					</div>
+				))}
+			</div>
+
+			{/* Gerichte des ausgewählten Tages */}
+			<section className="card space-y-3" aria-live="polite">
+				<h3 className="font-semibold">{formatDay(selectedDay, { weekday: "long", day: "numeric", month: "long" })}</h3>
+				<AddDish
+					key={selectedDay}
+					planId={planId}
+					day={selectedDay}
+					lists={lists}
+					onCreated={(dish) => setDishes((current) => upsert(current, dish))}
+				/>
+				{selectedDishes.length > 0 ? (
+					<ul className="divide-y divide-black/5 dark:divide-white/10">
+						{selectedDishes.map((dish) => (
+							<li key={dish.id} className="py-2">
+								<Link href={`/dishes/${dish.id}`} className="font-medium">
+									{dish.name}
+								</Link>
+								{dish.description && <p className="line-clamp-2 text-sm opacity-70">{dish.description}</p>}
+							</li>
+						))}
+					</ul>
+				) : (
+					<p className="text-sm opacity-60">Für diesen Tag ist noch nichts geplant.</p>
+				)}
+			</section>
 		</div>
 	)
 }

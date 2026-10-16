@@ -1,6 +1,6 @@
 import { authenticateToken, isMember, notFound, unauthorized } from "@/lib/api/external-auth"
-import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { listsOfPlan } from "@/lib/grocery/queries"
 
 export async function GET(request: Request, { params }: RouteContext<"/api/external/plans/[planId]/lists">) {
 	const auth = await authenticateToken(request)
@@ -8,10 +8,6 @@ export async function GET(request: Request, { params }: RouteContext<"/api/exter
 	const { planId } = await params
 	if (!(await isMember(auth.userId, planId))) return notFound()
 
-	const lists = await prisma.groceryList.findMany({
-		where: { planId },
-		select: { id: true, name: true },
-		orderBy: { createdAt: "asc" },
-	})
+	const lists = await listsOfPlan(planId)
 	return NextResponse.json(lists)
 }

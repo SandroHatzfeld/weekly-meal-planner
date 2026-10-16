@@ -3,6 +3,7 @@ import { toDishDTO, toGroceryItemDTO } from "@/lib/dto"
 import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
 import { notFound } from "next/navigation"
+import { listsOfPlan } from "@/lib/grocery/queries"
 
 export default async function DishPage({ params }: PageProps<"/dishes/[id]">) {
 	const { id } = await params
@@ -18,11 +19,7 @@ export default async function DishPage({ params }: PageProps<"/dishes/[id]">) {
 	// nur Dishes des aktiven Plans
 	if (!dish || dish.planId !== planId) notFound()
 
-	const lists = await prisma.groceryList.findMany({
-		where: { planId },
-		select: { id: true, name: true },
-		orderBy: { createdAt: "asc" },
-	})
+	const lists = await listsOfPlan(planId)
 
 	return (
 		<DishEditor

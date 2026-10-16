@@ -2,16 +2,13 @@ import ShopList from "@/components/shop/ShopList"
 import { toGroceryItemDTO } from "@/lib/dto"
 import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
+import { listsOfPlan } from "@/lib/grocery/queries"
 
 export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
 	const { planId } = await requireActivePlan()
 	const { list } = await searchParams
 
-	const lists = await prisma.groceryList.findMany({
-		where: { planId },
-		select: { id: true, name: true },
-		orderBy: { createdAt: "asc" },
-	})
+	const lists = await listsOfPlan(planId)
 	// alle Items des Plans laden – Wechsel und Verschieben zwischen Listen funktionieren dann ohne Refetch
 	const items = await prisma.groceryItem.findMany({
 		where: { list: { planId } },
