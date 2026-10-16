@@ -12,6 +12,7 @@ import {
 	renameGroceryList,
 	toggleGroceryItem,
 } from "@/lib/grocery/actions"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -110,8 +111,8 @@ export default function ShopList({ planId, lists, initialListId, initialItems }:
 							setDetails("")
 						}}
 					>
-						<input className="input flex-1" placeholder="Was wird gebraucht?" value={name} onChange={(event) => setName(event.target.value)} required />
-						<input className="input w-36" placeholder="Details (z.B. 500 g)" value={details} onChange={(event) => setDetails(event.target.value)} />
+						<input className="input basis-full sm:basis-0 sm:flex-1" placeholder="Was wird gebraucht?" value={name} onChange={(event) => setName(event.target.value)} required />
+						<input className="input min-w-0 flex-1 sm:w-36 sm:flex-none" placeholder="Details (z.B. 500 g)" value={details} onChange={(event) => setDetails(event.target.value)} />
 						<button type="submit" className="btn">
 							Hinzufügen
 						</button>
@@ -120,7 +121,16 @@ export default function ShopList({ planId, lists, initialListId, initialItems }:
 					{sortedGroups.length === 0 && <p className="opacity-60">Die Liste ist leer.</p>}
 					{sortedGroups.map(([key, group]) => (
 						<section key={key || "none"} className="card">
-							<h3 className="mb-2 font-semibold">{group.title}</h3>
+							<h3 className="mb-2 font-semibold">
+								{/* key = dishId, leer bei "Unkategorisiert" */}
+								{key ? (
+									<Link href={`/dishes/${key}`} className="inline-flex items-center gap-1 py-1">
+										{group.title} <span aria-hidden="true">›</span>
+									</Link>
+								) : (
+									group.title
+								)}
+							</h3>
 							<ul className="divide-y divide-black/5 dark:divide-white/10">
 								{group.items
 									.sort((a, b) => Number(a.checked) - Number(b.checked))
