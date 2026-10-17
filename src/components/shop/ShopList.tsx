@@ -153,7 +153,7 @@ export default function ShopList({ planId, lists, tags, initialListId, initialIt
 								{group.items
 									.sort((a, b) => Number(a.checked) - Number(b.checked))
 									.map((item) => (
-										<li key={item.id}>
+										<li key={item.id} className="flex">
 											<ItemTile
 												item={item}
 												tags={tags}

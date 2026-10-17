@@ -40,6 +40,7 @@ const swallowReleaseClick = () => {
 
 // Tippen = umschalten, Drücken und Halten (oder Rechtsklick / Kontextmenü-Taste) = bearbeiten.
 // Genutzt in der Einkaufsliste und bei der Zutatenauswahl beim Planen.
+// Mindestens 4:3, wächst mit dem Inhalt; das umgebende <li className="flex"> gleicht die Höhe innerhalb einer Reihe an.
 export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, onEdit }: ItemTileProps) {
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const start = useRef<{ x: number; y: number } | null>(null)
@@ -68,7 +69,7 @@ export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, 
 			type="button"
 			aria-pressed={pressed}
 			title={hint}
-			className={`relative flex aspect-[4/3] w-full touch-manipulation flex-col items-center justify-center gap-0.5 rounded-lg border p-2 text-center transition select-none [-webkit-touch-callout:none] ${
+			className={`flex aspect-[4/3] w-full touch-manipulation flex-col items-stretch gap-0.5 rounded-lg border p-2 text-center transition select-none [-webkit-touch-callout:none] ${
 				dimmed
 					? "border-transparent bg-black/5 text-(--foreground)/40 grayscale dark:bg-white/5"
 					: "border-emerald-200 bg-emerald-50 text-emerald-950 shadow-sm active:scale-95 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-50"
@@ -100,16 +101,19 @@ export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, 
 				onToggle()
 			}}
 		>
-			<span className={`line-clamp-2 max-w-full leading-tight font-semibold hyphens-auto [overflow-wrap:anywhere] ${dimmed ? "line-through" : ""}`}>{item.name}</span>
-			{item.details && <span className="line-clamp-1 text-xs opacity-70">{item.details}</span>}
+			{/* Tags als eigene Zeile im Fluss: nichts überlagert den Namen, die Kachel wächst bei Bedarf */}
 			{itemTags.length > 0 && (
-				<span className="absolute top-1 right-1 flex gap-0.5 text-emerald-700 dark:text-emerald-300">
+				<span className="-mt-1 -mr-1 flex justify-end gap-0.5 text-emerald-700 dark:text-emerald-300">
 					{itemTags.map((tag) => (
 						<TagIcon key={tag.id} icon={tag.icon} className="size-3.5" />
 					))}
 					<span className="sr-only">Tags: {itemTags.map((tag) => tag.name).join(", ")}</span>
 				</span>
 			)}
+			<span className="flex flex-1 flex-col items-center justify-center gap-0.5">
+				<span className={`line-clamp-2 max-w-full leading-tight font-semibold hyphens-auto [overflow-wrap:anywhere] ${dimmed ? "line-through" : ""}`}>{item.name}</span>
+				{item.details && <span className="line-clamp-1 text-xs opacity-70">{item.details}</span>}
+			</span>
 		</button>
 	)
 }

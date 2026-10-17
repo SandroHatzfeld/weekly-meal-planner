@@ -85,13 +85,13 @@ export default function AddDish({ planId, day, lists, tags, onCreated }: AddDish
 
 	return (
 		<form
-			className={`flex w-full flex-col gap-2 ${recipe ? "" : "sm:w-auto"}`}
+			className={`flex w-full flex-col gap-3 border-b border-(--border) pb-4 ${recipe ? "" : "sm:w-auto"}`}
 			onSubmit={(event) => {
 				event.preventDefault()
 				submit()
 			}}
 		>
-			<div className="flex flex-wrap items-center gap-1">
+			<div className="flex flex-wrap items-center gap-x-3 gap-y-3">
 				<div className="w-full sm:relative sm:w-auto">
 					<input
 						autoFocus
@@ -103,9 +103,10 @@ export default function AddDish({ planId, day, lists, tags, onCreated }: AddDish
 						aria-expanded={visible.length > 0}
 						aria-controls={listboxId}
 						aria-activedescendant={activeIndex >= 0 ? `${listboxId}-${activeIndex}` : undefined}
-						readOnly={!!recipe}
 						required
 						onChange={(event) => {
+							// weitertippen hebt eine gewählte Rezept-Vorlage auf
+							if (recipe) setRecipe(null)
 							setName(event.target.value)
 							setActiveIndex(-1)
 							setDismissed(false)
@@ -148,17 +149,14 @@ export default function AddDish({ planId, day, lists, tags, onCreated }: AddDish
 						</ul>
 					)}
 				</div>
-				{recipe && (
-					<button type="button" className="btn-link text-xs" onClick={() => setRecipe(null)} aria-label="Rezept-Auswahl aufheben">
-						✕
+				<div className="flex items-center gap-3">
+					<button type="submit" className="btn px-5 py-2" disabled={saving || (!!recipe && !listId)}>
+						{recipe ? "Planen" : "Hinzufügen"}
 					</button>
-				)}
-				<button type="submit" className="btn text-xs" disabled={saving || (!!recipe && !listId)}>
-					{recipe ? "Planen" : "Hinzufügen"}
-				</button>
-				<button type="button" className="btn-link text-xs" onClick={reset}>
-					Abbrechen
-				</button>
+					<button type="button" className="btn-secondary py-2" onClick={reset}>
+						Abbrechen
+					</button>
+				</div>
 			</div>
 
 			{recipe && (

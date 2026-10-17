@@ -34,7 +34,7 @@ export default function IngredientPicker({ entries, onChange, lists, tags, defau
 			</legend>
 			<ul className={`grid grid-cols-3 gap-2 ${className}`}>
 				{entries.map((entry) => (
-					<li key={entry.id}>
+					<li key={entry.id} className="flex">
 						<ItemTile
 							item={entry}
 							tags={tags}
