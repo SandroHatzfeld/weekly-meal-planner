@@ -133,7 +133,7 @@ export default function ShopList({ lists, tags, initialListId, initialItems }: S
 									</time>
 								)}
 							</h3>
-							<ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+							<ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
 								{group.items
 									.sort((a, b) => Number(a.checked) - Number(b.checked))
 									.map((item) => (

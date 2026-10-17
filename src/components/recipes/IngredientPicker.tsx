@@ -41,7 +41,6 @@ export default function IngredientPicker({ entries, onChange, lists, tags, defau
 							dimmed={!entry.selected}
 							pressed={entry.selected}
 							hint="Tippen: übernehmen ja/nein · gedrückt halten oder Rechtsklick zum Bearbeiten"
-							variant="compact"
 							onToggle={() => update(entry.id, { selected: !entry.selected })}
 							onEdit={() => setEditingId(entry.id)}
 						/>
