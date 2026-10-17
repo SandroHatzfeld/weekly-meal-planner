@@ -32,7 +32,7 @@ export default function IngredientPicker({ entries, onChange, lists, tags, defau
 			<legend className="mb-1 text-sm">
 				Auf die Einkaufsliste ({selectedCount}/{entries.length})
 			</legend>
-			<ul className={`grid grid-cols-3 gap-2 ${className}`}>
+			<ul className={`grid grid-cols-2 gap-2 ${className}`}>
 				{entries.map((entry) => (
 					<li key={entry.id} className="flex">
 						<ItemTile
@@ -41,6 +41,7 @@ export default function IngredientPicker({ entries, onChange, lists, tags, defau
 							dimmed={!entry.selected}
 							pressed={entry.selected}
 							hint="Tippen: übernehmen ja/nein · gedrückt halten oder Rechtsklick zum Bearbeiten"
+							variant="compact"
 							onToggle={() => update(entry.id, { selected: !entry.selected })}
 							onEdit={() => setEditingId(entry.id)}
 						/>

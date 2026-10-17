@@ -13,6 +13,8 @@ type ItemTileProps = {
 	dimmed: boolean // ausgegraut: abgehakt (Einkaufsliste) bzw. nicht übernehmen (Planen)
 	pressed: boolean
 	hint: string
+	// large: zentrierte Kachel (Einkaufsliste) · compact: linksbündig, normale Schrift (Zutatenauswahl)
+	variant?: "large" | "compact"
 	onToggle: () => void
 	onEdit: () => void
 }
@@ -41,13 +43,23 @@ const swallowReleaseClick = () => {
 // Tippen = umschalten, Drücken und Halten (oder Rechtsklick / Kontextmenü-Taste) = bearbeiten.
 // Genutzt in der Einkaufsliste und bei der Zutatenauswahl beim Planen.
 // Mindestens 4:3, wächst mit dem Inhalt; das umgebende <li className="flex"> gleicht die Höhe innerhalb einer Reihe an.
-export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, onEdit }: ItemTileProps) {
+export default function ItemTile({ item, tags, dimmed, pressed, hint, variant = "large", onToggle, onEdit }: ItemTileProps) {
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const start = useRef<{ x: number; y: number } | null>(null)
 	const longPressed = useRef(false)
 
+	const compact = variant === "compact"
 	// Reihenfolge wie in den Einstellungen; gelöschte Tags fallen raus
 	const itemTags = tags.filter((tag) => item.tagIds.includes(tag.id))
+
+	const tagIcons = itemTags.length > 0 && (
+		<span className={`flex shrink-0 gap-0.5 text-emerald-700 dark:text-emerald-300 ${compact ? "pt-0.5" : "-mt-1 -mr-1 justify-end"}`}>
+			{itemTags.map((tag) => (
+				<TagIcon key={tag.id} icon={tag.icon} className="size-3.5" />
+			))}
+			<span className="sr-only">Tags: {itemTags.map((tag) => tag.name).join(", ")}</span>
+		</span>
+	)
 
 	const cancel = () => {
 		if (timer.current) clearTimeout(timer.current)
@@ -69,7 +81,7 @@ export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, 
 			type="button"
 			aria-pressed={pressed}
 			title={hint}
-			className={`flex aspect-[4/3] w-full touch-manipulation flex-col items-stretch gap-0.5 rounded-lg border p-2 text-center transition select-none [-webkit-touch-callout:none] ${
+			className={`flex w-full touch-manipulation gap-0.5 rounded-lg border transition ${compact ? "min-h-14 flex-row items-start gap-2 px-3 py-2 text-left" : "aspect-[4/3] flex-col items-stretch p-2 text-center"} select-none [-webkit-touch-callout:none] ${
 				dimmed
 					? "border-transparent bg-black/5 text-(--foreground)/40 grayscale dark:bg-white/5"
 					: "border-emerald-200 bg-emerald-50 text-emerald-950 shadow-sm active:scale-95 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-50"
@@ -101,19 +113,17 @@ export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, 
 				onToggle()
 			}}
 		>
-			{/* Tags als eigene Zeile im Fluss: nichts überlagert den Namen, die Kachel wächst bei Bedarf */}
-			{itemTags.length > 0 && (
-				<span className="-mt-1 -mr-1 flex justify-end gap-0.5 text-emerald-700 dark:text-emerald-300">
-					{itemTags.map((tag) => (
-						<TagIcon key={tag.id} icon={tag.icon} className="size-3.5" />
-					))}
-					<span className="sr-only">Tags: {itemTags.map((tag) => tag.name).join(", ")}</span>
+			{/* Tags im Fluss statt absolut: nichts überlagert den Namen, die Kachel wächst bei Bedarf */}
+			{!compact && tagIcons}
+			<span className={`flex min-w-0 flex-1 flex-col gap-0.5 ${compact ? "items-start" : "items-center justify-center"}`}>
+				<span
+					className={`max-w-full leading-tight hyphens-auto [overflow-wrap:anywhere] ${compact ? "line-clamp-3 text-sm" : "line-clamp-2 font-semibold"} ${dimmed ? "line-through" : ""}`}
+				>
+					{item.name}
 				</span>
-			)}
-			<span className="flex flex-1 flex-col items-center justify-center gap-0.5">
-				<span className={`line-clamp-2 max-w-full leading-tight font-semibold hyphens-auto [overflow-wrap:anywhere] ${dimmed ? "line-through" : ""}`}>{item.name}</span>
 				{item.details && <span className="line-clamp-1 text-xs opacity-70">{item.details}</span>}
 			</span>
+			{compact && tagIcons}
 		</button>
 	)
 }
