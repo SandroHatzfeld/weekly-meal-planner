@@ -17,6 +17,27 @@ type ItemTileProps = {
 	onEdit: () => void
 }
 
+// Beim Loslassen nach dem Gedrückthalten feuert der Browser einen Klick an der Fingerposition.
+// Dort liegt dann schon das Popup (z.B. "Löschen" oder ein Tag-Button) – diesen einen Klick verwerfen.
+const swallowReleaseClick = () => {
+	const swallow = (event: MouseEvent) => {
+		event.preventDefault()
+		event.stopPropagation()
+		cleanup()
+	}
+	const release = () => setTimeout(cleanup, 400) // kommt kein Klick, nicht ewig blockieren
+	const cleanup = () => {
+		window.removeEventListener("click", swallow, true)
+		window.removeEventListener("pointerup", release, true)
+		window.removeEventListener("pointercancel", release, true)
+		window.removeEventListener("touchend", release, true)
+	}
+	window.addEventListener("click", swallow, true)
+	window.addEventListener("pointerup", release, true)
+	window.addEventListener("pointercancel", release, true)
+	window.addEventListener("touchend", release, true)
+}
+
 // Tippen = umschalten, Drücken und Halten (oder Rechtsklick / Kontextmenü-Taste) = bearbeiten.
 // Genutzt in der Einkaufsliste und bei der Zutatenauswahl beim Planen.
 export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, onEdit }: ItemTileProps) {
@@ -33,9 +54,11 @@ export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, 
 		start.current = null
 	}
 
-	const openEditor = () => {
+	const openEditor = (byLongPress: boolean) => {
 		longPressed.current = true
 		cancel()
+		// nur beim Gedrückthalten: nach einem Rechtsklick folgt kein Klick (unter Windows ist die Maus dann schon oben)
+		if (byLongPress) swallowReleaseClick()
 		navigator.vibrate?.(15)
 		onEdit()
 	}
@@ -52,8 +75,9 @@ export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, 
 			}`}
 			onPointerDown={(event) => {
 				longPressed.current = false
+				if (event.button !== 0) return // Rechtsklick läuft über onContextMenu
 				start.current = { x: event.clientX, y: event.clientY }
-				timer.current = setTimeout(openEditor, LONG_PRESS_MS)
+				timer.current = setTimeout(() => openEditor(true), LONG_PRESS_MS)
 			}}
 			onPointerMove={(event) => {
 				// beim Scrollen kein Long-Press auslösen
@@ -64,7 +88,8 @@ export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, 
 			onPointerCancel={cancel}
 			onContextMenu={(event) => {
 				event.preventDefault()
-				if (!longPressed.current) openEditor()
+				// Android meldet Gedrückthalten auch als Kontextmenü – liegt der Finger noch auf, wie Gedrückthalten behandeln
+				if (!longPressed.current) openEditor(start.current !== null)
 			}}
 			onClick={() => {
 				// Klick nach einem Long-Press nicht als Umschalten werten

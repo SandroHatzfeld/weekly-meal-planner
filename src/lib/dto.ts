@@ -20,6 +20,7 @@ export type GroceryItemDTO = {
 	listId: string
 	dishId: string | null
 	dishName: string | null
+	dishDate: string | null // YYYY-MM-DD, wann das Gericht geplant ist
 	name: string
 	details: string | null
 	checked: boolean
@@ -40,15 +41,16 @@ export const toDishDTO = (dish: Dish): DishDTO => ({
 })
 
 // mit diesem include laden, damit das DTO vollständig ist
-export const groceryItemInclude = { dish: { select: { name: true } }, tags: { select: { id: true } } } as const
+export const groceryItemInclude = { dish: { select: { name: true, date: true } }, tags: { select: { id: true } } } as const
 
 export const toGroceryItemDTO = (
-	item: GroceryItem & { dish?: { name: string } | null; tags?: { id: string }[] },
+	item: GroceryItem & { dish?: { name: string; date: Date } | null; tags?: { id: string }[] },
 ): GroceryItemDTO => ({
 	id: item.id,
 	listId: item.listId,
 	dishId: item.dishId,
 	dishName: item.dish?.name ?? null,
+	dishDate: item.dish ? toDateKey(item.dish.date) : null,
 	name: item.name,
 	details: item.details,
 	checked: item.checked,

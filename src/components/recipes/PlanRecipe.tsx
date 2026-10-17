@@ -3,7 +3,7 @@
 import { planRecipe } from "@/lib/recipes/actions"
 import { initialEntries, toPlannedItems, type PlanIngredient } from "@/lib/recipes/planning"
 import type { TagDTO } from "@/lib/tags/icons"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import IngredientPicker from "./IngredientPicker"
 import { useState } from "react"
 
@@ -21,7 +21,8 @@ export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId
 	const [listId, setListId] = useState(plan.lists[0]?.id ?? "")
 	const [date, setDate] = useState(defaultDate)
 	const [entries, setEntries] = useState(() => initialEntries(ingredients))
-	const [result, setResult] = useState<{ error?: string; dishId?: string } | null>(null)
+	const router = useRouter()
+	const [error, setError] = useState<string | null>(null)
 	const [saving, setSaving] = useState(false)
 
 	return (
@@ -30,7 +31,11 @@ export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId
 			onSubmit={async (event) => {
 				event.preventDefault()
 				setSaving(true)
-				setResult(await planRecipe(recipeId, { planId, date, items: toPlannedItems(entries, listId) }))
+				setError(null)
+				const result = await planRecipe(recipeId, { planId, date, items: toPlannedItems(entries, listId) })
+				// geplant -> Rezept schließen, zurück zur Übersicht
+				if (result.dishId) return router.push("/recipes")
+				setError(result.error ?? "Planen fehlgeschlagen")
 				setSaving(false)
 			}}
 		>
@@ -82,12 +87,7 @@ export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId
 			<button type="submit" className="btn w-full" disabled={saving || !listId}>
 				Speichern
 			</button>
-			{result?.error && <p className="error">{result.error}</p>}
-			{result?.dishId && (
-				<p className="text-sm">
-					Geplant! {planId === defaultPlanId && <Link href={`/dishes/${result.dishId}`}>Gericht ansehen</Link>}
-				</p>
-			)}
+			{error && <p className="error">{error}</p>}
 		</form>
 	)
 }

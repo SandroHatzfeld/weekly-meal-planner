@@ -2,6 +2,7 @@
 
 import { usePlanEvent } from "@/components/realtime/SocketProvider"
 import type { GroceryItemDTO } from "@/lib/dto"
+import { formatDay } from "@/lib/dates"
 import type { TagDTO } from "@/lib/tags/icons"
 import {
 	addGroceryItem,
@@ -51,10 +52,12 @@ export default function ShopList({ planId, lists, tags, initialListId, initialIt
 	)
 	usePlanEvent("grocery-item-deleted", ({ id }) => setItems((current) => current.filter((item) => item.id !== id)))
 	usePlanEvent("dish-deleted", ({ id }) =>
-		setItems((current) => current.map((item) => (item.dishId === id ? { ...item, dishId: null, dishName: null } : item))),
+		setItems((current) => current.map((item) => (item.dishId === id ? { ...item, dishId: null, dishName: null, dishDate: null } : item))),
 	)
 	usePlanEvent("dish-updated", (dish) =>
-		setItems((current) => current.map((item) => (item.dishId === dish.id ? { ...item, dishName: dish.name } : item))),
+		setItems((current) =>
+			current.map((item) => (item.dishId === dish.id ? { ...item, dishName: dish.name, dishDate: dish.date } : item)),
+		),
 	)
 
 	const selectList = (id: string) => {
@@ -64,13 +67,16 @@ export default function ShopList({ planId, lists, tags, initialListId, initialIt
 
 	const visible = items.filter((item) => item.listId === listId)
 	// Gruppierung nach Gericht, ohne Gericht = "Unkategorisiert"
-	const groups = new Map<string, { title: string; items: GroceryItemDTO[] }>()
+	const groups = new Map<string, { title: string; date: string | null; items: GroceryItemDTO[] }>()
 	for (const item of visible) {
 		const key = item.dishId ?? ""
-		if (!groups.has(key)) groups.set(key, { title: item.dishName ?? "Unkategorisiert", items: [] })
+		if (!groups.has(key)) groups.set(key, { title: item.dishName ?? "Unkategorisiert", date: item.dishDate, items: [] })
 		groups.get(key)!.items.push(item)
 	}
-	const sortedGroups = [...groups.entries()].sort(([a], [b]) => (a === "" ? -1 : b === "" ? 1 : 0))
+	// "Unkategorisiert" zuerst, danach Gerichte nach geplantem Datum
+	const sortedGroups = [...groups.entries()].sort(([a, groupA], [b, groupB]) =>
+		a === "" ? -1 : b === "" ? 1 : (groupA.date ?? "").localeCompare(groupB.date ?? "") || groupA.title.localeCompare(groupB.title),
+	)
 
 	const toggle = async (item: GroceryItemDTO) => {
 		setItems((current) => upsert(current, { ...item, checked: !item.checked }))
@@ -128,14 +134,19 @@ export default function ShopList({ planId, lists, tags, initialListId, initialIt
 					{sortedGroups.length === 0 && <p className="opacity-60">Die Liste ist leer.</p>}
 					{sortedGroups.map(([key, group]) => (
 						<section key={key || "none"} className="card">
-							<h3 className="mb-2 font-semibold">
+							<h3 className="mb-2 flex items-baseline gap-2 font-semibold">
 								{/* key = dishId, leer bei "Unkategorisiert" */}
 								{key ? (
-									<Link href={`/dishes/${key}`} className="inline-flex items-center gap-1 py-1">
-										{group.title} <span aria-hidden="true">›</span>
+									<Link href={`/dishes/${key}`} className="inline-flex min-w-0 items-center gap-1 py-1">
+										<span className="truncate">{group.title}</span> <span aria-hidden="true">›</span>
 									</Link>
 								) : (
 									group.title
+								)}
+								{group.date && (
+									<time dateTime={group.date} className="ml-auto shrink-0 text-sm font-normal opacity-70">
+										{formatDay(group.date, { weekday: "short", day: "2-digit", month: "2-digit" })}
+									</time>
 								)}
 							</h3>
 							<ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
