@@ -3,7 +3,8 @@ import { DeleteRecipeButton } from "@/components/recipes/RecipeForm"
 import { todayKey } from "@/lib/dates"
 import { prisma } from "@/lib/prisma"
 import { canViewRecipe } from "@/lib/recipes/access"
-import { ingredientLabel } from "@/lib/recipes/format"
+import { ingredientDetails, ingredientLabel } from "@/lib/recipes/format"
+import { toTagDTO } from "@/lib/tags/icons"
 import { requireActivePlan } from "@/lib/session"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -21,10 +22,17 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 	// alle Pläne des Nutzers mit ihren Listen für den Planen-Flow
 	const memberships = await prisma.planMember.findMany({
 		where: { userId: user.id },
-		include: { plan: { include: { groceryLists: { select: { id: true, name: true }, orderBy: { createdAt: "asc" } } } } },
+		include: {
+			plan: {
+				include: {
+					groceryLists: { select: { id: true, name: true }, orderBy: { createdAt: "asc" } },
+					tags: { orderBy: { createdAt: "asc" } },
+				},
+			},
+		},
 		orderBy: { joinedAt: "asc" },
 	})
-	const plans = memberships.map(({ plan }) => ({ id: plan.id, name: plan.name, lists: plan.groceryLists }))
+	const plans = memberships.map(({ plan }) => ({ id: plan.id, name: plan.name, lists: plan.groceryLists, tags: plan.tags.map(toTagDTO) }))
 	const isOwner = recipe.userId === user.id
 
 	return (
@@ -76,7 +84,8 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 					recipeId={recipe.id}
 					ingredients={recipe.ingredients.map((ingredient) => ({
 						id: ingredient.id,
-						label: ingredientLabel(ingredient),
+						name: ingredient.name,
+						details: ingredientDetails(ingredient),
 					}))}
 					plans={plans}
 					defaultPlanId={planId}

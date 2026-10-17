@@ -15,8 +15,8 @@ import {
 	renameGroceryList,
 	toggleGroceryItem,
 } from "@/lib/grocery/actions"
-import ItemEditDialog from "./ItemEditDialog"
-import ItemTile from "./ItemTile"
+import ItemEditDialog from "@/components/items/ItemEditDialog"
+import ItemTile from "@/components/items/ItemTile"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -143,7 +143,15 @@ export default function ShopList({ planId, lists, tags, initialListId, initialIt
 									.sort((a, b) => Number(a.checked) - Number(b.checked))
 									.map((item) => (
 										<li key={item.id}>
-											<ItemTile item={item} tags={tags} onToggle={() => toggle(item)} onEdit={() => setEditing(item)} />
+											<ItemTile
+												item={item}
+												tags={tags}
+												dimmed={item.checked}
+												pressed={item.checked}
+												hint="Tippen zum Abhaken · gedrückt halten oder Rechtsklick zum Bearbeiten"
+												onToggle={() => toggle(item)}
+												onEdit={() => setEditing(item)}
+											/>
 										</li>
 									))}
 							</ul>

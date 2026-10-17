@@ -2,19 +2,23 @@
 
 import { createDish } from "@/lib/dishes/actions"
 import type { DishDTO } from "@/lib/dto"
+import IngredientPicker from "@/components/recipes/IngredientPicker"
 import { planRecipe, searchRecipes, type RecipeSuggestion } from "@/lib/recipes/actions"
+import { initialEntries, toPlannedItems, type IngredientEntry } from "@/lib/recipes/planning"
+import type { TagDTO } from "@/lib/tags/icons"
 import { useEffect, useId, useState } from "react"
 
 type AddDishProps = {
 	planId: string
 	day: string
 	lists: { id: string; name: string }[]
+	tags: TagDTO[]
 	onCreated: (dish: DishDTO) => void
 }
 
 // Direkte Eingabe eines Gerichts. Passt der Name zu gespeicherten Rezepten, werden sie vorgeschlagen;
 // ein gewähltes Rezept wird per Copy-on-Plan inkl. Zutatenauswahl geplant.
-export default function AddDish({ planId, day, lists, onCreated }: AddDishProps) {
+export default function AddDish({ planId, day, lists, tags, onCreated }: AddDishProps) {
 	const listboxId = useId()
 	const [open, setOpen] = useState(false)
 	const [name, setName] = useState("")
@@ -22,7 +26,7 @@ export default function AddDish({ planId, day, lists, onCreated }: AddDishProps)
 	const [activeIndex, setActiveIndex] = useState(-1)
 	const [dismissed, setDismissed] = useState(false)
 	const [recipe, setRecipe] = useState<RecipeSuggestion | null>(null)
-	const [selected, setSelected] = useState<Set<string>>(new Set())
+	const [entries, setEntries] = useState<IngredientEntry[]>([])
 	const [listId, setListId] = useState(lists[0]?.id ?? "")
 	const [saving, setSaving] = useState(false)
 
@@ -55,14 +59,13 @@ export default function AddDish({ planId, day, lists, onCreated }: AddDishProps)
 	const pickRecipe = (suggestion: RecipeSuggestion) => {
 		setRecipe(suggestion)
 		setName(suggestion.name)
-		// Opt-out: alle Zutaten vorausgewählt
-		setSelected(new Set(suggestion.ingredients.map((ingredient) => ingredient.id)))
+		setEntries(initialEntries(suggestion.ingredients))
 	}
 
 	const submit = async () => {
 		setSaving(true)
 		if (recipe) {
-			const result = await planRecipe(recipe.id, { planId, listId, date: day, ingredientIds: [...selected] })
+			const result = await planRecipe(recipe.id, { planId, date: day, items: toPlannedItems(entries, listId) })
 			if ("dish" in result && result.dish) onCreated(result.dish)
 		} else {
 			const dish = await createDish(planId, name, day)
@@ -82,7 +85,7 @@ export default function AddDish({ planId, day, lists, onCreated }: AddDishProps)
 
 	return (
 		<form
-			className="flex w-full flex-col gap-2 sm:w-auto"
+			className={`flex w-full flex-col gap-2 ${recipe ? "" : "sm:w-auto"}`}
 			onSubmit={(event) => {
 				event.preventDefault()
 				submit()
@@ -162,7 +165,7 @@ export default function AddDish({ planId, day, lists, onCreated }: AddDishProps)
 				<div className="space-y-1 text-sm">
 					{lists.length > 1 && (
 						<label className="flex items-center gap-2">
-							Einkaufsliste
+							Standard-Einkaufsliste
 							<select className="input w-auto" value={listId} onChange={(event) => setListId(event.target.value)}>
 								{lists.map((list) => (
 									<option key={list.id} value={list.id}>
@@ -172,28 +175,14 @@ export default function AddDish({ planId, day, lists, onCreated }: AddDishProps)
 							</select>
 						</label>
 					)}
-					{recipe.ingredients.length > 0 ? (
-						<fieldset>
-							<legend className="mb-1 opacity-70">Auf die Einkaufsliste:</legend>
-							{recipe.ingredients.map((ingredient) => (
-								<label key={ingredient.id} className="flex items-center gap-2">
-									<input
-										type="checkbox"
-										checked={selected.has(ingredient.id)}
-										onChange={(event) => {
-											const next = new Set(selected)
-											if (event.target.checked) next.add(ingredient.id)
-											else next.delete(ingredient.id)
-											setSelected(next)
-										}}
-									/>
-									{ingredient.label}
-								</label>
-							))}
-						</fieldset>
-					) : (
-						<p className="opacity-60">Das Rezept hat keine Zutaten.</p>
-					)}
+					<IngredientPicker
+						entries={entries}
+						onChange={setEntries}
+						lists={lists}
+						tags={tags}
+						defaultListId={listId}
+						className="sm:grid-cols-4 md:grid-cols-5"
+					/>
 				</div>
 			)}
 		</form>

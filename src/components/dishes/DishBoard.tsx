@@ -4,6 +4,7 @@ import { usePlanEvent } from "@/components/realtime/SocketProvider"
 import { formatDay } from "@/lib/dates"
 import { moveDish } from "@/lib/dishes/actions"
 import type { DishDTO } from "@/lib/dto"
+import type { TagDTO } from "@/lib/tags/icons"
 import Link from "next/link"
 import AddDish from "./AddDish"
 import { useState } from "react"
@@ -13,6 +14,7 @@ type DishBoardProps = {
 	days: string[]
 	initialDishes: DishDTO[]
 	lists?: { id: string; name: string }[]
+	tags?: TagDTO[]
 	mode: "week" | "month"
 	monthKey?: string
 	today: string
@@ -20,7 +22,7 @@ type DishBoardProps = {
 
 const upsert = (dishes: DishDTO[], dish: DishDTO) => [...dishes.filter((existing) => existing.id !== dish.id), dish]
 
-export default function DishBoard({ planId, days, initialDishes, lists = [], mode, monthKey, today }: DishBoardProps) {
+export default function DishBoard({ planId, days, initialDishes, lists = [], tags = [], mode, monthKey, today }: DishBoardProps) {
 	const [dishes, setDishes] = useState(initialDishes)
 	const [dragId, setDragId] = useState<string | null>(null)
 	// Monatsansicht: heute, falls im angezeigten Monat, sonst der Erste des Monats
@@ -74,7 +76,7 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], mod
 						</div>
 						<div className="flex flex-1 flex-wrap items-center gap-2">
 							{dishChips(day)}
-							<AddDish planId={planId} day={day} lists={lists} onCreated={(dish) => setDishes((current) => upsert(current, dish))} />
+							<AddDish planId={planId} day={day} lists={lists} tags={tags} onCreated={(dish) => setDishes((current) => upsert(current, dish))} />
 						</div>
 					</li>
 				))}
@@ -127,7 +129,7 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], mod
 					key={selectedDay}
 					planId={planId}
 					day={selectedDay}
-					lists={lists}
+					lists={lists} tags={tags}
 					onCreated={(dish) => setDishes((current) => upsert(current, dish))}
 				/>
 				{selectedDishes.length > 0 ? (

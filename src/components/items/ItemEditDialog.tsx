@@ -1,51 +1,71 @@
 "use client"
 
 import TagIcon from "@/components/tags/TagIcon"
-import type { GroceryItemDTO } from "@/lib/dto"
 import type { TagDTO } from "@/lib/tags/icons"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { createPortal } from "react-dom"
 
-type ItemEditDialogProps = {
-	item: GroceryItemDTO | null
+export type EditableItem = { id: string; name: string; details: string | null; listId: string; tagIds: string[] }
+export type ItemChanges = { name: string; details: string; listId: string; tagIds: string[] }
+
+type ItemEditDialogProps<T extends EditableItem> = {
+	item: T | null
 	lists: { id: string; name: string }[]
 	tags: TagDTO[]
-	onSave: (item: GroceryItemDTO, changes: { name: string; details: string; listId: string; tagIds: string[] }) => Promise<void>
-	onDelete: (item: GroceryItemDTO) => Promise<void>
+	onSave: (item: T, changes: ItemChanges) => void | Promise<void>
+	onDelete?: (item: T) => Promise<void> // ohne: kein Löschen-Button
 	onClose: () => void
 }
 
-export default function ItemEditDialog({ item, lists, tags, onSave, onDelete, onClose }: ItemEditDialogProps) {
+export default function ItemEditDialog<T extends EditableItem>({ item, lists, tags, onSave, onDelete, onClose }: ItemEditDialogProps<T>) {
 	const dialog = useRef<HTMLDialogElement>(null)
+	const pressedOnBackdrop = useRef(false)
+	// Portal erst im Browser (beim Server-Rendering gibt es kein document)
+	const isClient = useSyncExternalStore(
+		() => () => {},
+		() => true,
+		() => false,
+	)
 
 	useEffect(() => {
 		if (item && !dialog.current?.open) dialog.current?.showModal()
 		if (!item && dialog.current?.open) dialog.current.close()
-	}, [item])
+	}, [item, isClient])
 
-	return (
+	if (!isClient) return null
+
+	// Portal an <body>: der Dialog enthält ein eigenes Formular und wird auch innerhalb anderer Formulare genutzt
+	return createPortal(
 		<dialog
 			ref={dialog}
 			onClose={onClose}
-			// Klick auf den abgedunkelten Hintergrund schließt
-			onClick={(event) => {
-				if (event.target === dialog.current) dialog.current?.close()
+			// Klick auf den abgedunkelten Hintergrund schließt – aber nur, wenn der Druck dort auch begann.
+			// Sonst würde das Loslassen nach dem Gedrückthalten auf der Kachel das Popup sofort wieder schließen.
+			onPointerDown={(event) => {
+				pressedOnBackdrop.current = event.target === dialog.current
 			}}
-			className="m-auto w-[min(26rem,calc(100%-2rem))] rounded-xl border border-(--border) bg-(--surface) p-0 text-(--foreground) shadow-xl backdrop:bg-black/40"
+			onClick={(event) => {
+				if (event.target === dialog.current && pressedOnBackdrop.current) dialog.current?.close()
+				pressedOnBackdrop.current = false
+			}}
+			// mobil oben andocken (Tastatur verdeckt sonst die Hälfte), ab sm mittig
+			className="mx-auto mt-3 mb-auto max-h-[calc(100dvh-1.5rem)] w-[min(26rem,calc(100%-2rem))] overflow-y-auto rounded-xl sm:my-auto border border-(--border) bg-(--surface) p-0 text-(--foreground) shadow-xl backdrop:bg-black/40"
 		>
 			{/* key: Formular bei jedem geöffneten Eintrag frisch initialisieren */}
 			{item && <EditForm key={item.id} item={item} lists={lists} tags={tags} onSave={onSave} onDelete={onDelete} close={() => dialog.current?.close()} />}
-		</dialog>
+		</dialog>,
+		document.body,
 	)
 }
 
-function EditForm({
+function EditForm<T extends EditableItem>({
 	item,
 	lists,
 	tags,
 	onSave,
 	onDelete,
 	close,
-}: Omit<ItemEditDialogProps, "item" | "onClose"> & { item: GroceryItemDTO; close: () => void }) {
+}: Omit<ItemEditDialogProps<T>, "item" | "onClose"> & { item: T; close: () => void }) {
 	const [name, setName] = useState(item.name)
 	const [details, setDetails] = useState(item.details ?? "")
 	const [listId, setListId] = useState(item.listId)
@@ -57,6 +77,8 @@ function EditForm({
 			className="form max-w-none gap-3 p-4"
 			onSubmit={async (event) => {
 				event.preventDefault()
+				// React-Events laufen auch durch Portale nach oben – das äußere Formular (Planen) nicht mit absenden
+				event.stopPropagation()
 				setSaving(true)
 				await onSave(item, { name, details, listId, tagIds })
 				setSaving(false)
@@ -109,17 +131,19 @@ function EditForm({
 				<button type="button" className="btn-secondary" onClick={close}>
 					Abbrechen
 				</button>
-				<button
-					type="button"
-					className="btn-danger ml-auto"
-					disabled={saving}
-					onClick={async () => {
-						await onDelete(item)
-						close()
-					}}
-				>
-					Löschen
-				</button>
+				{onDelete && (
+					<button
+						type="button"
+						className="btn-danger ml-auto"
+						disabled={saving}
+						onClick={async () => {
+							await onDelete(item)
+							close()
+						}}
+					>
+						Löschen
+					</button>
+				)}
 			</div>
 		</form>
 	)

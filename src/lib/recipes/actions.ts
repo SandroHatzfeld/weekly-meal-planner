@@ -10,7 +10,8 @@ import { requireMember } from "../session"
 import { groceryItemInclude, toGroceryItemDTO } from "../dto"
 import { deleteImageIfUnused, resolveImage } from "../images"
 import { canViewRecipe, coMemberIds } from "./access"
-import { ingredientLabel } from "./format"
+import { ingredientDetails } from "./format"
+import type { PlanIngredient, PlannedItem } from "./planning"
 
 export type IngredientInput = { name: string; amount: string; unit: string }
 export type RecipeInput = {
@@ -86,25 +87,24 @@ export const deleteRecipe = async (recipeId: string) => {
 	redirect("/recipes")
 }
 
-const formatAmount = (amount: number | null, unit: string | null) =>
-	[amount !== null ? amount.toLocaleString("de-DE") : null, unit].filter(Boolean).join(" ") || null
-
-// Copy-on-Plan: Snapshot des Rezepts als neuer Dish + ausgewählte Zutaten als GroceryItems
-export const planRecipe = async (
-	recipeId: string,
-	target: { planId: string; listId: string; date: string; ingredientIds: string[] },
-) => {
+// Copy-on-Plan: Snapshot des Rezepts als neuer Dish + die ausgewählten (ggf. angepassten) Zutaten als GroceryItems
+export const planRecipe = async (recipeId: string, target: { planId: string; date: string; items: PlannedItem[] }) => {
 	const { user } = await requireMember(target.planId)
 	const date = parseDateKey(target.date)
 	if (!date) return { error: "Bitte wähle einen Tag" }
 
-	const recipe = await prisma.recipe.findUnique({ where: { id: recipeId }, include: { ingredients: true } })
+	const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } })
 	if (!recipe || !(await canViewRecipe(user.id, recipe.userId))) return { error: "Rezept nicht gefunden" }
 
-	const list = await prisma.groceryList.findUnique({ where: { id: target.listId } })
-	if (!list || list.planId !== target.planId) return { error: "Liste gehört nicht zum Plan" }
-
-	const selected = recipe.ingredients.filter((ingredient) => target.ingredientIds.includes(ingredient.id))
+	// Listen und Tags müssen zum Ziel-Plan gehören
+	const [lists, tags] = await Promise.all([
+		prisma.groceryList.findMany({ where: { planId: target.planId }, select: { id: true } }),
+		prisma.planTag.findMany({ where: { planId: target.planId }, select: { id: true } }),
+	])
+	const listIds = new Set(lists.map((list) => list.id))
+	const tagIds = new Set(tags.map((tag) => tag.id))
+	const items = target.items.filter((item) => item.name.trim())
+	if (items.some((item) => !listIds.has(item.listId))) return { error: "Liste gehört nicht zum Plan" }
 
 	const dish = await prisma.dish.create({
 		data: {
@@ -116,10 +116,11 @@ export const planRecipe = async (
 			steps: recipe.steps,
 			date,
 			groceryItems: {
-				create: selected.map((ingredient) => ({
-					listId: list.id,
-					name: ingredient.name,
-					details: formatAmount(ingredient.amount, ingredient.unit),
+				create: items.map((item) => ({
+					listId: item.listId,
+					name: item.name.trim(),
+					details: item.details?.trim() || null,
+					tags: { connect: item.tagIds.filter((id) => tagIds.has(id)).map((id) => ({ id })) },
 				})),
 			},
 		},
@@ -136,7 +137,7 @@ export type RecipeSuggestion = {
 	id: string
 	name: string
 	ownerName: string | null // null = eigenes Rezept
-	ingredients: { id: string; label: string }[]
+	ingredients: PlanIngredient[]
 }
 
 // Vorschläge beim direkten Anlegen in der Wochenansicht: Rezeptbücher aller Plan-Mitglieder
@@ -155,6 +156,6 @@ export const searchRecipes = async (planId: string, query: string): Promise<Reci
 		id: recipe.id,
 		name: recipe.name,
 		ownerName: recipe.userId === user.id ? null : recipe.user.name,
-		ingredients: recipe.ingredients.map((ingredient) => ({ id: ingredient.id, label: ingredientLabel(ingredient) })),
+		ingredients: recipe.ingredients.map((ingredient) => ({ id: ingredient.id, name: ingredient.name, details: ingredientDetails(ingredient) })),
 	}))
 }

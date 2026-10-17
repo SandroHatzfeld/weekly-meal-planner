@@ -1,13 +1,16 @@
 "use client"
 
 import { planRecipe } from "@/lib/recipes/actions"
+import { initialEntries, toPlannedItems, type PlanIngredient } from "@/lib/recipes/planning"
+import type { TagDTO } from "@/lib/tags/icons"
 import Link from "next/link"
+import IngredientPicker from "./IngredientPicker"
 import { useState } from "react"
 
 type PlanRecipeProps = {
 	recipeId: string
-	ingredients: { id: string; label: string }[]
-	plans: { id: string; name: string; lists: { id: string; name: string }[] }[]
+	ingredients: PlanIngredient[]
+	plans: { id: string; name: string; lists: { id: string; name: string }[]; tags: TagDTO[] }[]
 	defaultPlanId: string
 	defaultDate: string
 }
@@ -17,8 +20,7 @@ export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId
 	const plan = plans.find((candidate) => candidate.id === planId) ?? plans[0]
 	const [listId, setListId] = useState(plan.lists[0]?.id ?? "")
 	const [date, setDate] = useState(defaultDate)
-	// Opt-out: alle Zutaten vorausgewählt
-	const [selected, setSelected] = useState(() => new Set(ingredients.map((ingredient) => ingredient.id)))
+	const [entries, setEntries] = useState(() => initialEntries(ingredients))
 	const [result, setResult] = useState<{ error?: string; dishId?: string } | null>(null)
 	const [saving, setSaving] = useState(false)
 
@@ -28,7 +30,7 @@ export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId
 			onSubmit={async (event) => {
 				event.preventDefault()
 				setSaving(true)
-				setResult(await planRecipe(recipeId, { planId, listId, date, ingredientIds: [...selected] }))
+				setResult(await planRecipe(recipeId, { planId, date, items: toPlannedItems(entries, listId) }))
 				setSaving(false)
 			}}
 		>
@@ -44,6 +46,8 @@ export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId
 						onChange={(event) => {
 							setPlanId(event.target.value)
 							setListId(plans.find((candidate) => candidate.id === event.target.value)?.lists[0]?.id ?? "")
+							// Listen und Tags gehören zum Plan -> Anpassungen zurücksetzen
+							setEntries(initialEntries(ingredients))
 						}}
 					>
 						{plans.map((candidate) => (
@@ -57,7 +61,7 @@ export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId
 			{/* Listen-Auswahl entfällt, wenn der Plan nur eine Liste hat */}
 			{plan.lists.length > 1 && (
 				<label className="block text-sm">
-					Einkaufsliste
+					Standard-Einkaufsliste
 					<select className="input" value={listId} onChange={(event) => setListId(event.target.value)}>
 						{plan.lists.map((list) => (
 							<option key={list.id} value={list.id}>
@@ -73,26 +77,7 @@ export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId
 				<input type="date" className="input" value={date} onChange={(event) => setDate(event.target.value)} required />
 			</label>
 
-			{ingredients.length > 0 && (
-				<fieldset className="text-sm">
-					<legend className="mb-1">Auf die Einkaufsliste:</legend>
-					{ingredients.map((ingredient) => (
-						<label key={ingredient.id} className="flex items-center gap-2">
-							<input
-								type="checkbox"
-								checked={selected.has(ingredient.id)}
-								onChange={(event) => {
-									const next = new Set(selected)
-									if (event.target.checked) next.add(ingredient.id)
-									else next.delete(ingredient.id)
-									setSelected(next)
-								}}
-							/>
-							{ingredient.label}
-						</label>
-					))}
-				</fieldset>
-			)}
+			<IngredientPicker entries={entries} onChange={setEntries} lists={plan.lists} tags={plan.tags} defaultListId={listId} />
 
 			<button type="submit" className="btn w-full" disabled={saving || !listId}>
 				Speichern
