@@ -14,6 +14,7 @@ type DishBoardProps = {
 	days: string[]
 	initialDishes: DishDTO[]
 	lists?: { id: string; name: string }[]
+	defaultListId?: string
 	tags?: TagDTO[]
 	mode: "week" | "month"
 	monthKey?: string
@@ -22,7 +23,7 @@ type DishBoardProps = {
 
 const upsert = (dishes: DishDTO[], dish: DishDTO) => [...dishes.filter((existing) => existing.id !== dish.id), dish]
 
-export default function DishBoard({ planId, days, initialDishes, lists = [], tags = [], mode, monthKey, today }: DishBoardProps) {
+export default function DishBoard({ planId, days, initialDishes, lists = [], defaultListId = "", tags = [], mode, monthKey, today }: DishBoardProps) {
 	const [dishes, setDishes] = useState(initialDishes)
 	const [dragId, setDragId] = useState<string | null>(null)
 	// Monatsansicht: heute, falls im angezeigten Monat, sonst der Erste des Monats
@@ -76,7 +77,7 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], tag
 						</div>
 						<div className="flex flex-1 flex-wrap items-center gap-2">
 							{dishChips(day)}
-							<AddDish planId={planId} day={day} lists={lists} tags={tags} onCreated={(dish) => setDishes((current) => upsert(current, dish))} />
+							<AddDish planId={planId} day={day} lists={lists} defaultListId={defaultListId} tags={tags} onCreated={(dish) => setDishes((current) => upsert(current, dish))} />
 						</div>
 					</li>
 				))}
@@ -129,7 +130,10 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], tag
 					key={selectedDay}
 					planId={planId}
 					day={selectedDay}
-					lists={lists} tags={tags}
+					lists={lists}
+					defaultListId={defaultListId}
+					tags={tags}
+					divider={selectedDishes.length > 0}
 					onCreated={(dish) => setDishes((current) => upsert(current, dish))}
 				/>
 				{selectedDishes.length > 0 ? (

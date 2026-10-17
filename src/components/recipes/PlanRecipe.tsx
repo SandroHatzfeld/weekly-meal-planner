@@ -10,7 +10,7 @@ import { useState } from "react"
 type PlanRecipeProps = {
 	recipeId: string
 	ingredients: PlanIngredient[]
-	plans: { id: string; name: string; lists: { id: string; name: string }[]; tags: TagDTO[] }[]
+	plans: { id: string; name: string; lists: { id: string; name: string }[]; defaultListId: string; tags: TagDTO[] }[]
 	defaultPlanId: string
 	defaultDate: string
 }
@@ -18,7 +18,6 @@ type PlanRecipeProps = {
 export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId, defaultDate }: PlanRecipeProps) {
 	const [planId, setPlanId] = useState(defaultPlanId)
 	const plan = plans.find((candidate) => candidate.id === planId) ?? plans[0]
-	const [listId, setListId] = useState(plan.lists[0]?.id ?? "")
 	const [date, setDate] = useState(defaultDate)
 	const [entries, setEntries] = useState(() => initialEntries(ingredients))
 	const router = useRouter()
@@ -32,7 +31,7 @@ export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId
 				event.preventDefault()
 				setSaving(true)
 				setError(null)
-				const result = await planRecipe(recipeId, { planId, date, items: toPlannedItems(entries, listId) })
+				const result = await planRecipe(recipeId, { planId, date, items: toPlannedItems(entries, plan.defaultListId) })
 				// geplant -> Rezept schließen, zurück zur Übersicht
 				if (result.dishId) return router.push("/recipes")
 				setError(result.error ?? "Planen fehlgeschlagen")
@@ -50,7 +49,6 @@ export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId
 						value={planId}
 						onChange={(event) => {
 							setPlanId(event.target.value)
-							setListId(plans.find((candidate) => candidate.id === event.target.value)?.lists[0]?.id ?? "")
 							// Listen und Tags gehören zum Plan -> Anpassungen zurücksetzen
 							setEntries(initialEntries(ingredients))
 						}}
@@ -64,27 +62,14 @@ export default function PlanRecipe({ recipeId, ingredients, plans, defaultPlanId
 				</label>
 			)}
 			{/* Listen-Auswahl entfällt, wenn der Plan nur eine Liste hat */}
-			{plan.lists.length > 1 && (
-				<label className="block text-sm">
-					Standard-Einkaufsliste
-					<select className="input" value={listId} onChange={(event) => setListId(event.target.value)}>
-						{plan.lists.map((list) => (
-							<option key={list.id} value={list.id}>
-								{list.name}
-							</option>
-						))}
-					</select>
-				</label>
-			)}
-
 			<label className="block text-sm">
 				Tag
 				<input type="date" className="input" value={date} onChange={(event) => setDate(event.target.value)} required />
 			</label>
 
-			<IngredientPicker entries={entries} onChange={setEntries} lists={plan.lists} tags={plan.tags} defaultListId={listId} />
+			<IngredientPicker entries={entries} onChange={setEntries} lists={plan.lists} tags={plan.tags} defaultListId={plan.defaultListId} />
 
-			<button type="submit" className="btn w-full" disabled={saving || !listId}>
+			<button type="submit" className="btn w-full" disabled={saving || !plan.defaultListId}>
 				Speichern
 			</button>
 			{error && <p className="error">{error}</p>}

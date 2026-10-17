@@ -2,6 +2,7 @@ import PlanRecipe from "@/components/recipes/PlanRecipe"
 import { DeleteRecipeButton } from "@/components/recipes/RecipeForm"
 import { todayKey } from "@/lib/dates"
 import { prisma } from "@/lib/prisma"
+import { resolveDefaultListId } from "@/lib/grocery/queries"
 import { canViewRecipe } from "@/lib/recipes/access"
 import { ingredientDetails, ingredientLabel } from "@/lib/recipes/format"
 import { toTagDTO } from "@/lib/tags/icons"
@@ -32,7 +33,13 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 		},
 		orderBy: { joinedAt: "asc" },
 	})
-	const plans = memberships.map(({ plan }) => ({ id: plan.id, name: plan.name, lists: plan.groceryLists, tags: plan.tags.map(toTagDTO) }))
+	const plans = memberships.map(({ plan }) => ({
+		id: plan.id,
+		name: plan.name,
+		lists: plan.groceryLists,
+		defaultListId: resolveDefaultListId(plan.groceryLists, plan.defaultListId),
+		tags: plan.tags.map(toTagDTO),
+	}))
 	const isOwner = recipe.userId === user.id
 
 	return (

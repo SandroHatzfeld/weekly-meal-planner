@@ -39,8 +39,11 @@ model Plan {
   invites        PlanInvite[]
   dishes         Dish[]
   activeForUsers User[]
-  groceryLists   GroceryList[]
+  groceryLists   GroceryList[] @relation("PlanGroceryLists")
   tags           PlanTag[]
+  // Liste für Zutaten beim Planen; NULL = erste Liste des Plans
+  defaultListId  String?
+  defaultList    GroceryList?  @relation("PlanDefaultList", fields: [defaultListId], references: [id], onDelete: SetNull)
 }
 
 model PlanMember {
@@ -138,8 +141,9 @@ model GroceryList {
   planId    String
   name      String
   createdAt DateTime      @default(now())
-  plan      Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
+  plan      Plan          @relation("PlanGroceryLists", fields: [planId], references: [id], onDelete: Cascade)
   items     GroceryItem[]
+  defaultOf Plan[]        @relation("PlanDefaultList")
 }
 
 model GroceryItem {

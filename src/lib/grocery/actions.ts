@@ -79,6 +79,15 @@ export const renameGroceryList = async (listId: string, name: string) => {
 	emitToPlan(list.planId, "grocery-lists-changed", { planId: list.planId })
 }
 
+// Standardliste für Zutaten beim Planen (Plan-Einstellungen)
+export const setDefaultGroceryList = async (planId: string, listId: string) => {
+	await requireMember(planId)
+	const list = await service.findListWithPlan(listId)
+	if (!list || list.planId !== planId) return
+	await prisma.plan.update({ where: { id: planId }, data: { defaultListId: listId } })
+	emitToPlan(planId, "plan-changed", { planId })
+}
+
 // die letzte Liste eines Plans bleibt bestehen, sonst gäbe es keinen Ort für neue Items
 export const deleteGroceryList = async (listId: string) => {
 	const list = await memberOfList(listId)

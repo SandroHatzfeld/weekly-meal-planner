@@ -12,13 +12,15 @@ type AddDishProps = {
 	planId: string
 	day: string
 	lists: { id: string; name: string }[]
+	defaultListId: string // aus den Plan-Einstellungen
 	tags: TagDTO[]
+	divider?: boolean // Linie nach unten, wenn darunter weitere Gerichte folgen
 	onCreated: (dish: DishDTO) => void
 }
 
 // Direkte Eingabe eines Gerichts. Passt der Name zu gespeicherten Rezepten, werden sie vorgeschlagen;
 // ein gewähltes Rezept wird per Copy-on-Plan inkl. Zutatenauswahl geplant.
-export default function AddDish({ planId, day, lists, tags, onCreated }: AddDishProps) {
+export default function AddDish({ planId, day, lists, defaultListId, tags, divider = false, onCreated }: AddDishProps) {
 	const listboxId = useId()
 	const [open, setOpen] = useState(false)
 	const [name, setName] = useState("")
@@ -27,7 +29,6 @@ export default function AddDish({ planId, day, lists, tags, onCreated }: AddDish
 	const [dismissed, setDismissed] = useState(false)
 	const [recipe, setRecipe] = useState<RecipeSuggestion | null>(null)
 	const [entries, setEntries] = useState<IngredientEntry[]>([])
-	const [listId, setListId] = useState(lists[0]?.id ?? "")
 	const [saving, setSaving] = useState(false)
 
 	// Suche mit kurzer Verzögerung, nicht bei jedem Tastendruck
@@ -65,7 +66,7 @@ export default function AddDish({ planId, day, lists, tags, onCreated }: AddDish
 	const submit = async () => {
 		setSaving(true)
 		if (recipe) {
-			const result = await planRecipe(recipe.id, { planId, date: day, items: toPlannedItems(entries, listId) })
+			const result = await planRecipe(recipe.id, { planId, date: day, items: toPlannedItems(entries, defaultListId) })
 			if ("dish" in result && result.dish) onCreated(result.dish)
 		} else {
 			const dish = await createDish(planId, name, day)
@@ -85,7 +86,7 @@ export default function AddDish({ planId, day, lists, tags, onCreated }: AddDish
 
 	return (
 		<form
-			className={`flex w-full flex-col gap-3 border-b border-(--border) pb-4 ${recipe ? "" : "sm:w-auto"}`}
+			className={`flex w-full flex-col gap-3 ${divider ? "border-b border-(--border) pb-4" : ""} ${recipe ? "" : "sm:w-auto"}`}
 			onSubmit={(event) => {
 				event.preventDefault()
 				submit()
@@ -150,7 +151,7 @@ export default function AddDish({ planId, day, lists, tags, onCreated }: AddDish
 					)}
 				</div>
 				<div className="flex items-center gap-3">
-					<button type="submit" className="btn px-5 py-2" disabled={saving || (!!recipe && !listId)}>
+					<button type="submit" className="btn px-5 py-2" disabled={saving || (!!recipe && !defaultListId)}>
 						{recipe ? "Planen" : "Hinzufügen"}
 					</button>
 					<button type="button" className="btn-secondary py-2" onClick={reset}>
@@ -161,24 +162,12 @@ export default function AddDish({ planId, day, lists, tags, onCreated }: AddDish
 
 			{recipe && (
 				<div className="space-y-1 text-sm">
-					{lists.length > 1 && (
-						<label className="flex items-center gap-2">
-							Standard-Einkaufsliste
-							<select className="input w-auto" value={listId} onChange={(event) => setListId(event.target.value)}>
-								{lists.map((list) => (
-									<option key={list.id} value={list.id}>
-										{list.name}
-									</option>
-								))}
-							</select>
-						</label>
-					)}
 					<IngredientPicker
 						entries={entries}
 						onChange={setEntries}
 						lists={lists}
 						tags={tags}
-						defaultListId={listId}
+						defaultListId={defaultListId}
 						className="sm:grid-cols-4 md:grid-cols-5"
 					/>
 				</div>

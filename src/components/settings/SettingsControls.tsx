@@ -8,6 +8,7 @@ import {
 	renamePlan,
 	revokePersonalInvite,
 } from "@/lib/plan/actions"
+import { setDefaultGroceryList } from "@/lib/grocery/actions"
 import { createApiToken, deleteApiToken } from "@/lib/tokens/actions"
 import { useActionState, useState, useTransition } from "react"
 
@@ -177,5 +178,29 @@ export function ApiTokens({ tokens }: { tokens: TokenRow[] }) {
 				))}
 			</ul>
 		</div>
+	)
+}
+
+export function DefaultListSelect({ planId, lists, value }: { planId: string; lists: { id: string; name: string }[]; value: string }) {
+	const [pending, startTransition] = useTransition()
+	return (
+		<label className="flex flex-wrap items-center gap-2 text-sm">
+			Standard-Einkaufsliste
+			<select
+				className="input w-auto"
+				value={value}
+				disabled={pending}
+				onChange={(event) => {
+					const listId = event.target.value
+					startTransition(() => setDefaultGroceryList(planId, listId))
+				}}
+			>
+				{lists.map((list) => (
+					<option key={list.id} value={list.id}>
+						{list.name}
+					</option>
+				))}
+			</select>
+		</label>
 	)
 }

@@ -1,6 +1,7 @@
-import { ApiTokens, GenericInvite, InviteForm, LeavePlanButton, PlanNameForm, RemoveMemberButton, RevokeInviteButton } from "@/components/settings/SettingsControls"
+import { ApiTokens, DefaultListSelect, GenericInvite, InviteForm, LeavePlanButton, PlanNameForm, RemoveMemberButton, RevokeInviteButton } from "@/components/settings/SettingsControls"
 import TagSettings from "@/components/tags/TagSettings"
 import { signOut } from "@/lib/auth/auth"
+import { listsWithDefault } from "@/lib/grocery/queries"
 import { appUrl } from "@/lib/mail"
 import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
@@ -22,6 +23,7 @@ export default async function SettingsPage() {
 	const genericInvite = plan.invites.find((invite) => invite.type === "GENERIC")
 	const personalInvites = plan.invites.filter((invite) => invite.type === "PERSONAL")
 	const tags = await tagsOfPlan(planId)
+	const { lists, defaultListId } = await listsWithDefault(planId)
 	const apiTokens = await prisma.apiToken.findMany({
 		where: { userId: user.id },
 		select: { id: true, name: true, createdAt: true, lastUsedAt: true },
@@ -33,6 +35,8 @@ export default async function SettingsPage() {
 			<section className="card space-y-2">
 				<h2 className="text-lg font-semibold">Plan</h2>
 				{isOwner ? <PlanNameForm planId={plan.id} name={plan.name} /> : <p>{plan.name}</p>}
+				<DefaultListSelect planId={plan.id} lists={lists} value={defaultListId} />
+				<p className="text-xs opacity-60">Zutaten landen beim Planen auf dieser Liste, solange du im Popup keine andere wählst.</p>
 			</section>
 
 			<section className="card space-y-2">
