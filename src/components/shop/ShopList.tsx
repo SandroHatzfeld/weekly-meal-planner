@@ -7,13 +7,10 @@ import type { TagDTO } from "@/lib/tags/icons"
 import {
 	addGroceryItem,
 	clearCheckedItems,
-	createGroceryList,
 	deleteGroceryItem,
-	deleteGroceryList,
 	editGroceryItem,
 	moveGroceryItem,
 	setGroceryItemTags,
-	renameGroceryList,
 	toggleGroceryItem,
 } from "@/lib/grocery/actions"
 import ItemEditDialog from "@/components/items/ItemEditDialog"
@@ -23,7 +20,6 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 type ShopListProps = {
-	planId: string
 	lists: { id: string; name: string }[]
 	tags: TagDTO[]
 	initialListId: string | undefined
@@ -35,7 +31,7 @@ const upsert = (items: GroceryItemDTO[], item: GroceryItemDTO) => {
 	return exists ? items.map((existing) => (existing.id === item.id ? item : existing)) : [...items, item]
 }
 
-export default function ShopList({ planId, lists, tags, initialListId, initialItems }: ShopListProps) {
+export default function ShopList({ lists, tags, initialListId, initialItems }: ShopListProps) {
 	const router = useRouter()
 	const [items, setItems] = useState(initialItems)
 	const [listId, setListId] = useState(initialListId)
@@ -98,18 +94,6 @@ export default function ShopList({ planId, lists, tags, initialListId, initialIt
 						{list.name} ({items.filter((item) => item.listId === list.id && !item.checked).length})
 					</button>
 				))}
-				<button
-					type="button"
-					className="btn-link"
-					onClick={async () => {
-						const listName = prompt("Name der neuen Liste")
-						if (!listName) return
-						const created = await createGroceryList(planId, listName)
-						if (created) router.replace(`/shop?list=${created.id}`)
-					}}
-				>
-					+ Liste
-				</button>
 			</div>
 
 			{currentList && (
@@ -180,30 +164,6 @@ export default function ShopList({ planId, lists, tags, initialListId, initialIt
 						>
 							Abgehakte entfernen
 						</button>
-						<button
-							type="button"
-							className="btn-link"
-							onClick={async () => {
-								const listName = prompt("Neuer Name der Liste", currentList.name)
-								if (listName) await renameGroceryList(currentList.id, listName)
-								router.refresh()
-							}}
-						>
-							Liste umbenennen
-						</button>
-						{lists.length > 1 && (
-							<button
-								type="button"
-								className="btn-link text-red-600"
-								onClick={async () => {
-									if (!confirm(`Liste "${currentList.name}" mit allen Einträgen löschen?`)) return
-									await deleteGroceryList(currentList.id)
-									router.replace("/shop")
-								}}
-							>
-								Liste löschen
-							</button>
-						)}
 					</div>
 				</>
 			)}

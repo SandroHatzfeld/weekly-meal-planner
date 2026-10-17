@@ -23,7 +23,6 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
 	return (
 		<ShopList
 			key={lists.map((candidate) => candidate.id + candidate.name).join()}
-			planId={planId}
 			lists={lists}
 			tags={tags}
 			initialListId={selectedListId}

@@ -1,4 +1,5 @@
-import { ApiTokens, DefaultListSelect, GenericInvite, InviteForm, LeavePlanButton, PlanNameForm, RemoveMemberButton, RevokeInviteButton } from "@/components/settings/SettingsControls"
+import { ApiTokens, GenericInvite, InviteForm, LeavePlanButton, PlanNameForm, RemoveMemberButton, RevokeInviteButton } from "@/components/settings/SettingsControls"
+import ListSettings from "@/components/settings/ListSettings"
 import TagSettings from "@/components/tags/TagSettings"
 import { signOut } from "@/lib/auth/auth"
 import { listsWithDefault } from "@/lib/grocery/queries"
@@ -35,8 +36,6 @@ export default async function SettingsPage() {
 			<section className="card space-y-2">
 				<h2 className="text-lg font-semibold">Plan</h2>
 				{isOwner ? <PlanNameForm planId={plan.id} name={plan.name} /> : <p>{plan.name}</p>}
-				<DefaultListSelect planId={plan.id} lists={lists} value={defaultListId} />
-				<p className="text-xs opacity-60">Zutaten landen beim Planen auf dieser Liste, solange du im Popup keine andere wählst.</p>
 			</section>
 
 			<section className="card space-y-2">
@@ -80,6 +79,14 @@ export default async function SettingsPage() {
 					/>
 				</section>
 			)}
+
+			<section className="card space-y-3">
+				<h2 className="text-lg font-semibold">Einkaufslisten</h2>
+				<p className="text-sm opacity-70">
+					Zutaten landen beim Planen auf der Standardliste, solange du im Popup keine andere wählst.
+				</p>
+				<ListSettings planId={plan.id} lists={lists} defaultListId={defaultListId} />
+			</section>
 
 			<section className="card space-y-3">
 				<h2 className="text-lg font-semibold">Tags für die Einkaufsliste</h2>
