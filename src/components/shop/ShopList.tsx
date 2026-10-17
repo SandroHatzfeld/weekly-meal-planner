@@ -3,14 +3,12 @@
 import { usePlanEvent } from "@/components/realtime/SocketProvider"
 import type { GroceryItemDTO } from "@/lib/dto"
 import { formatDay } from "@/lib/dates"
+import { applyItemChanges } from "@/lib/grocery/client"
 import type { TagDTO } from "@/lib/tags/icons"
 import {
 	addGroceryItem,
 	clearCheckedItems,
 	deleteGroceryItem,
-	editGroceryItem,
-	moveGroceryItem,
-	setGroceryItemTags,
 	toggleGroceryItem,
 } from "@/lib/grocery/actions"
 import ItemEditDialog from "@/components/items/ItemEditDialog"
@@ -174,13 +172,7 @@ export default function ShopList({ lists, tags, initialListId, initialItems }: S
 				tags={tags}
 				onClose={() => setEditing(null)}
 				onSave={async (item, changes) => {
-					let updated = item
-					if (changes.name.trim() !== item.name || (changes.details.trim() || null) !== item.details) {
-						updated = (await editGroceryItem(item.id, changes.name, changes.details)) ?? updated
-					}
-					const sameTags = changes.tagIds.length === item.tagIds.length && changes.tagIds.every((id) => item.tagIds.includes(id))
-					if (!sameTags) updated = await setGroceryItemTags(item.id, changes.tagIds)
-					if (changes.listId !== item.listId) updated = await moveGroceryItem(item.id, changes.listId)
+					const updated = await applyItemChanges(item, changes)
 					setItems((current) => upsert(current, updated))
 				}}
 				onDelete={async (item) => {

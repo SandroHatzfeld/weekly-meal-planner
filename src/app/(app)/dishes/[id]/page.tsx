@@ -3,7 +3,8 @@ import { toDishDTO, groceryItemInclude, toGroceryItemDTO } from "@/lib/dto"
 import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
 import { notFound } from "next/navigation"
-import { listsOfPlan } from "@/lib/grocery/queries"
+import { listsWithDefault } from "@/lib/grocery/queries"
+import { tagsOfPlan } from "@/lib/tags/queries"
 
 export default async function DishPage({ params }: PageProps<"/dishes/[id]">) {
 	const { id } = await params
@@ -19,13 +20,15 @@ export default async function DishPage({ params }: PageProps<"/dishes/[id]">) {
 	// nur Dishes des aktiven Plans
 	if (!dish || dish.planId !== planId) notFound()
 
-	const lists = await listsOfPlan(planId)
+	const [{ lists, defaultListId }, tags] = await Promise.all([listsWithDefault(planId), tagsOfPlan(planId)])
 
 	return (
 		<DishEditor
 			initialDish={toDishDTO(dish)}
 			initialItems={dish.groceryItems.map(toGroceryItemDTO)}
 			lists={lists}
+			defaultListId={defaultListId}
+			tags={tags}
 			sourceRecipe={dish.sourceRecipe}
 			currentUserId={user.id}
 		/>

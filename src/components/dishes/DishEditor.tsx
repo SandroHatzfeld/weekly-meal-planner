@@ -1,11 +1,15 @@
 "use client"
 
 import ImageField from "@/components/forms/ImageField"
+import ItemEditDialog from "@/components/items/ItemEditDialog"
+import ItemTile from "@/components/items/ItemTile"
 import StepsField from "@/components/forms/StepsField"
 import { usePlanEvent, useSocket } from "@/components/realtime/SocketProvider"
 import { deleteDish, updateDish, type DishInput } from "@/lib/dishes/actions"
 import type { DishDTO, GroceryItemDTO } from "@/lib/dto"
-import { addGroceryItem } from "@/lib/grocery/actions"
+import { addGroceryItem, deleteGroceryItem, toggleGroceryItem } from "@/lib/grocery/actions"
+import { applyItemChanges } from "@/lib/grocery/client"
+import type { TagDTO } from "@/lib/tags/icons"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -14,6 +18,8 @@ type DishEditorProps = {
 	initialDish: DishDTO
 	initialItems: GroceryItemDTO[]
 	lists: { id: string; name: string }[]
+	defaultListId: string
+	tags: TagDTO[]
 	sourceRecipe: { id: string; name: string } | null
 	currentUserId: string
 }
@@ -54,7 +60,7 @@ const usePresence = (dishId: string) => {
 	return users
 }
 
-export default function DishEditor({ initialDish, initialItems, lists, sourceRecipe, currentUserId }: DishEditorProps) {
+export default function DishEditor({ initialDish, initialItems, lists, defaultListId, tags, sourceRecipe, currentUserId }: DishEditorProps) {
 	const router = useRouter()
 	const [dish, setDish] = useState(initialDish)
 	const [form, setForm] = useState(toInput(initialDish))
@@ -63,6 +69,7 @@ export default function DishEditor({ initialDish, initialItems, lists, sourceRec
 	const [conflict, setConflict] = useState<DishDTO | null>(null)
 	const [message, setMessage] = useState<string | null>(null)
 	const [items, setItems] = useState(initialItems)
+	const [editingItem, setEditingItem] = useState<GroceryItemDTO | null>(null)
 	const [saving, setSaving] = useState(false)
 
 	const viewers = usePresence(dish.id)
@@ -84,6 +91,11 @@ export default function DishEditor({ initialDish, initialItems, lists, sourceRec
 		setItems((current) => current.map((item) => (item.id === id ? { ...item, checked } : item))),
 	)
 	usePlanEvent("grocery-item-deleted", ({ id }) => setItems((current) => current.filter((item) => item.id !== id)))
+	// Bearbeitungen (auch aus der Einkaufsliste anderer Mitglieder) live übernehmen
+	const replaceItem = (item: GroceryItemDTO) =>
+		setItems((current) => current.map((existing) => (existing.id === item.id ? item : existing)))
+	usePlanEvent("grocery-item-updated", replaceItem)
+	usePlanEvent("grocery-item-moved", ({ item }) => replaceItem(item))
 
 	const update = (patch: Partial<DishInput>) => {
 		setForm((current) => ({ ...current, ...patch }))
@@ -185,24 +197,52 @@ export default function DishEditor({ initialDish, initialItems, lists, sourceRec
 
 			<section className="card space-y-2">
 				<h3 className="font-semibold">Zutaten auf der Einkaufsliste</h3>
-				<ul className="text-sm">
-					{items.map((item) => (
-						<li key={item.id} className={item.checked ? "line-through opacity-60" : ""}>
-							{item.name} {item.details && <span className="opacity-70">({item.details})</span>}
-						</li>
-					))}
-					{items.length === 0 && <li className="opacity-60">Noch keine</li>}
-				</ul>
-				<AddDishItem dishId={dish.id} lists={lists} />
+				{items.length > 0 ? (
+					// gleiche Kacheln wie in der Einkaufsliste
+					<ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+						{[...items]
+							.sort((a, b) => Number(a.checked) - Number(b.checked))
+							.map((item) => (
+								<li key={item.id} className="flex">
+									<ItemTile
+										item={item}
+										tags={tags}
+										dimmed={item.checked}
+										pressed={item.checked}
+										hint="Tippen zum Abhaken · gedrückt halten oder Rechtsklick zum Bearbeiten"
+										onToggle={async () => {
+											replaceItem({ ...item, checked: !item.checked })
+											await toggleGroceryItem(item.id, !item.checked)
+										}}
+										onEdit={() => setEditingItem(item)}
+									/>
+								</li>
+							))}
+					</ul>
+				) : (
+					<p className="text-sm opacity-60">Noch keine</p>
+				)}
+				<AddDishItem dishId={dish.id} lists={lists} defaultListId={defaultListId} />
+				<ItemEditDialog
+					item={editingItem}
+					lists={lists}
+					tags={tags}
+					onClose={() => setEditingItem(null)}
+					onSave={async (item, changes) => replaceItem(await applyItemChanges(item, changes))}
+					onDelete={async (item) => {
+						setItems((current) => current.filter((existing) => existing.id !== item.id))
+						await deleteGroceryItem(item.id)
+					}}
+				/>
 			</section>
 		</div>
 	)
 }
 
-function AddDishItem({ dishId, lists }: { dishId: string; lists: { id: string; name: string }[] }) {
+function AddDishItem({ dishId, lists, defaultListId }: { dishId: string; lists: { id: string; name: string }[]; defaultListId: string }) {
 	const [name, setName] = useState("")
 	const [details, setDetails] = useState("")
-	const [listId, setListId] = useState(lists[0]?.id ?? "")
+	const [listId, setListId] = useState(defaultListId)
 
 	return (
 		<form
@@ -214,8 +254,8 @@ function AddDishItem({ dishId, lists }: { dishId: string; lists: { id: string; n
 				setDetails("")
 			}}
 		>
-			<input className="input flex-1" placeholder="Zutat" value={name} onChange={(event) => setName(event.target.value)} required />
-			<input className="input w-32" placeholder="Menge" value={details} onChange={(event) => setDetails(event.target.value)} />
+			<input className="input basis-full sm:basis-0 sm:flex-1" placeholder="Zutat" value={name} onChange={(event) => setName(event.target.value)} required />
+			<input className="input min-w-0 flex-1 sm:w-32 sm:flex-none" placeholder="Menge" value={details} onChange={(event) => setDetails(event.target.value)} />
 			{lists.length > 1 && (
 				<select className="input w-auto" value={listId} onChange={(event) => setListId(event.target.value)}>
 					{lists.map((list) => (
