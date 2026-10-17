@@ -2,8 +2,8 @@
 
 import TagIcon from "@/components/tags/TagIcon"
 import type { TagDTO } from "@/lib/tags/icons"
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { createPortal } from "react-dom"
+import Modal from "@/components/ui/Modal"
+import { useState } from "react"
 
 export type EditableItem = { id: string; name: string; details: string | null; listId: string; tagIds: string[] }
 export type ItemChanges = { name: string; details: string; listId: string; tagIds: string[] }
@@ -18,43 +18,11 @@ type ItemEditDialogProps<T extends EditableItem> = {
 }
 
 export default function ItemEditDialog<T extends EditableItem>({ item, lists, tags, onSave, onDelete, onClose }: ItemEditDialogProps<T>) {
-	const dialog = useRef<HTMLDialogElement>(null)
-	const pressedOnBackdrop = useRef(false)
-	// Portal erst im Browser (beim Server-Rendering gibt es kein document)
-	const isClient = useSyncExternalStore(
-		() => () => {},
-		() => true,
-		() => false,
-	)
-
-	useEffect(() => {
-		if (item && !dialog.current?.open) dialog.current?.showModal()
-		if (!item && dialog.current?.open) dialog.current.close()
-	}, [item, isClient])
-
-	if (!isClient) return null
-
-	// Portal an <body>: der Dialog enthält ein eigenes Formular und wird auch innerhalb anderer Formulare genutzt
-	return createPortal(
-		<dialog
-			ref={dialog}
-			onClose={onClose}
-			// Klick auf den abgedunkelten Hintergrund schließt – aber nur, wenn der Druck dort auch begann.
-			// Sonst würde das Loslassen nach dem Gedrückthalten auf der Kachel das Popup sofort wieder schließen.
-			onPointerDown={(event) => {
-				pressedOnBackdrop.current = event.target === dialog.current
-			}}
-			onClick={(event) => {
-				if (event.target === dialog.current && pressedOnBackdrop.current) dialog.current?.close()
-				pressedOnBackdrop.current = false
-			}}
-			// mobil oben andocken (Tastatur verdeckt sonst die Hälfte), ab sm mittig
-			className="mx-auto mt-3 mb-auto max-h-[calc(100dvh-1.5rem)] w-[min(26rem,calc(100%-2rem))] overflow-y-auto rounded-xl sm:my-auto border border-(--border) bg-(--surface) p-0 text-(--foreground) shadow-xl backdrop:bg-black/40"
-		>
+	return (
+		<Modal open={!!item} onClose={onClose} labelledBy="item-edit-title">
 			{/* key: Formular bei jedem geöffneten Eintrag frisch initialisieren */}
-			{item && <EditForm key={item.id} item={item} lists={lists} tags={tags} onSave={onSave} onDelete={onDelete} close={() => dialog.current?.close()} />}
-		</dialog>,
-		document.body,
+			{item && <EditForm key={item.id} item={item} lists={lists} tags={tags} onSave={onSave} onDelete={onDelete} close={onClose} />}
+		</Modal>
 	)
 }
 
@@ -85,7 +53,7 @@ function EditForm<T extends EditableItem>({
 				close()
 			}}
 		>
-			<h2 className="text-lg font-semibold">Eintrag bearbeiten</h2>
+			<h2 id="item-edit-title" className="text-lg font-semibold">Eintrag bearbeiten</h2>
 			<label htmlFor="item-name">Name</label>
 			<input id="item-name" value={name} onChange={(event) => setName(event.target.value)} required autoFocus />
 			<label htmlFor="item-details">Menge / Info</label>

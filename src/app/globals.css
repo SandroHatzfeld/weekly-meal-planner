@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  /* wird von HeaderHeight gemessen und überschrieben; Startwert für das erste Rendern */
+  --app-header-h: 94px;
   --background: #f7f7f5;
   --foreground: #171717;
   --surface: #ffffff;

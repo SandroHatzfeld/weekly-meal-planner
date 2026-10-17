@@ -3,6 +3,7 @@
 import { createRecipe, deleteRecipe, updateRecipe, type RecipeInput } from "@/lib/recipes/actions"
 import ImageField from "@/components/forms/ImageField"
 import StepsField from "@/components/forms/StepsField"
+import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import { useState } from "react"
 
 const emptyRecipe: RecipeInput = { name: "", description: "", imageUrl: "", steps: [], ingredients: [] }
@@ -78,13 +79,15 @@ export function DeleteRecipeButton({ recipeId }: { recipeId: string }) {
 	return (
 		<button
 			type="button"
-			className="btn-danger"
+			className={`${iconButtonClass} text-red-600`}
+			aria-label="Rezept löschen"
+			title="Löschen"
 			onClick={async () => {
 				// bereits geplante Dishes bleiben erhalten (Snapshot), nur sourceRecipeId wird NULL
 				if (confirm("Rezept löschen? Bereits geplante Gerichte bleiben erhalten.")) await deleteRecipe(recipeId)
 			}}
 		>
-			Löschen
+			<Icon name="trash" />
 		</button>
 	)
 }

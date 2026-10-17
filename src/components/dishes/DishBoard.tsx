@@ -6,7 +6,7 @@ import { moveDish } from "@/lib/dishes/actions"
 import type { DishDTO } from "@/lib/dto"
 import type { TagDTO } from "@/lib/tags/icons"
 import Link from "next/link"
-import AddDish from "./AddDish"
+import PlanDishDialog from "./PlanDishDialog"
 import { useState } from "react"
 
 type DishBoardProps = {
@@ -26,6 +26,8 @@ const upsert = (dishes: DishDTO[], dish: DishDTO) => [...dishes.filter((existing
 export default function DishBoard({ planId, days, initialDishes, lists = [], defaultListId = "", tags = [], mode, monthKey, today }: DishBoardProps) {
 	const [dishes, setDishes] = useState(initialDishes)
 	const [dragId, setDragId] = useState<string | null>(null)
+	// Tag, für den das Planen-Popup offen ist
+	const [planningDay, setPlanningDay] = useState<string | null>(null)
 	// Monatsansicht: heute, falls im angezeigten Monat, sonst der Erste des Monats
 	const [selectedDay, setSelectedDay] = useState(() =>
 		monthKey && !today.startsWith(monthKey) ? `${monthKey}-01` : today,
@@ -61,27 +63,42 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 			</Link>
 		))
 
+	// ein Planen-Popup pro Ansicht, vorbefüllt mit dem angeklickten Tag
+	const planDialog = (
+		<PlanDishDialog
+			open={planningDay !== null}
+			onClose={() => setPlanningDay(null)}
+			plans={[{ id: planId, name: "", lists, defaultListId, tags }]}
+			initialPlanId={planId}
+			initialDate={planningDay ?? today}
+			onPlanned={(dish) => setDishes((current) => upsert(current, dish))}
+		/>
+	)
+
 	// Woche: vertikale Liste, ein Tag pro Zeile
 	if (mode === "week") {
 		return (
-			<ul className="flex flex-col gap-2">
-				{days.map((day) => (
-					<li
-						key={day}
-						onDragOver={(event) => event.preventDefault()}
-						onDrop={() => handleDrop(day)}
-						className={`card flex flex-col gap-2 sm:flex-row sm:items-center ${day === today ? "ring-2 ring-emerald-600" : ""}`}
-					>
-						<div className="font-semibold sm:w-44 sm:shrink-0">
-							{formatDay(day, { weekday: "long", day: "2-digit", month: "2-digit" })}
-						</div>
-						<div className="flex flex-1 flex-wrap items-center gap-2">
-							{dishChips(day)}
-							<AddDish planId={planId} day={day} lists={lists} defaultListId={defaultListId} tags={tags} onCreated={(dish) => setDishes((current) => upsert(current, dish))} />
-						</div>
-					</li>
-				))}
-			</ul>
+			<>
+				<ul className="flex flex-col gap-2">
+					{days.map((day) => (
+						<li
+							key={day}
+							onDragOver={(event) => event.preventDefault()}
+							onDrop={() => handleDrop(day)}
+							className={`card flex flex-col gap-2 sm:flex-row sm:items-center ${day === today ? "ring-2 ring-emerald-600" : ""}`}
+						>
+							<div className="font-semibold sm:w-44 sm:shrink-0">
+								{formatDay(day, { weekday: "long", day: "2-digit", month: "2-digit" })}
+							</div>
+							<div className="flex flex-1 flex-wrap items-center gap-2">
+								{dishChips(day)}
+								<PlanButton onClick={() => setPlanningDay(day)} />
+							</div>
+						</li>
+					))}
+				</ul>
+				{planDialog}
+			</>
 		)
 	}
 
@@ -125,17 +142,10 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 
 			{/* Gerichte des ausgewählten Tages */}
 			<section className="card space-y-3" aria-live="polite">
-				<h3 className="font-semibold">{formatDay(selectedDay, { weekday: "long", day: "numeric", month: "long" })}</h3>
-				<AddDish
-					key={selectedDay}
-					planId={planId}
-					day={selectedDay}
-					lists={lists}
-					defaultListId={defaultListId}
-					tags={tags}
-					divider={selectedDishes.length > 0}
-					onCreated={(dish) => setDishes((current) => upsert(current, dish))}
-				/>
+				<div className="flex items-center justify-between gap-2">
+					<h3 className="font-semibold">{formatDay(selectedDay, { weekday: "long", day: "numeric", month: "long" })}</h3>
+					<PlanButton onClick={() => setPlanningDay(selectedDay)} />
+				</div>
 				{selectedDishes.length > 0 ? (
 					<ul className="divide-y divide-black/5 dark:divide-white/10">
 						{selectedDishes.map((dish) => (
@@ -151,6 +161,15 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 					<p className="text-sm opacity-60">Für diesen Tag ist noch nichts geplant.</p>
 				)}
 			</section>
+			{planDialog}
 		</div>
+	)
+}
+
+function PlanButton({ onClick }: { onClick: () => void }) {
+	return (
+		<button type="button" className="btn-link text-sm" onClick={onClick}>
+			+ Planen
+		</button>
 	)
 }

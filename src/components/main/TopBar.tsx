@@ -1,5 +1,6 @@
 import { signOut } from "@/lib/auth/auth"
 import Link from "next/link"
+import HeaderHeight from "./HeaderHeight"
 import PlanSwitcher from "./PlanSwitcher"
 import TabBar from "./TabBar"
 
@@ -44,6 +45,7 @@ export default function TopBar({ plans, activePlanId, userName }: TopBarProps) {
 				</div>
 			</div>
 			<TabBar tabs={topBarTabs} />
+			<HeaderHeight />
 		</header>
 	)
 }
