@@ -8,10 +8,13 @@ import {
 	createGroceryList,
 	deleteGroceryItem,
 	deleteGroceryList,
+	editGroceryItem,
 	moveGroceryItem,
 	renameGroceryList,
 	toggleGroceryItem,
 } from "@/lib/grocery/actions"
+import ItemEditDialog from "./ItemEditDialog"
+import ItemTile from "./ItemTile"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -34,6 +37,7 @@ export default function ShopList({ planId, lists, initialListId, initialItems }:
 	const [listId, setListId] = useState(initialListId)
 	const [name, setName] = useState("")
 	const [details, setDetails] = useState("")
+	const [editing, setEditing] = useState<GroceryItemDTO | null>(null)
 
 	// Clients filtern anhand der listId im Payload selbst
 	usePlanEvent("grocery-item-created", (item) => setItems((current) => upsert(current, item)))
@@ -131,46 +135,12 @@ export default function ShopList({ planId, lists, initialListId, initialItems }:
 									group.title
 								)}
 							</h3>
-							<ul className="divide-y divide-black/5 dark:divide-white/10">
+							<ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
 								{group.items
 									.sort((a, b) => Number(a.checked) - Number(b.checked))
 									.map((item) => (
-										<li key={item.id} className="flex items-center gap-2 py-1">
-											{/* ganze Zeile antippbar, nicht nur die Checkbox */}
-											<label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-1.5">
-												<input type="checkbox" checked={item.checked} onChange={() => toggle(item)} className="size-5 shrink-0 accent-emerald-700" />
-												<span className={`min-w-0 break-words ${item.checked ? "line-through opacity-50" : ""}`}>
-													{item.name} {item.details && <span className="text-sm opacity-70">{item.details}</span>}
-												</span>
-											</label>
-											{lists.length > 1 && (
-												<select
-													aria-label="In andere Liste verschieben"
-													className="input w-auto max-w-36 shrink-0 py-2 text-sm"
-													value={item.listId}
-													onChange={async (event) => {
-														const moved = await moveGroceryItem(item.id, event.target.value)
-														setItems((current) => upsert(current, moved))
-													}}
-												>
-													{lists.map((list) => (
-														<option key={list.id} value={list.id}>
-															{list.name}
-														</option>
-													))}
-												</select>
-											)}
-											<button
-												type="button"
-												aria-label={`${item.name} löschen`}
-												className="btn-link flex size-9 shrink-0 items-center justify-center"
-												onClick={async () => {
-													setItems((current) => current.filter((existing) => existing.id !== item.id))
-													await deleteGroceryItem(item.id)
-												}}
-											>
-												✕
-											</button>
+										<li key={item.id}>
+											<ItemTile item={item} onToggle={() => toggle(item)} onEdit={() => setEditing(item)} />
 										</li>
 									))}
 							</ul>
@@ -215,6 +185,24 @@ export default function ShopList({ planId, lists, initialListId, initialItems }:
 					</div>
 				</>
 			)}
+
+			<ItemEditDialog
+				item={editing}
+				lists={lists}
+				onClose={() => setEditing(null)}
+				onSave={async (item, changes) => {
+					let updated = item
+					if (changes.name.trim() !== item.name || (changes.details.trim() || null) !== item.details) {
+						updated = (await editGroceryItem(item.id, changes.name, changes.details)) ?? updated
+					}
+					if (changes.listId !== item.listId) updated = await moveGroceryItem(item.id, changes.listId)
+					setItems((current) => upsert(current, updated))
+				}}
+				onDelete={async (item) => {
+					setItems((current) => current.filter((existing) => existing.id !== item.id))
+					await deleteGroceryItem(item.id)
+				}}
+			/>
 		</div>
 	)
 }
