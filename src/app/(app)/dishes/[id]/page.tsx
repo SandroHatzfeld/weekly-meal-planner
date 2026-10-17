@@ -1,5 +1,5 @@
 import DishEditor from "@/components/dishes/DishEditor"
-import { toDishDTO, toGroceryItemDTO } from "@/lib/dto"
+import { toDishDTO, groceryItemInclude, toGroceryItemDTO } from "@/lib/dto"
 import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
 import { notFound } from "next/navigation"
@@ -12,7 +12,7 @@ export default async function DishPage({ params }: PageProps<"/dishes/[id]">) {
 	const dish = await prisma.dish.findUnique({
 		where: { id },
 		include: {
-			groceryItems: { include: { dish: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
+			groceryItems: { include: groceryItemInclude, orderBy: { createdAt: "asc" } },
 			sourceRecipe: { select: { id: true, name: true } },
 		},
 	})

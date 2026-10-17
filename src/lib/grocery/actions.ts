@@ -42,6 +42,11 @@ export const editGroceryItem = async (itemId: string, name: string, details: str
 	return service.updateItem(item.planId, itemId, { name: name.trim(), details: details.trim() || null })
 }
 
+export const setGroceryItemTags = async (itemId: string, tagIds: string[]) => {
+	const item = await memberOfItem(itemId)
+	return service.setItemTags(item.planId, itemId, tagIds)
+}
+
 export const moveGroceryItem = async (itemId: string, toListId: string) => {
 	const item = await memberOfItem(itemId)
 	return service.moveItem(item.planId, itemId, toListId)

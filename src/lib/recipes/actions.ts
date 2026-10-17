@@ -7,7 +7,7 @@ import { toDishDTO } from "../dto"
 import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
 import { requireMember } from "../session"
-import { toGroceryItemDTO } from "../dto"
+import { groceryItemInclude, toGroceryItemDTO } from "../dto"
 import { deleteImageIfUnused, resolveImage } from "../images"
 import { canViewRecipe, coMemberIds } from "./access"
 import { ingredientLabel } from "./format"
@@ -123,7 +123,7 @@ export const planRecipe = async (
 				})),
 			},
 		},
-		include: { groceryItems: { include: { dish: { select: { name: true } } } } },
+		include: { groceryItems: { include: groceryItemInclude } },
 	})
 
 	emitToPlan(target.planId, "dish-created", toDishDTO(dish))

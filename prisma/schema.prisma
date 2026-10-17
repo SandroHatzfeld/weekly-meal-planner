@@ -40,6 +40,7 @@ model Plan {
   dishes         Dish[]
   activeForUsers User[]
   groceryLists   GroceryList[]
+  tags           PlanTag[]
 }
 
 model PlanMember {
@@ -152,6 +153,18 @@ model GroceryItem {
   createdAt DateTime    @default(now())
   list      GroceryList @relation(fields: [listId], references: [id], onDelete: Cascade)
   dish      Dish?       @relation(fields: [dishId], references: [id], onDelete: SetNull)
+  tags      PlanTag[]
+}
+
+// frei einstellbare Tags pro Plan (z.B. Aktion, Angebot, App), mehrere pro GroceryItem
+model PlanTag {
+  id        String        @id @default(cuid())
+  planId    String
+  name      String
+  icon      String // Schlüssel aus src/lib/tags/icons.ts
+  createdAt DateTime      @default(now())
+  plan      Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
+  items     GroceryItem[]
 }
 
 /**

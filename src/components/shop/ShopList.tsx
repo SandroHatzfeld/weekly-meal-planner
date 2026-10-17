@@ -2,6 +2,7 @@
 
 import { usePlanEvent } from "@/components/realtime/SocketProvider"
 import type { GroceryItemDTO } from "@/lib/dto"
+import type { TagDTO } from "@/lib/tags/icons"
 import {
 	addGroceryItem,
 	clearCheckedItems,
@@ -10,6 +11,7 @@ import {
 	deleteGroceryList,
 	editGroceryItem,
 	moveGroceryItem,
+	setGroceryItemTags,
 	renameGroceryList,
 	toggleGroceryItem,
 } from "@/lib/grocery/actions"
@@ -22,6 +24,7 @@ import { useState } from "react"
 type ShopListProps = {
 	planId: string
 	lists: { id: string; name: string }[]
+	tags: TagDTO[]
 	initialListId: string | undefined
 	initialItems: GroceryItemDTO[]
 }
@@ -31,7 +34,7 @@ const upsert = (items: GroceryItemDTO[], item: GroceryItemDTO) => {
 	return exists ? items.map((existing) => (existing.id === item.id ? item : existing)) : [...items, item]
 }
 
-export default function ShopList({ planId, lists, initialListId, initialItems }: ShopListProps) {
+export default function ShopList({ planId, lists, tags, initialListId, initialItems }: ShopListProps) {
 	const router = useRouter()
 	const [items, setItems] = useState(initialItems)
 	const [listId, setListId] = useState(initialListId)
@@ -140,7 +143,7 @@ export default function ShopList({ planId, lists, initialListId, initialItems }:
 									.sort((a, b) => Number(a.checked) - Number(b.checked))
 									.map((item) => (
 										<li key={item.id}>
-											<ItemTile item={item} onToggle={() => toggle(item)} onEdit={() => setEditing(item)} />
+											<ItemTile item={item} tags={tags} onToggle={() => toggle(item)} onEdit={() => setEditing(item)} />
 										</li>
 									))}
 							</ul>
@@ -189,12 +192,15 @@ export default function ShopList({ planId, lists, initialListId, initialItems }:
 			<ItemEditDialog
 				item={editing}
 				lists={lists}
+				tags={tags}
 				onClose={() => setEditing(null)}
 				onSave={async (item, changes) => {
 					let updated = item
 					if (changes.name.trim() !== item.name || (changes.details.trim() || null) !== item.details) {
 						updated = (await editGroceryItem(item.id, changes.name, changes.details)) ?? updated
 					}
+					const sameTags = changes.tagIds.length === item.tagIds.length && changes.tagIds.every((id) => item.tagIds.includes(id))
+					if (!sameTags) updated = await setGroceryItemTags(item.id, changes.tagIds)
 					if (changes.listId !== item.listId) updated = await moveGroceryItem(item.id, changes.listId)
 					setItems((current) => upsert(current, updated))
 				}}

@@ -1,8 +1,10 @@
 import { ApiTokens, GenericInvite, InviteForm, LeavePlanButton, PlanNameForm, RemoveMemberButton, RevokeInviteButton } from "@/components/settings/SettingsControls"
+import TagSettings from "@/components/tags/TagSettings"
 import { signOut } from "@/lib/auth/auth"
 import { appUrl } from "@/lib/mail"
 import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
+import { tagsOfPlan } from "@/lib/tags/queries"
 
 const formatDate = (date: Date) => new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(date)
 
@@ -19,6 +21,7 @@ export default async function SettingsPage() {
 	const isOwner = plan.members.some((member) => member.userId === user.id && member.role === "OWNER")
 	const genericInvite = plan.invites.find((invite) => invite.type === "GENERIC")
 	const personalInvites = plan.invites.filter((invite) => invite.type === "PERSONAL")
+	const tags = await tagsOfPlan(planId)
 	const apiTokens = await prisma.apiToken.findMany({
 		where: { userId: user.id },
 		select: { id: true, name: true, createdAt: true, lastUsedAt: true },
@@ -73,6 +76,12 @@ export default async function SettingsPage() {
 					/>
 				</section>
 			)}
+
+			<section className="card space-y-3">
+				<h2 className="text-lg font-semibold">Tags für die Einkaufsliste</h2>
+				<p className="text-sm opacity-70">Gelten für alle Mitglieder dieses Plans. Vergeben werden sie in der Einkaufsliste per Gedrückthalten auf einen Eintrag.</p>
+				<TagSettings planId={plan.id} tags={tags} />
+			</section>
 
 			<section className="card space-y-3">
 				<h2 className="text-lg font-semibold">API-Tokens</h2>

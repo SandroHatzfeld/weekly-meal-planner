@@ -7,6 +7,7 @@ import { appUrl, escapeHtml, sendMail } from "../mail"
 import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
 import { requireMember, requireOwner } from "../session"
+import { DEFAULT_TAGS } from "../tags/icons"
 import { generateToken } from "../tokens"
 import { removeMembership } from "./membership"
 
@@ -31,6 +32,7 @@ export const createPlan = async (_prevState: FormState, formData: FormData): Pro
 			name: formPlanName.trim(),
 			members: { create: { userId: currentSession.user.id, role: "OWNER" } },
 			groceryLists: { create: { name: listName } },
+			tags: { create: DEFAULT_TAGS },
 		},
 	})
 	await prisma.user.update({ where: { id: currentSession.user.id }, data: { activePlanId: newPlan.id } })

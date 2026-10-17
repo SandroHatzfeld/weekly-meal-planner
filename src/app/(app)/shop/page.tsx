@@ -1,7 +1,8 @@
 import ShopList from "@/components/shop/ShopList"
-import { toGroceryItemDTO } from "@/lib/dto"
+import { groceryItemInclude, toGroceryItemDTO } from "@/lib/dto"
 import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
+import { tagsOfPlan } from "@/lib/tags/queries"
 import { listsOfPlan } from "@/lib/grocery/queries"
 
 export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
@@ -12,9 +13,10 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
 	// alle Items des Plans laden – Wechsel und Verschieben zwischen Listen funktionieren dann ohne Refetch
 	const items = await prisma.groceryItem.findMany({
 		where: { list: { planId } },
-		include: { dish: { select: { name: true } } },
+		include: groceryItemInclude,
 		orderBy: { createdAt: "asc" },
 	})
+	const tags = await tagsOfPlan(planId)
 	const selectedListId = lists.find((candidate) => candidate.id === list)?.id ?? lists[0]?.id
 
 	return (
@@ -22,6 +24,7 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
 			key={lists.map((candidate) => candidate.id + candidate.name).join()}
 			planId={planId}
 			lists={lists}
+			tags={tags}
 			initialListId={selectedListId}
 			initialItems={items.map(toGroceryItemDTO)}
 		/>

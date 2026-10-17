@@ -1,17 +1,20 @@
 "use client"
 
+import TagIcon from "@/components/tags/TagIcon"
 import type { GroceryItemDTO } from "@/lib/dto"
+import type { TagDTO } from "@/lib/tags/icons"
 import { useEffect, useRef, useState } from "react"
 
 type ItemEditDialogProps = {
 	item: GroceryItemDTO | null
 	lists: { id: string; name: string }[]
-	onSave: (item: GroceryItemDTO, changes: { name: string; details: string; listId: string }) => Promise<void>
+	tags: TagDTO[]
+	onSave: (item: GroceryItemDTO, changes: { name: string; details: string; listId: string; tagIds: string[] }) => Promise<void>
 	onDelete: (item: GroceryItemDTO) => Promise<void>
 	onClose: () => void
 }
 
-export default function ItemEditDialog({ item, lists, onSave, onDelete, onClose }: ItemEditDialogProps) {
+export default function ItemEditDialog({ item, lists, tags, onSave, onDelete, onClose }: ItemEditDialogProps) {
 	const dialog = useRef<HTMLDialogElement>(null)
 
 	useEffect(() => {
@@ -30,7 +33,7 @@ export default function ItemEditDialog({ item, lists, onSave, onDelete, onClose 
 			className="m-auto w-[min(26rem,calc(100%-2rem))] rounded-xl border border-(--border) bg-(--surface) p-0 text-(--foreground) shadow-xl backdrop:bg-black/40"
 		>
 			{/* key: Formular bei jedem geöffneten Eintrag frisch initialisieren */}
-			{item && <EditForm key={item.id} item={item} lists={lists} onSave={onSave} onDelete={onDelete} close={() => dialog.current?.close()} />}
+			{item && <EditForm key={item.id} item={item} lists={lists} tags={tags} onSave={onSave} onDelete={onDelete} close={() => dialog.current?.close()} />}
 		</dialog>
 	)
 }
@@ -38,6 +41,7 @@ export default function ItemEditDialog({ item, lists, onSave, onDelete, onClose 
 function EditForm({
 	item,
 	lists,
+	tags,
 	onSave,
 	onDelete,
 	close,
@@ -45,6 +49,7 @@ function EditForm({
 	const [name, setName] = useState(item.name)
 	const [details, setDetails] = useState(item.details ?? "")
 	const [listId, setListId] = useState(item.listId)
+	const [tagIds, setTagIds] = useState(item.tagIds)
 	const [saving, setSaving] = useState(false)
 
 	return (
@@ -53,7 +58,7 @@ function EditForm({
 			onSubmit={async (event) => {
 				event.preventDefault()
 				setSaving(true)
-				await onSave(item, { name, details, listId })
+				await onSave(item, { name, details, listId, tagIds })
 				setSaving(false)
 				close()
 			}}
@@ -74,6 +79,28 @@ function EditForm({
 						))}
 					</select>
 				</>
+			)}
+			{tags.length > 0 && (
+				<fieldset>
+					<legend className="mb-1 text-sm font-medium">Tags</legend>
+					<div className="flex flex-wrap gap-2">
+						{tags.map((tag) => {
+							const active = tagIds.includes(tag.id)
+							return (
+								<button
+									key={tag.id}
+									type="button"
+									aria-pressed={active}
+									onClick={() => setTagIds(active ? tagIds.filter((id) => id !== tag.id) : [...tagIds, tag.id])}
+									className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm ${active ? "border-emerald-600 bg-emerald-700 text-white" : "border-(--border) bg-(--surface)"}`}
+								>
+									<TagIcon icon={tag.icon} />
+									{tag.name}
+								</button>
+							)
+						})}
+					</div>
+				</fieldset>
 			)}
 			<div className="mt-2 flex items-center gap-2">
 				<button type="submit" disabled={saving}>
