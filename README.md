@@ -41,9 +41,10 @@ API-Token unter *Einstellungen → API-Tokens* erstellen, dann mit `Authorizatio
 
 ```bash
 cp .env.example .env   # Werte setzen, APP_PORT auf einen freien Host-Port (sudo ss -tlnp)
-docker compose run --rm app npx prisma migrate deploy
 docker compose up -d --build
 ```
+
+Datenbank-Migrationen laufen beim Start des Containers automatisch. Update: `git pull && docker compose up -d --build`.
 
 Nginx braucht die WebSocket-Upgrade-Header, sonst fällt Socket.io auf Polling zurück:
 
