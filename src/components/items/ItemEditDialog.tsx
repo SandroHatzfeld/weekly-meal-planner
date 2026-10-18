@@ -18,16 +18,18 @@ type ItemEditDialogProps<T extends EditableItem> = {
 	lists: { id: string; name: string }[]
 	tags: TagDTO[]
 	categories?: CategoryDTO[]
+	// pro Liste ausgeblendete Kategorien: werden in dieser Liste nicht angeboten
+	hiddenCategories?: Record<string, string[]>
 	onSave: (item: T, changes: ItemChanges) => void | Promise<void>
 	onDelete?: (item: T) => Promise<void> // ohne: kein Löschen-Button
 	onClose: () => void
 }
 
-export default function ItemEditDialog<T extends EditableItem>({ item, lists, tags, categories = [], onSave, onDelete, onClose }: ItemEditDialogProps<T>) {
+export default function ItemEditDialog<T extends EditableItem>({ item, lists, tags, categories = [], hiddenCategories, onSave, onDelete, onClose }: ItemEditDialogProps<T>) {
 	return (
 		<Modal open={!!item} onClose={onClose} labelledBy="item-edit-title">
 			{/* key: Formular bei jedem geöffneten Eintrag frisch initialisieren */}
-			{item && <EditForm key={item.id} item={item} lists={lists} tags={tags} categories={categories} onSave={onSave} onDelete={onDelete} close={onClose} />}
+			{item && <EditForm key={item.id} item={item} lists={lists} tags={tags} categories={categories} hiddenCategories={hiddenCategories} onSave={onSave} onDelete={onDelete} close={onClose} />}
 		</Modal>
 	)
 }
@@ -37,6 +39,7 @@ function EditForm<T extends EditableItem>({
 	lists,
 	tags,
 	categories = [],
+	hiddenCategories = {},
 	onSave,
 	onDelete,
 	close,
@@ -48,6 +51,8 @@ function EditForm<T extends EditableItem>({
 	const initialCategory = item.categoryId === undefined ? AUTO : (item.categoryId ?? "")
 	const [categoryId, setCategoryId] = useState<string>(initialCategory)
 	const [saving, setSaving] = useState(false)
+	// gewählte Kategorie bleibt sichtbar, auch wenn sie in dieser Liste ausgeblendet ist
+	const offered = categories.filter((category) => category.id === categoryId || !hiddenCategories[listId]?.includes(category.id))
 
 	return (
 		<form
@@ -84,13 +89,13 @@ function EditForm<T extends EditableItem>({
 					</select>
 				</>
 			)}
-			{(categories.length > 0 || categoryId === AUTO) && (
+			{(offered.length > 0 || categoryId === AUTO) && (
 				<>
 					<label htmlFor="item-category">Kategorie</label>
 					<select id="item-category" className="input" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
 						{categoryId === AUTO && <option value={AUTO}>Automatisch (zuletzt verwendete)</option>}
 						<option value="">Keine (Sonstiges)</option>
-						{categories.map((category) => (
+						{offered.map((category) => (
 							<option key={category.id} value={category.id}>
 								{category.name}
 							</option>

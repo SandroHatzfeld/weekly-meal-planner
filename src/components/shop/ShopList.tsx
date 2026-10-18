@@ -27,6 +27,7 @@ type ShopListProps = {
 	tags: TagDTO[]
 	categories: CategoryDTO[]
 	categoryOrder: CategoryOrder
+	hiddenCategories: CategoryOrder
 	productMemory: ProductMemoryDTO[]
 	initialListId: string | undefined
 	initialItems: GroceryItemDTO[]
@@ -81,7 +82,7 @@ const upsert = (items: GroceryItemDTO[], item: GroceryItemDTO) => {
 	return exists ? items.map((existing) => (existing.id === item.id ? item : existing)) : [...items, item]
 }
 
-export default function ShopList({ lists, tags, categories, categoryOrder, productMemory, initialListId, initialItems }: ShopListProps) {
+export default function ShopList({ lists, tags, categories, categoryOrder, hiddenCategories, productMemory, initialListId, initialItems }: ShopListProps) {
 	const router = useRouter()
 	const [items, setItems] = useState(initialItems)
 	const [listId, setListId] = useState(initialListId)
@@ -116,7 +117,9 @@ export default function ShopList({ lists, tags, categories, categoryOrder, produ
 	}
 
 	const visible = items.filter((item) => item.listId === listId)
-	const listCategories = orderCategories(categories, listId ? categoryOrder[listId] : [])
+	// ausgeblendete Kategorien gibt es in diesem Laden nicht: ihre Einträge landen unter "Sonstiges"
+	const hidden = (listId && hiddenCategories[listId]) || []
+	const listCategories = orderCategories(categories, listId ? categoryOrder[listId] : []).filter((category) => !hidden.includes(category.id))
 	const groups =
 		view === "store" ? groupByCategory(visible, listCategories) : view === "alpha" ? sortAlphabetically(visible) : groupByDish(visible)
 
@@ -250,6 +253,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, produ
 				lists={lists}
 				tags={tags}
 				categories={categories}
+				hiddenCategories={hiddenCategories}
 				onClose={() => setEditing(null)}
 				onSave={async (item, changes) => {
 					const updated = await applyItemChanges(item, changes)

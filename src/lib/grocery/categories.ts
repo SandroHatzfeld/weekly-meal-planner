@@ -36,6 +36,17 @@ export const categoryOrderOfPlan = async (planId: string): Promise<CategoryOrder
 	return order
 }
 
+// pro Liste ausgeblendete Kategorien (gibt es in dem Laden nicht): listId -> Kategorie-IDs
+export const hiddenCategoriesOfPlan = async (planId: string): Promise<CategoryOrder> => {
+	const rows = await prisma.groceryListCategory.findMany({
+		where: { list: { planId }, hidden: true },
+		select: { listId: true, categoryId: true },
+	})
+	const hidden: CategoryOrder = {}
+	for (const row of rows) (hidden[row.listId] ??= []).push(row.categoryId)
+	return hidden
+}
+
 // neue Kategorie: in jeder Liste des Plans ans Ende
 export const appendCategoryToLists = async (planId: string, categoryId: string) => {
 	const lists = await prisma.groceryList.findMany({

@@ -164,6 +164,13 @@ export const reorderCategories = async (listId: string, orderedIds: string[]) =>
 	emitToPlan(list.planId, "grocery-lists-changed", { planId: list.planId })
 }
 
+// Kategorie in einer Liste aus- oder einblenden; Einträge darin erscheinen dort dann unter "Sonstiges"
+export const setCategoryHidden = async (listId: string, categoryId: string, hidden: boolean) => {
+	const list = await memberOfList(listId)
+	await prisma.groceryListCategory.update({ where: { listId_categoryId: { listId, categoryId } }, data: { hidden } })
+	emitToPlan(list.planId, "grocery-lists-changed", { planId: list.planId })
+}
+
 // --- bekannte Produkte des Plans (Einstellungen) ---
 
 // Produkt anlegen oder seine Kategorie ändern; gilt für künftige Einträge und Vorschläge in allen Listen

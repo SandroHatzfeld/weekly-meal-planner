@@ -15,12 +15,14 @@ function ListRow({
 	isDefault,
 	canDelete,
 	categories,
+	hiddenIds,
 }: {
 	planId: string
 	list: List
 	isDefault: boolean
 	canDelete: boolean
 	categories: CategoryDTO[]
+	hiddenIds: string[]
 }) {
 	const router = useRouter()
 	const [name, setName] = useState(list.name)
@@ -74,10 +76,10 @@ function ListRow({
 			</div>
 			{error && <p className="error">{error}</p>}
 			<button type="button" className="btn-link block text-sm" aria-expanded={showCategories} onClick={() => setShowCategories(!showCategories)}>
-				{showCategories ? "▾" : "▸"} Reihenfolge der Kategorien im Laden
+				{showCategories ? "▾" : "▸"} Kategorien im Laden – Reihenfolge, ausblenden
 			</button>
 			{showCategories && (
-				<CategorySettings listId={list.id} categories={categories} />
+				<CategorySettings listId={list.id} categories={categories} hiddenIds={hiddenIds} />
 			)}
 		</li>
 	)
@@ -89,12 +91,14 @@ export default function ListSettings({
 	defaultListId,
 	categories,
 	categoryOrder,
+	hiddenCategories,
 }: {
 	planId: string
 	lists: List[]
 	defaultListId: string
 	categories: CategoryDTO[]
 	categoryOrder: CategoryOrder
+	hiddenCategories: CategoryOrder
 }) {
 	const router = useRouter()
 	const [name, setName] = useState("")
@@ -112,6 +116,7 @@ export default function ListSettings({
 						isDefault={list.id === defaultListId}
 						canDelete={lists.length > 1}
 						categories={orderCategories(categories, categoryOrder[list.id])}
+						hiddenIds={hiddenCategories[list.id] ?? []}
 					/>
 				))}
 			</ul>

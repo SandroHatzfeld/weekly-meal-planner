@@ -1,12 +1,14 @@
 "use client"
 
-import { reorderCategories } from "@/lib/grocery/actions"
+import { reorderCategories, setCategoryHidden } from "@/lib/grocery/actions"
 import type { CategoryDTO } from "@/lib/grocery/categories"
+import Icon from "@/components/ui/Icon"
 import { useRouter } from "next/navigation"
 import { useRef, useState, useTransition } from "react"
 
-// Reihenfolge der Kategorien im Laden für eine Liste, per Drag & Drop (oder ↑/↓); categories kommen bereits sortiert
-export default function CategorySettings({ listId, categories }: { listId: string; categories: CategoryDTO[] }) {
+// Reihenfolge der Kategorien im Laden für eine Liste, per Drag & Drop (oder ↑/↓); categories kommen bereits sortiert.
+// Kategorien, die es im Laden nicht gibt, lassen sich ausblenden.
+export default function CategorySettings({ listId, categories, hiddenIds }: { listId: string; categories: CategoryDTO[]; hiddenIds: string[] }) {
 	const router = useRouter()
 	const [dragId, setDragId] = useState<string | null>(null)
 	const [order, setOrder] = useState(() => categories.map((category) => category.id))
@@ -84,7 +86,18 @@ export default function CategorySettings({ listId, categories }: { listId: strin
 					>
 						⋮⋮
 					</button>
-					<span className="min-w-0 flex-1 truncate">{category.name}</span>
+					<span className={`min-w-0 flex-1 truncate ${hiddenIds.includes(category.id) ? "line-through opacity-50" : ""}`}>{category.name}</span>
+					<button
+						type="button"
+						className="btn-link flex size-8 shrink-0 items-center justify-center"
+						aria-pressed={hiddenIds.includes(category.id)}
+						aria-label={`${category.name} ${hiddenIds.includes(category.id) ? "einblenden" : "ausblenden"}`}
+						title={hiddenIds.includes(category.id) ? "Einblenden" : "Gibt es in diesem Laden nicht – ausblenden"}
+						disabled={pending}
+						onClick={() => run(() => setCategoryHidden(listId, category.id, !hiddenIds.includes(category.id)))}
+					>
+						<Icon name={hiddenIds.includes(category.id) ? "eyeOff" : "eye"} />
+					</button>
 					<div className="flex flex-col text-xs">
 						<button type="button" className="btn-link" aria-label="Nach oben" disabled={index === 0 || pending} onClick={() => move(index, -1)}>
 							↑

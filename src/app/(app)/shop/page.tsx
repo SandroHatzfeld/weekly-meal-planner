@@ -3,7 +3,7 @@ import { groceryItemInclude, toGroceryItemDTO } from "@/lib/dto"
 import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
 import { tagsOfPlan } from "@/lib/tags/queries"
-import { categoriesOfPlan, categoryOrderOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
+import { categoriesOfPlan, categoryOrderOfPlan, hiddenCategoriesOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
 import { listsWithDefault } from "@/lib/grocery/queries"
 
 export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
@@ -17,10 +17,11 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
 		include: groceryItemInclude,
 		orderBy: { createdAt: "asc" },
 	})
-	const [tags, categories, categoryOrder, productMemory] = await Promise.all([
+	const [tags, categories, categoryOrder, hiddenCategories, productMemory] = await Promise.all([
 		tagsOfPlan(planId),
 		categoriesOfPlan(planId),
 		categoryOrderOfPlan(planId),
+		hiddenCategoriesOfPlan(planId),
 		productMemoryOfPlan(planId),
 	])
 	// ohne ?list= mit der Standardliste aus den Plan-Einstellungen starten
@@ -33,6 +34,7 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
 			tags={tags}
 			categories={categories}
 			categoryOrder={categoryOrder}
+			hiddenCategories={hiddenCategories}
 			productMemory={productMemory}
 			initialListId={selectedListId}
 			initialItems={items.map(toGroceryItemDTO)}

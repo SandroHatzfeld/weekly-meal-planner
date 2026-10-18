@@ -225,6 +225,7 @@ model GroceryListCategory {
   listId     String
   categoryId String
   position   Int
+  hidden     Boolean         @default(false) // gibt es in diesem Laden nicht -> Einträge unter "Sonstiges"
   list       GroceryList     @relation(fields: [listId], references: [id], onDelete: Cascade)
   category   GroceryCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
