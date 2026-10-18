@@ -9,6 +9,11 @@ import { useState } from "react"
 // bekannte Produkte für die Vorschläge – neue/geänderte Einträge (auch von anderen Mitgliedern) live ergänzen
 export const useProductMemory = (initial: ProductMemoryDTO[]) => {
 	const [memory, setMemory] = useState(initial)
+	const [synced, setSynced] = useState(initial)
+	if (synced !== initial) {
+		setSynced(initial)
+		setMemory(initial)
+	}
 
 	const learn = (item: GroceryItemDTO) =>
 		setMemory((current) => [

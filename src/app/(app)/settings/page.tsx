@@ -3,7 +3,7 @@ import ListSettings from "@/components/settings/ListSettings"
 import TagSettings from "@/components/tags/TagSettings"
 import { signOut } from "@/lib/auth/auth"
 import { listsWithDefault } from "@/lib/grocery/queries"
-import { categoriesOfPlan } from "@/lib/grocery/categories"
+import { categoriesOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
 import { appUrl } from "@/lib/mail"
 import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
@@ -26,7 +26,7 @@ export default async function SettingsPage() {
 	const personalInvites = plan.invites.filter((invite) => invite.type === "PERSONAL")
 	const tags = await tagsOfPlan(planId)
 	const { lists, defaultListId } = await listsWithDefault(planId)
-	const categories = await categoriesOfPlan(planId)
+	const [categories, products] = await Promise.all([categoriesOfPlan(planId), productMemoryOfPlan(planId)])
 	const apiTokens = await prisma.apiToken.findMany({
 		where: { userId: user.id },
 		select: { id: true, name: true, createdAt: true, lastUsedAt: true },
@@ -87,7 +87,7 @@ export default async function SettingsPage() {
 				<p className="text-sm opacity-70">
 					Zutaten landen beim Planen auf der Standardliste, solange du im Popup keine andere wählst.
 				</p>
-				<ListSettings planId={plan.id} lists={lists} defaultListId={defaultListId} categories={categories} />
+				<ListSettings planId={plan.id} lists={lists} defaultListId={defaultListId} categories={categories} products={products} />
 			</section>
 
 			<section className="card space-y-3">

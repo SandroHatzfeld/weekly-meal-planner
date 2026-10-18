@@ -1,4 +1,5 @@
 import { prisma } from "../prisma"
+import { DEFAULT_PRODUCTS } from "./defaultProducts"
 import { normalizeItemName } from "./normalize"
 
 // Vorschlagsset für neue Listen (bestehende Listen: Migration grocery_categories)
@@ -60,3 +61,21 @@ export const rememberProduct = async (listId: string, name: string, categoryId: 
 // gehört die Kategorie zur Liste? (Kategorien sind pro Liste)
 export const isCategoryOfList = async (categoryId: string, listId: string) =>
 	!!(await prisma.groceryCategory.findFirst({ where: { id: categoryId, listId }, select: { id: true } }))
+
+// neue Liste: Gedächtnis mit gängigen Produkten vorbefüllen (Kategorie über den Namen aus dem Vorschlagsset)
+export const seedDefaultProducts = async (listId: string) => {
+	const categories = await prisma.groceryCategory.findMany({ where: { listId }, select: { id: true, name: true } })
+	const usedAt = new Date("2000-01-01T00:00:00Z") // älter als alles Gelernte -> eigene Einträge gehen in Vorschlägen vor
+	await prisma.groceryCategoryMemory.createMany({
+		data: Object.entries(DEFAULT_PRODUCTS).flatMap(([category, products]) =>
+			products.map((displayName) => ({
+				listId,
+				name: normalizeItemName(displayName),
+				displayName,
+				categoryId: categories.find((candidate) => candidate.name === category)?.id ?? null,
+				usedAt,
+			})),
+		),
+		skipDuplicates: true,
+	})
+}

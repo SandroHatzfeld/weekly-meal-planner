@@ -7,7 +7,7 @@ import { appUrl, escapeHtml, sendMail } from "../mail"
 import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
 import { requireMember, requireOwner } from "../session"
-import { defaultCategoriesCreate } from "../grocery/categories"
+import { defaultCategoriesCreate, seedDefaultProducts } from "../grocery/categories"
 import { DEFAULT_TAGS } from "../tags/icons"
 import { generateToken } from "../tokens"
 import { removeMembership } from "./membership"
@@ -36,6 +36,9 @@ export const createPlan = async (_prevState: FormState, formData: FormData): Pro
 			tags: { create: DEFAULT_TAGS },
 		},
 	})
+	for (const list of await prisma.groceryList.findMany({ where: { planId: newPlan.id }, select: { id: true } })) {
+		await seedDefaultProducts(list.id)
+	}
 	await prisma.user.update({ where: { id: currentSession.user.id }, data: { activePlanId: newPlan.id } })
 
 	// optionale Einladungen aus dem Onboarding (kommagetrennt)

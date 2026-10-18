@@ -3,7 +3,8 @@
 import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
 import { requireMember } from "../session"
-import { defaultCategoriesCreate } from "./categories"
+import { defaultCategoriesCreate, isCategoryOfList, rememberProduct, seedDefaultProducts } from "./categories"
+import { normalizeItemName } from "./normalize"
 import * as service from "./service"
 
 // jede Action prüft die Mitgliedschaft im Plan der betroffenen Liste/des Items
@@ -76,6 +77,7 @@ export const createGroceryList = async (planId: string, name: string) => {
 	const list = await prisma.groceryList.create({
 		data: { planId, name: name.trim(), categories: { create: defaultCategoriesCreate() } },
 	})
+	await seedDefaultProducts(list.id)
 	emitToPlan(planId, "grocery-lists-changed", { planId })
 	return { id: list.id, name: list.name }
 }
@@ -143,5 +145,22 @@ export const reorderCategories = async (listId: string, orderedIds: string[]) =>
 	const existing = await prisma.groceryCategory.findMany({ where: { listId }, select: { id: true } })
 	const valid = orderedIds.filter((id) => existing.some((category) => category.id === id))
 	await prisma.$transaction(valid.map((id, position) => prisma.groceryCategory.update({ where: { id }, data: { position } })))
+	emitToPlan(list.planId, "grocery-lists-changed", { planId: list.planId })
+}
+
+// --- Produkt-Gedächtnis einer Liste (Einstellungen) ---
+
+// Produkt anlegen oder seine Kategorie ändern; gilt für künftige Einträge und Vorschläge
+export const setProductCategory = async (listId: string, name: string, categoryId: string | null) => {
+	const list = await memberOfList(listId)
+	if (!name.trim()) return
+	if (categoryId && !(await isCategoryOfList(categoryId, listId))) throw new Error("Kategorie gehört nicht zur Liste")
+	await rememberProduct(listId, name, categoryId)
+	emitToPlan(list.planId, "grocery-lists-changed", { planId: list.planId })
+}
+
+export const forgetProduct = async (listId: string, name: string) => {
+	const list = await memberOfList(listId)
+	await prisma.groceryCategoryMemory.deleteMany({ where: { listId, name: normalizeItemName(name) } })
 	emitToPlan(list.planId, "grocery-lists-changed", { planId: list.planId })
 }
