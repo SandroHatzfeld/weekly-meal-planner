@@ -5,6 +5,7 @@ import { requireActivePlan } from "@/lib/session"
 import Link from "next/link"
 import { listsWithDefault } from "@/lib/grocery/queries"
 import { tagsOfPlan } from "@/lib/tags/queries"
+import { categoriesOfPlan } from "@/lib/grocery/categories"
 
 export default async function WeekPage({ searchParams }: PageProps<"/week">) {
 	const { planId } = await requireActivePlan()
@@ -13,7 +14,11 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
 	const days = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
 	const dishes = await dishesInRange(planId, days[0], days[6])
 	// für die Zutatenauswahl, wenn ein Rezept-Vorschlag gewählt wird
-	const [{ lists, defaultListId }, tags] = await Promise.all([listsWithDefault(planId), tagsOfPlan(planId)])
+	const [{ lists, defaultListId }, tags, categories] = await Promise.all([
+		listsWithDefault(planId),
+		tagsOfPlan(planId),
+		categoriesOfPlan(planId),
+	])
 
 	return (
 		<div className="space-y-4">
@@ -31,7 +36,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
 					Heute
 				</Link>
 			</div>
-			<DishBoard key={weekStart} planId={planId} days={days} initialDishes={dishes} lists={lists} defaultListId={defaultListId} tags={tags} mode="week" today={todayKey()} />
+			<DishBoard key={weekStart} planId={planId} days={days} initialDishes={dishes} lists={lists} defaultListId={defaultListId} tags={tags} categories={categories} mode="week" today={todayKey()} />
 		</div>
 	)
 }

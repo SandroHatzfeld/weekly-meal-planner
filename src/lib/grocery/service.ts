@@ -1,6 +1,7 @@
 import { groceryItemInclude, toGroceryItemDTO } from "../dto"
 import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
+import { isCategoryOfList, recallCategory, rememberProduct } from "./categories"
 
 // gemeinsame Logik für Web (Server Actions) und externe API (HA, Shortcuts, ...)
 // Aufrufer müssen die Mitgliedschaft im Plan der Liste vorher geprüft haben.
@@ -24,14 +25,29 @@ export const listItems = async (listId: string) => {
 export const createItem = async (
 	planId: string,
 	listId: string,
-	data: { name: string; details?: string | null; dishId?: string | null },
+	data: { name: string; details?: string | null; dishId?: string | null; categoryId?: string | null },
 ) => {
+	// explizite Kategorie (z.B. aus einem Vorschlag) gewinnt, sonst die zuletzt gemerkte dieser Liste
+	const explicit = data.categoryId && (await isCategoryOfList(data.categoryId, listId)) ? data.categoryId : null
+	const categoryId = explicit ?? (await recallCategory(listId, data.name))
 	const item = await prisma.groceryItem.create({
-		data: { listId, name: data.name, details: data.details || null, dishId: data.dishId ?? null },
+		data: { listId, name: data.name, details: data.details || null, dishId: data.dishId ?? null, categoryId },
 		include: groceryItemInclude,
 	})
+	await rememberProduct(listId, data.name, categoryId, explicit !== null)
 	const dto = toGroceryItemDTO(item)
 	emitToPlan(planId, "grocery-item-created", dto)
+	return dto
+}
+
+// Kategorie setzen und für dieses Produkt in der Liste merken
+export const setItemCategory = async (planId: string, itemId: string, categoryId: string | null) => {
+	const current = await prisma.groceryItem.findUniqueOrThrow({ where: { id: itemId } })
+	if (categoryId && !(await isCategoryOfList(categoryId, current.listId))) throw new Error("Kategorie gehört nicht zur Liste")
+	const item = await prisma.groceryItem.update({ where: { id: itemId }, data: { categoryId }, include: groceryItemInclude })
+	await rememberProduct(item.listId, item.name, categoryId)
+	const dto = toGroceryItemDTO(item)
+	emitToPlan(planId, "grocery-item-updated", dto)
 	return dto
 }
 
@@ -48,6 +64,8 @@ export const setItemChecked = async (planId: string, itemId: string, checked: bo
 
 export const updateItem = async (planId: string, itemId: string, data: { name: string; details: string | null }) => {
 	const item = await prisma.groceryItem.update({ where: { id: itemId }, data, include: groceryItemInclude })
+	// neue Schreibweise mit der aktuellen Kategorie merken
+	await rememberProduct(item.listId, item.name, item.categoryId, item.categoryId !== null)
 	const dto = toGroceryItemDTO(item)
 	emitToPlan(planId, "grocery-item-updated", dto)
 	return dto
@@ -71,7 +89,14 @@ export const moveItem = async (planId: string, itemId: string, toListId: string)
 	const target = await findListWithPlan(toListId)
 	if (!target || target.planId !== planId) throw new Error("Zielliste gehört nicht zu diesem Plan")
 	const before = await prisma.groceryItem.findUniqueOrThrow({ where: { id: itemId } })
-	const item = await prisma.groceryItem.update({ where: { id: itemId }, data: { listId: toListId }, include: groceryItemInclude })
+	// Kategorien sind pro Liste: in der Zielliste neu einsortieren (gemerkt oder keine)
+	const categoryId = await recallCategory(toListId, before.name)
+	const item = await prisma.groceryItem.update({
+		where: { id: itemId },
+		data: { listId: toListId, categoryId },
+		include: groceryItemInclude,
+	})
+	await rememberProduct(toListId, before.name, categoryId, false)
 	const dto = toGroceryItemDTO(item)
 	emitToPlan(planId, "grocery-item-moved", { id: itemId, fromListId: before.listId, toListId, item: dto })
 	return dto

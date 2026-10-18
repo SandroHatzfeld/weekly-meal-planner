@@ -1,27 +1,33 @@
 "use client"
 
 import TagIcon from "@/components/tags/TagIcon"
+import type { CategoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
 import Modal from "@/components/ui/Modal"
 import { useState } from "react"
 
-export type EditableItem = { id: string; name: string; details: string | null; listId: string; tagIds: string[] }
-export type ItemChanges = { name: string; details: string; listId: string; tagIds: string[] }
+// categoryId undefined = noch nicht festgelegt (Planen: gemerkte Kategorie wird verwendet)
+export type EditableItem = { id: string; name: string; details: string | null; listId: string; tagIds: string[]; categoryId?: string | null }
+// categoryId undefined = automatisch (nach Listenwechsel: gemerkte Kategorie der neuen Liste)
+export type ItemChanges = { name: string; details: string; listId: string; tagIds: string[]; categoryId?: string | null }
+
+const AUTO = "__auto"
 
 type ItemEditDialogProps<T extends EditableItem> = {
 	item: T | null
 	lists: { id: string; name: string }[]
 	tags: TagDTO[]
+	categories?: CategoryDTO[]
 	onSave: (item: T, changes: ItemChanges) => void | Promise<void>
 	onDelete?: (item: T) => Promise<void> // ohne: kein Löschen-Button
 	onClose: () => void
 }
 
-export default function ItemEditDialog<T extends EditableItem>({ item, lists, tags, onSave, onDelete, onClose }: ItemEditDialogProps<T>) {
+export default function ItemEditDialog<T extends EditableItem>({ item, lists, tags, categories = [], onSave, onDelete, onClose }: ItemEditDialogProps<T>) {
 	return (
 		<Modal open={!!item} onClose={onClose} labelledBy="item-edit-title">
 			{/* key: Formular bei jedem geöffneten Eintrag frisch initialisieren */}
-			{item && <EditForm key={item.id} item={item} lists={lists} tags={tags} onSave={onSave} onDelete={onDelete} close={onClose} />}
+			{item && <EditForm key={item.id} item={item} lists={lists} tags={tags} categories={categories} onSave={onSave} onDelete={onDelete} close={onClose} />}
 		</Modal>
 	)
 }
@@ -30,6 +36,7 @@ function EditForm<T extends EditableItem>({
 	item,
 	lists,
 	tags,
+	categories = [],
 	onSave,
 	onDelete,
 	close,
@@ -38,6 +45,9 @@ function EditForm<T extends EditableItem>({
 	const [details, setDetails] = useState(item.details ?? "")
 	const [listId, setListId] = useState(item.listId)
 	const [tagIds, setTagIds] = useState(item.tagIds)
+	const initialCategory = item.categoryId === undefined ? AUTO : (item.categoryId ?? "")
+	const [categoryId, setCategoryId] = useState<string>(initialCategory)
+	const listCategories = categories.filter((category) => category.listId === listId)
 	const [saving, setSaving] = useState(false)
 
 	return (
@@ -48,7 +58,7 @@ function EditForm<T extends EditableItem>({
 				// React-Events laufen auch durch Portale nach oben – das äußere Formular (Planen) nicht mit absenden
 				event.stopPropagation()
 				setSaving(true)
-				await onSave(item, { name, details, listId, tagIds })
+				await onSave(item, { name, details, listId, tagIds, categoryId: categoryId === AUTO ? undefined : categoryId || null })
 				setSaving(false)
 				close()
 			}}
@@ -61,10 +71,33 @@ function EditForm<T extends EditableItem>({
 			{lists.length > 1 && (
 				<>
 					<label htmlFor="item-list">Liste</label>
-					<select id="item-list" className="input" value={listId} onChange={(event) => setListId(event.target.value)}>
+					<select
+						id="item-list"
+						className="input"
+						value={listId}
+						onChange={(event) => {
+							setListId(event.target.value)
+							// Kategorien sind pro Liste
+							setCategoryId(event.target.value === item.listId ? initialCategory : AUTO)
+						}}
+					>
 						{lists.map((list) => (
 							<option key={list.id} value={list.id}>
 								{list.name}
+							</option>
+						))}
+					</select>
+				</>
+			)}
+			{(listCategories.length > 0 || categoryId === AUTO) && (
+				<>
+					<label htmlFor="item-category">Kategorie</label>
+					<select id="item-category" className="input" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+						{categoryId === AUTO && <option value={AUTO}>Automatisch (zuletzt verwendete)</option>}
+						<option value="">Keine (Sonstiges)</option>
+						{listCategories.map((category) => (
+							<option key={category.id} value={category.id}>
+								{category.name}
 							</option>
 						))}
 					</select>

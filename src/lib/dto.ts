@@ -25,6 +25,7 @@ export type GroceryItemDTO = {
 	details: string | null
 	checked: boolean
 	tagIds: string[]
+	categoryId: string | null
 	createdAt: string
 }
 
@@ -55,5 +56,6 @@ export const toGroceryItemDTO = (
 	details: item.details,
 	checked: item.checked,
 	tagIds: item.tags?.map((tag) => tag.id) ?? [],
+	categoryId: item.categoryId,
 	createdAt: item.createdAt.toISOString(),
 })

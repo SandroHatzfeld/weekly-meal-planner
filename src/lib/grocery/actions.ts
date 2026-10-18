@@ -3,6 +3,7 @@
 import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
 import { requireMember } from "../session"
+import { defaultCategoriesCreate } from "./categories"
 import * as service from "./service"
 
 // jede Action prüft die Mitgliedschaft im Plan der betroffenen Liste/des Items
@@ -21,14 +22,14 @@ const memberOfItem = async (itemId: string) => {
 	return { ...item, planId: item.list.planId }
 }
 
-export const addGroceryItem = async (listId: string, name: string, details: string, dishId?: string) => {
+export const addGroceryItem = async (listId: string, name: string, details: string, dishId?: string, categoryId?: string | null) => {
 	if (!name.trim()) return null
 	const list = await memberOfList(listId)
 	if (dishId) {
 		const dish = await prisma.dish.findUnique({ where: { id: dishId }, select: { planId: true } })
 		if (dish?.planId !== list.planId) throw new Error("Gericht gehört nicht zum Plan der Liste")
 	}
-	return service.createItem(list.planId, listId, { name: name.trim(), details: details.trim() || null, dishId })
+	return service.createItem(list.planId, listId, { name: name.trim(), details: details.trim() || null, dishId, categoryId })
 }
 
 export const toggleGroceryItem = async (itemId: string, checked: boolean) => {
@@ -45,6 +46,11 @@ export const editGroceryItem = async (itemId: string, name: string, details: str
 export const setGroceryItemTags = async (itemId: string, tagIds: string[]) => {
 	const item = await memberOfItem(itemId)
 	return service.setItemTags(item.planId, itemId, tagIds)
+}
+
+export const setGroceryItemCategory = async (itemId: string, categoryId: string | null) => {
+	const item = await memberOfItem(itemId)
+	return service.setItemCategory(item.planId, itemId, categoryId)
 }
 
 export const moveGroceryItem = async (itemId: string, toListId: string) => {
@@ -67,7 +73,9 @@ export const clearCheckedItems = async (listId: string) => {
 export const createGroceryList = async (planId: string, name: string) => {
 	await requireMember(planId)
 	if (!name.trim()) return null
-	const list = await prisma.groceryList.create({ data: { planId, name: name.trim() } })
+	const list = await prisma.groceryList.create({
+		data: { planId, name: name.trim(), categories: { create: defaultCategoriesCreate() } },
+	})
 	emitToPlan(planId, "grocery-lists-changed", { planId })
 	return { id: list.id, name: list.name }
 }
@@ -96,4 +104,44 @@ export const deleteGroceryList = async (listId: string) => {
 	await prisma.groceryList.delete({ where: { id: listId } })
 	emitToPlan(list.planId, "grocery-lists-changed", { planId: list.planId })
 	return {}
+}
+
+// --- Kategorien einer Liste (Reihenfolge im Laden) ---
+
+const memberOfCategory = async (categoryId: string) => {
+	const category = await prisma.groceryCategory.findUnique({ where: { id: categoryId }, include: { list: { select: { planId: true } } } })
+	if (!category) throw new Error("Kategorie nicht gefunden")
+	await requireMember(category.list.planId)
+	return { ...category, planId: category.list.planId }
+}
+
+export const createCategory = async (listId: string, name: string) => {
+	const list = await memberOfList(listId)
+	if (!name.trim()) return
+	const last = await prisma.groceryCategory.findFirst({ where: { listId }, orderBy: { position: "desc" }, select: { position: true } })
+	await prisma.groceryCategory.create({ data: { listId, name: name.trim(), position: (last?.position ?? -1) + 1 } })
+	emitToPlan(list.planId, "grocery-lists-changed", { planId: list.planId })
+}
+
+export const renameCategory = async (categoryId: string, name: string) => {
+	const category = await memberOfCategory(categoryId)
+	if (!name.trim()) return
+	await prisma.groceryCategory.update({ where: { id: categoryId }, data: { name: name.trim() } })
+	emitToPlan(category.planId, "grocery-lists-changed", { planId: category.planId })
+}
+
+// Einträge der Kategorie landen danach in "Sonstiges" (SetNull)
+export const deleteCategory = async (categoryId: string) => {
+	const category = await memberOfCategory(categoryId)
+	await prisma.groceryCategory.delete({ where: { id: categoryId } })
+	emitToPlan(category.planId, "grocery-lists-changed", { planId: category.planId })
+}
+
+// neue Reihenfolge nach Drag & Drop; fremde oder fehlende IDs werden ignoriert
+export const reorderCategories = async (listId: string, orderedIds: string[]) => {
+	const list = await memberOfList(listId)
+	const existing = await prisma.groceryCategory.findMany({ where: { listId }, select: { id: true } })
+	const valid = orderedIds.filter((id) => existing.some((category) => category.id === id))
+	await prisma.$transaction(valid.map((id, position) => prisma.groceryCategory.update({ where: { id }, data: { position } })))
+	emitToPlan(list.planId, "grocery-lists-changed", { planId: list.planId })
 }

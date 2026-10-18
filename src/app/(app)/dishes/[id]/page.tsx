@@ -5,6 +5,7 @@ import { requireActivePlan } from "@/lib/session"
 import { notFound } from "next/navigation"
 import { listsWithDefault } from "@/lib/grocery/queries"
 import { tagsOfPlan } from "@/lib/tags/queries"
+import { categoriesOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
 
 export default async function DishPage({ params }: PageProps<"/dishes/[id]">) {
 	const { id } = await params
@@ -20,7 +21,12 @@ export default async function DishPage({ params }: PageProps<"/dishes/[id]">) {
 	// nur Dishes des aktiven Plans
 	if (!dish || dish.planId !== planId) notFound()
 
-	const [{ lists, defaultListId }, tags] = await Promise.all([listsWithDefault(planId), tagsOfPlan(planId)])
+	const [{ lists, defaultListId }, tags, categories, productMemory] = await Promise.all([
+		listsWithDefault(planId),
+		tagsOfPlan(planId),
+		categoriesOfPlan(planId),
+		productMemoryOfPlan(planId),
+	])
 
 	return (
 		<DishEditor
@@ -29,6 +35,8 @@ export default async function DishPage({ params }: PageProps<"/dishes/[id]">) {
 			lists={lists}
 			defaultListId={defaultListId}
 			tags={tags}
+			categories={categories}
+			productMemory={productMemory}
 			sourceRecipe={dish.sourceRecipe}
 			currentUserId={user.id}
 		/>

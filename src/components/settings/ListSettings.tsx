@@ -1,15 +1,30 @@
 "use client"
 
 import { createGroceryList, deleteGroceryList, renameGroceryList, setDefaultGroceryList } from "@/lib/grocery/actions"
+import type { CategoryDTO } from "@/lib/grocery/categories"
 import { useRouter } from "next/navigation"
+import CategorySettings from "./CategorySettings"
 import { useState, useTransition } from "react"
 
 type List = { id: string; name: string }
 
-function ListRow({ planId, list, isDefault, canDelete }: { planId: string; list: List; isDefault: boolean; canDelete: boolean }) {
+function ListRow({
+	planId,
+	list,
+	isDefault,
+	canDelete,
+	categories,
+}: {
+	planId: string
+	list: List
+	isDefault: boolean
+	canDelete: boolean
+	categories: CategoryDTO[]
+}) {
 	const router = useRouter()
 	const [name, setName] = useState(list.name)
 	const [error, setError] = useState<string | null>(null)
+	const [showCategories, setShowCategories] = useState(false)
 	const [pending, startTransition] = useTransition()
 	const dirty = name.trim() !== list.name
 
@@ -57,11 +72,27 @@ function ListRow({ planId, list, isDefault, canDelete }: { planId: string; list:
 				)}
 			</div>
 			{error && <p className="error">{error}</p>}
+			<button type="button" className="btn-link text-sm" aria-expanded={showCategories} onClick={() => setShowCategories(!showCategories)}>
+				{showCategories ? "▾" : "▸"} Kategorien ({categories.length}) – Reihenfolge im Laden
+			</button>
+			{showCategories && (
+				<CategorySettings listId={list.id} categories={categories} />
+			)}
 		</li>
 	)
 }
 
-export default function ListSettings({ planId, lists, defaultListId }: { planId: string; lists: List[]; defaultListId: string }) {
+export default function ListSettings({
+	planId,
+	lists,
+	defaultListId,
+	categories,
+}: {
+	planId: string
+	lists: List[]
+	defaultListId: string
+	categories: CategoryDTO[]
+}) {
 	const router = useRouter()
 	const [name, setName] = useState("")
 	const [pending, startTransition] = useTransition()
@@ -71,7 +102,14 @@ export default function ListSettings({ planId, lists, defaultListId }: { planId:
 			<ul className="divide-y divide-black/5 dark:divide-white/10">
 				{lists.map((list) => (
 					// key mit Name: nach Umbenennen durch andere Mitglieder neu initialisieren
-					<ListRow key={`${list.id}:${list.name}`} planId={planId} list={list} isDefault={list.id === defaultListId} canDelete={lists.length > 1} />
+					<ListRow
+						key={`${list.id}:${list.name}`}
+						planId={planId}
+						list={list}
+						isDefault={list.id === defaultListId}
+						canDelete={lists.length > 1}
+						categories={categories.filter((category) => category.listId === list.id)}
+					/>
 				))}
 			</ul>
 			<form

@@ -9,7 +9,10 @@ import { deleteDish, updateDish, type DishInput } from "@/lib/dishes/actions"
 import type { DishDTO, GroceryItemDTO } from "@/lib/dto"
 import { addGroceryItem, deleteGroceryItem, toggleGroceryItem } from "@/lib/grocery/actions"
 import { applyItemChanges } from "@/lib/grocery/client"
+import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
+import ProductInput from "@/components/shop/ProductInput"
+import { useProductMemory } from "@/components/shop/useProductMemory"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -20,6 +23,8 @@ type DishEditorProps = {
 	lists: { id: string; name: string }[]
 	defaultListId: string
 	tags: TagDTO[]
+	categories: CategoryDTO[]
+	productMemory: ProductMemoryDTO[]
 	sourceRecipe: { id: string; name: string } | null
 	currentUserId: string
 }
@@ -60,7 +65,7 @@ const usePresence = (dishId: string) => {
 	return users
 }
 
-export default function DishEditor({ initialDish, initialItems, lists, defaultListId, tags, sourceRecipe, currentUserId }: DishEditorProps) {
+export default function DishEditor({ initialDish, initialItems, lists, defaultListId, tags, categories, productMemory, sourceRecipe, currentUserId }: DishEditorProps) {
 	const router = useRouter()
 	const [dish, setDish] = useState(initialDish)
 	const [form, setForm] = useState(toInput(initialDish))
@@ -70,6 +75,7 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 	const [message, setMessage] = useState<string | null>(null)
 	const [items, setItems] = useState(initialItems)
 	const [editingItem, setEditingItem] = useState<GroceryItemDTO | null>(null)
+	const { memory } = useProductMemory(productMemory)
 	const [saving, setSaving] = useState(false)
 
 	const viewers = usePresence(dish.id)
@@ -222,11 +228,12 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 				) : (
 					<p className="text-sm opacity-60">Noch keine</p>
 				)}
-				<AddDishItem dishId={dish.id} lists={lists} defaultListId={defaultListId} />
+				<AddDishItem dishId={dish.id} lists={lists} defaultListId={defaultListId} categories={categories} memory={memory} />
 				<ItemEditDialog
 					item={editingItem}
 					lists={lists}
 					tags={tags}
+					categories={categories}
 					onClose={() => setEditingItem(null)}
 					onSave={async (item, changes) => replaceItem(await applyItemChanges(item, changes))}
 					onDelete={async (item) => {
@@ -239,25 +246,62 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 	)
 }
 
-function AddDishItem({ dishId, lists, defaultListId }: { dishId: string; lists: { id: string; name: string }[]; defaultListId: string }) {
+function AddDishItem({
+	dishId,
+	lists,
+	defaultListId,
+	categories,
+	memory,
+}: {
+	dishId: string
+	lists: { id: string; name: string }[]
+	defaultListId: string
+	categories: CategoryDTO[]
+	memory: ProductMemoryDTO[]
+}) {
 	const [name, setName] = useState("")
 	const [details, setDetails] = useState("")
 	const [listId, setListId] = useState(defaultListId)
+	// Kategorie aus einem gewählten Vorschlag; weitertippen oder Listenwechsel setzt sie zurück
+	const [pickedCategory, setPickedCategory] = useState<string | null>(null)
 
 	return (
 		<form
 			className="flex flex-wrap gap-2"
 			onSubmit={async (event) => {
 				event.preventDefault()
-				await addGroceryItem(listId, name, details, dishId)
+				await addGroceryItem(listId, name, details, dishId, pickedCategory)
 				setName("")
 				setDetails("")
+				setPickedCategory(null)
 			}}
 		>
-			<input className="input basis-full sm:basis-0 sm:flex-1" placeholder="Zutat" value={name} onChange={(event) => setName(event.target.value)} required />
+			<ProductInput
+				className="basis-full sm:basis-0 sm:flex-1"
+				placeholder="Zutat"
+				value={name}
+				onChange={(value) => {
+					setName(value)
+					setPickedCategory(null)
+				}}
+				onPick={(suggestion) => {
+					setName(suggestion.displayName)
+					setPickedCategory(suggestion.categoryId)
+				}}
+				memory={memory}
+				categories={categories.filter((category) => category.listId === listId)}
+				listId={listId}
+			/>
 			<input className="input min-w-0 flex-1 sm:w-32 sm:flex-none" placeholder="Menge" value={details} onChange={(event) => setDetails(event.target.value)} />
 			{lists.length > 1 && (
-				<select className="input w-auto" value={listId} onChange={(event) => setListId(event.target.value)}>
+				<select
+					className="input w-auto"
+					value={listId}
+					onChange={(event) => {
+						setListId(event.target.value)
+						setPickedCategory(null)
+					}}
+				>
 					{lists.map((list) => (
 						<option key={list.id} value={list.id}>
 							{list.name}

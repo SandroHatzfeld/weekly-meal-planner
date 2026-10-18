@@ -27,7 +27,14 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 		include: {
 			plan: {
 				include: {
-					groceryLists: { select: { id: true, name: true }, orderBy: { createdAt: "asc" } },
+					groceryLists: {
+						select: {
+							id: true,
+							name: true,
+							categories: { select: { id: true, listId: true, name: true, position: true }, orderBy: { position: "asc" } },
+						},
+						orderBy: { createdAt: "asc" },
+					},
 					tags: { orderBy: { createdAt: "asc" } },
 				},
 			},
@@ -37,7 +44,8 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 	const plans = memberships.map(({ plan }) => ({
 		id: plan.id,
 		name: plan.name,
-		lists: plan.groceryLists,
+		lists: plan.groceryLists.map((list) => ({ id: list.id, name: list.name })),
+		categories: plan.groceryLists.flatMap((list) => list.categories),
 		defaultListId: resolveDefaultListId(plan.groceryLists, plan.defaultListId),
 		tags: plan.tags.map(toTagDTO),
 	}))

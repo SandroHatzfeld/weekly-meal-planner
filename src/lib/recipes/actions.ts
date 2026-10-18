@@ -9,6 +9,7 @@ import { emitToPlan } from "../realtime"
 import { requireMember } from "../session"
 import { groceryItemInclude, toGroceryItemDTO } from "../dto"
 import { deleteImageIfUnused, resolveImage } from "../images"
+import { recallCategory, rememberProduct } from "../grocery/categories"
 import { canViewRecipe, coMemberIds } from "./access"
 import { ingredientDetails } from "./format"
 import type { PlanIngredient, PlannedItem } from "./planning"
@@ -106,6 +107,16 @@ export const planRecipe = async (recipeId: string, target: { planId: string; dat
 	const items = target.items.filter((item) => item.name.trim())
 	if (items.some((item) => !listIds.has(item.listId))) return { error: "Liste gehört nicht zum Plan" }
 
+	// Kategorie je Zutat: im Popup gewählt (muss zur Ziel-Liste gehören) oder zuletzt gemerkte
+	const categories = await prisma.groceryCategory.findMany({ where: { listId: { in: [...listIds] } }, select: { id: true, listId: true } })
+	const categoryIds = await Promise.all(
+		items.map(async (item) =>
+			item.categoryId && categories.some((category) => category.id === item.categoryId && category.listId === item.listId)
+				? item.categoryId
+				: recallCategory(item.listId, item.name),
+		),
+	)
+
 	const dish = await prisma.dish.create({
 		data: {
 			planId: target.planId,
@@ -116,10 +127,11 @@ export const planRecipe = async (recipeId: string, target: { planId: string; dat
 			steps: recipe.steps,
 			date,
 			groceryItems: {
-				create: items.map((item) => ({
+				create: items.map((item, index) => ({
 					listId: item.listId,
 					name: item.name.trim(),
 					details: item.details?.trim() || null,
+					categoryId: categoryIds[index],
 					tags: { connect: item.tagIds.filter((id) => tagIds.has(id)).map((id) => ({ id })) },
 				})),
 			},
@@ -127,6 +139,9 @@ export const planRecipe = async (recipeId: string, target: { planId: string; dat
 		include: { groceryItems: { include: groceryItemInclude } },
 	})
 
+	await Promise.all(
+		items.map((item, index) => rememberProduct(item.listId, item.name, categoryIds[index], item.categoryId === categoryIds[index] && !!item.categoryId)),
+	)
 	emitToPlan(target.planId, "dish-created", toDishDTO(dish))
 	for (const item of dish.groceryItems) emitToPlan(target.planId, "grocery-item-created", toGroceryItemDTO(item))
 

@@ -3,6 +3,7 @@
 import ItemEditDialog from "@/components/items/ItemEditDialog"
 import ItemTile from "@/components/items/ItemTile"
 import type { IngredientEntry } from "@/lib/recipes/planning"
+import type { CategoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
 import { useState } from "react"
 
@@ -11,13 +12,14 @@ type IngredientPickerProps = {
 	onChange: (entries: IngredientEntry[]) => void
 	lists: { id: string; name: string }[]
 	tags: TagDTO[]
+	categories?: CategoryDTO[]
 	defaultListId: string
 	className?: string
 }
 
 // Zutatenauswahl beim Planen im Kachel-Design der Einkaufsliste:
 // Tippen = (nicht) übernehmen, Gedrückthalten = Name/Menge/Liste/Tags für den Listeneintrag anpassen
-export default function IngredientPicker({ entries, onChange, lists, tags, defaultListId, className = "" }: IngredientPickerProps) {
+export default function IngredientPicker({ entries, onChange, lists, tags, categories = [], defaultListId, className = "" }: IngredientPickerProps) {
 	const [editingId, setEditingId] = useState<string | null>(null)
 	const editing = entries.find((entry) => entry.id === editingId)
 	const update = (id: string, patch: Partial<IngredientEntry>) =>
@@ -50,9 +52,10 @@ export default function IngredientPicker({ entries, onChange, lists, tags, defau
 			<p className="mt-1 text-xs opacity-60">Gedrückt halten, um Menge, Liste oder Tags anzupassen.</p>
 
 			<ItemEditDialog
-				item={editing ? { ...editing, listId: editing.listId ?? defaultListId } : null}
+				item={editing ? { ...editing, listId: editing.listId ?? defaultListId, categoryId: editing.categoryId ?? undefined } : null}
 				lists={lists}
 				tags={tags}
+				categories={categories}
 				onClose={() => setEditingId(null)}
 				onSave={(item, changes) =>
 					update(item.id, {
@@ -61,6 +64,8 @@ export default function IngredientPicker({ entries, onChange, lists, tags, defau
 						// Standardliste nicht fest übernehmen, damit ein späterer Wechsel der Standardliste weiter greift
 						listId: changes.listId === defaultListId ? null : changes.listId,
 						tagIds: changes.tagIds,
+						// "automatisch" = beim Planen die gemerkte Kategorie der Liste verwenden
+						categoryId: changes.categoryId ?? null,
 						// wer eine Zutat bearbeitet, will sie auch übernehmen
 						selected: true,
 					})

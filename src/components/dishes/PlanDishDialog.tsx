@@ -2,12 +2,14 @@
 
 import IngredientPicker from "@/components/recipes/IngredientPicker"
 import Modal from "@/components/ui/Modal"
+import { useCombobox } from "@/components/ui/useCombobox"
 import { createDish } from "@/lib/dishes/actions"
 import type { DishDTO } from "@/lib/dto"
 import { planRecipe, searchRecipes, type RecipeSuggestion } from "@/lib/recipes/actions"
 import { initialEntries, toPlannedItems, type IngredientEntry } from "@/lib/recipes/planning"
+import type { CategoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
-import { useEffect, useId, useState } from "react"
+import { useEffect, useState } from "react"
 
 export type PlanOption = {
 	id: string
@@ -15,6 +17,7 @@ export type PlanOption = {
 	lists: { id: string; name: string }[]
 	defaultListId: string
 	tags: TagDTO[]
+	categories: CategoryDTO[]
 }
 
 type PlanDishDialogProps = {
@@ -39,7 +42,6 @@ export default function PlanDishDialog({ open, onClose, ...props }: PlanDishDial
 }
 
 function PlanDishForm({ plans, initialPlanId, initialDate, initialRecipe, onPlanned, onClose }: Omit<PlanDishDialogProps, "open">) {
-	const listboxId = useId()
 	const [planId, setPlanId] = useState(initialPlanId)
 	const plan = plans.find((candidate) => candidate.id === planId) ?? plans[0]
 	const [date, setDate] = useState(initialDate)
@@ -47,8 +49,6 @@ function PlanDishForm({ plans, initialPlanId, initialDate, initialRecipe, onPlan
 	const [recipe, setRecipe] = useState<RecipeSuggestion | null>(initialRecipe ?? null)
 	const [entries, setEntries] = useState<IngredientEntry[]>(() => (initialRecipe ? initialEntries(initialRecipe.ingredients) : []))
 	const [suggestions, setSuggestions] = useState<{ query: string; recipes: RecipeSuggestion[] }>({ query: "", recipes: [] })
-	const [activeIndex, setActiveIndex] = useState(-1)
-	const [dismissed, setDismissed] = useState(false)
 	const [saving, setSaving] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
@@ -67,15 +67,14 @@ function PlanDishForm({ plans, initialPlanId, initialDate, initialRecipe, onPlan
 		}
 	}, [name, planId, recipe])
 
-	// nur Ergebnisse zur aktuellen Eingabe anzeigen
-	const visible = !dismissed && !recipe && suggestions.query === name.trim() ? suggestions.recipes : []
-
 	const pickRecipe = (suggestion: RecipeSuggestion) => {
 		setRecipe(suggestion)
 		setName(suggestion.name)
 		setEntries(initialEntries(suggestion.ingredients))
-		setActiveIndex(-1)
 	}
+	// nur Ergebnisse zur aktuellen Eingabe anzeigen
+	const combobox = useCombobox(!recipe && suggestions.query === name.trim() ? suggestions.recipes : [], pickRecipe)
+	const visible = combobox.visible
 
 	const submit = async () => {
 		setSaving(true)
@@ -131,52 +130,20 @@ function PlanDishForm({ plans, initialPlanId, initialDate, initialRecipe, onPlan
 					autoFocus={!initialRecipe}
 					value={name}
 					placeholder="Name oder Rezept suchen"
-					role="combobox"
-					aria-autocomplete="list"
-					aria-expanded={visible.length > 0}
-					aria-controls={listboxId}
-					aria-activedescendant={activeIndex >= 0 ? `${listboxId}-${activeIndex}` : undefined}
+					{...combobox.inputProps}
 					required
 					onChange={(event) => {
 						// weitertippen hebt eine gewählte Rezept-Vorlage auf
 						if (recipe) setRecipe(null)
 						setName(event.target.value)
-						setActiveIndex(-1)
-						setDismissed(false)
-					}}
-					onKeyDown={(event) => {
-						if (event.key === "ArrowDown" && visible.length) {
-							event.preventDefault()
-							setActiveIndex((index) => (index + 1) % visible.length)
-						} else if (event.key === "ArrowUp" && visible.length) {
-							event.preventDefault()
-							setActiveIndex((index) => (index <= 0 ? visible.length - 1 : index - 1))
-						} else if (event.key === "Enter" && activeIndex >= 0 && visible[activeIndex]) {
-							event.preventDefault()
-							pickRecipe(visible[activeIndex])
-						} else if (event.key === "Escape" && visible.length) {
-							// erst die Vorschläge schließen, nicht gleich das ganze Popup
-							event.preventDefault()
-							setDismissed(true)
-						}
+						combobox.reset()
 					}}
 				/>
 				{visible.length > 0 && (
 					// im Popup im Fluss statt schwebend, damit nichts am Rand abgeschnitten wird
-					<ul id={listboxId} role="listbox" className="suggestions sm:static sm:w-full">
+					<ul {...combobox.listboxProps} className="suggestions sm:static sm:w-full">
 						{visible.map((suggestion, index) => (
-							<li
-								key={suggestion.id}
-								id={`${listboxId}-${index}`}
-								role="option"
-								aria-selected={index === activeIndex}
-								className={index === activeIndex ? "active" : ""}
-								// mousedown statt click, damit das Input den Fokus nicht vorher verliert
-								onMouseDown={(event) => {
-									event.preventDefault()
-									pickRecipe(suggestion)
-								}}
-							>
+							<li key={suggestion.id} {...combobox.optionProps(index)}>
 								<span>{suggestion.name}</span>
 								<span className="text-xs opacity-60">{suggestion.ownerName ? `von ${suggestion.ownerName}` : "Mein Rezept"}</span>
 							</li>
@@ -194,6 +161,7 @@ function PlanDishForm({ plans, initialPlanId, initialDate, initialRecipe, onPlan
 					onChange={setEntries}
 					lists={plan.lists}
 					tags={plan.tags}
+					categories={plan.categories}
 					defaultListId={plan.defaultListId}
 					className="sm:grid-cols-3"
 				/>
