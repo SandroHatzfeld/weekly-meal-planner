@@ -214,7 +214,7 @@ model GroceryCategory {
   name      String
   plan      Plan                  @relation(fields: [planId], references: [id], onDelete: Cascade)
   items     GroceryItem[]
-  products  GroceryProduct[]
+  products  GroceryProductCategory[]
   listOrder GroceryListCategory[]
 
   @@unique([planId, name])
@@ -238,10 +238,21 @@ model GroceryProduct {
   planId      String
   name        String // normalisiert, siehe normalizeItemName()
   displayName String
-  categoryId  String?
-  usedAt      DateTime         @default(now())
-  plan        Plan             @relation(fields: [planId], references: [id], onDelete: Cascade)
-  category    GroceryCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  usedAt      DateTime                 @default(now())
+  plan        Plan                     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  categories  GroceryProductCategory[]
 
   @@id([planId, name])
+}
+
+// Kategorien eines Produkts in Reihenfolge: in jeder Liste gilt die erste, die dort nicht ausgeblendet ist
+model GroceryProductCategory {
+  planId      String
+  productName String
+  categoryId  String
+  position    Int
+  product     GroceryProduct  @relation(fields: [planId, productName], references: [planId, name], onDelete: Cascade, onUpdate: Cascade)
+  category    GroceryCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([planId, productName, categoryId])
 }

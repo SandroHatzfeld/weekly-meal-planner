@@ -42,7 +42,12 @@ export default function ProductInput({ value, onChange, onPick, memory, categori
 					{combobox.visible.map((suggestion, index) => (
 						<li key={suggestion.displayName} {...combobox.optionProps(index)}>
 							<span>{suggestion.displayName}</span>
-							{categoryName(suggestion.categoryId) && <span className="text-xs opacity-60">{categoryName(suggestion.categoryId)}</span>}
+							{categoryName(suggestion.categoryId) && (
+								<span className="text-xs opacity-60">
+									{categoryName(suggestion.categoryId)}
+									{suggestion.categoryIds.length > 1 && ` +${suggestion.categoryIds.length - 1}`}
+								</span>
+							)}
 						</li>
 					))}
 				</ul>

@@ -56,7 +56,8 @@ export const matchRank = (query: string, candidate: string): number | null => {
 	return close ? 3 : null
 }
 
-export type ProductSuggestion = { displayName: string; categoryId: string | null }
+// categoryId = Hauptkategorie, categoryIds = alle in Reihenfolge
+export type ProductSuggestion = { displayName: string; categoryId: string | null; categoryIds: string[] }
 
 export const suggestProducts = (query: string, memory: ProductMemoryDTO[], limit = 6): ProductSuggestion[] => {
 	const folded = foldForMatch(query)
@@ -75,5 +76,5 @@ export const suggestProducts = (query: string, memory: ProductMemoryDTO[], limit
 	return [...best.values()]
 		.sort((a, b) => a.rank - b.rank || b.entry.usedAt.localeCompare(a.entry.usedAt))
 		.slice(0, limit)
-		.map(({ entry }) => ({ displayName: entry.displayName, categoryId: entry.categoryId }))
+		.map(({ entry }) => ({ displayName: entry.displayName, categoryId: entry.categoryIds[0] ?? null, categoryIds: entry.categoryIds }))
 }

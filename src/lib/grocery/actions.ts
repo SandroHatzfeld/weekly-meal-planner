@@ -3,7 +3,7 @@
 import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
 import { requireMember } from "../session"
-import { appendCategoryToLists, initListCategoryOrder, isCategoryOfPlan, rememberProduct } from "./categories"
+import { appendCategoryToLists, initListCategoryOrder, replaceProductCategories } from "./categories"
 import { normalizeItemName } from "./normalize"
 import * as service from "./service"
 
@@ -173,12 +173,18 @@ export const setCategoryHidden = async (listId: string, categoryId: string, hidd
 
 // --- bekannte Produkte des Plans (Einstellungen) ---
 
-// Produkt anlegen oder seine Kategorie ändern; gilt für künftige Einträge und Vorschläge in allen Listen
-export const setProductCategory = async (planId: string, name: string, categoryId: string | null) => {
+// Produkt anlegen oder seine Kategorien setzen (Reihenfolge = Vorrang); gilt für künftige Einträge und Vorschläge
+export const setProductCategories = async (planId: string, name: string, categoryIds: string[]) => {
 	await requireMember(planId)
-	if (!name.trim()) return
-	if (categoryId && !(await isCategoryOfPlan(categoryId, planId))) throw new Error("Kategorie gehört nicht zum Plan")
-	await rememberProduct(planId, name, categoryId)
+	const key = normalizeItemName(name)
+	if (!key) return
+	const valid = await prisma.groceryCategory.findMany({ where: { planId, id: { in: categoryIds } }, select: { id: true } })
+	await prisma.groceryProduct.upsert({
+		where: { planId_name: { planId, name: key } },
+		create: { planId, name: key, displayName: name.trim() },
+		update: {},
+	})
+	await replaceProductCategories(planId, key, categoryIds.filter((id) => valid.some((category) => category.id === id)))
 	emitToPlan(planId, "grocery-lists-changed", { planId })
 }
 

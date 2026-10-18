@@ -98,6 +98,7 @@ function EditForm<T extends EditableItem>({
 						{offered.map((category) => (
 							<option key={category.id} value={category.id}>
 								{category.name}
+								{hiddenCategories[listId]?.includes(category.id) && " (hier ausgeblendet)"}
 							</option>
 						))}
 					</select>

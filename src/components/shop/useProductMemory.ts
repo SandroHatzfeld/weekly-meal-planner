@@ -15,11 +15,17 @@ export const useProductMemory = (initial: ProductMemoryDTO[]) => {
 		setMemory(initial)
 	}
 
+	// wie auf dem Server: Kategorie des Eintrags wird Hauptkategorie, weitere bleiben dahinter
 	const learn = (item: GroceryItemDTO) =>
-		setMemory((current) => [
-			{ displayName: item.name, categoryId: item.categoryId, usedAt: new Date().toISOString() },
-			...current.filter((entry) => normalizeItemName(entry.displayName) !== normalizeItemName(item.name)),
-		])
+		setMemory((current) => {
+			const key = normalizeItemName(item.name)
+			const known = current.find((entry) => normalizeItemName(entry.displayName) === key)?.categoryIds ?? []
+			const categoryIds = item.categoryId ? [item.categoryId, ...known.filter((id) => id !== item.categoryId)] : known
+			return [
+				{ displayName: item.name, categoryIds, usedAt: new Date().toISOString() },
+				...current.filter((entry) => normalizeItemName(entry.displayName) !== key),
+			]
+		})
 
 	usePlanEvent("grocery-item-created", learn)
 	usePlanEvent("grocery-item-updated", learn)

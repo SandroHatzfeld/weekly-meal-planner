@@ -86,37 +86,58 @@ export const seedPlanGroceries = async (planId: string) => {
 	await seedDefaultProducts(planId)
 }
 
-export type ProductMemoryDTO = { displayName: string; categoryId: string | null; usedAt: string }
+// categoryIds in Reihenfolge: in jeder Liste gilt die erste, die dort nicht ausgeblendet ist
+export type ProductMemoryDTO = { displayName: string; categoryIds: string[]; usedAt: string }
+
+const productCategoriesSelect = { categories: { select: { categoryId: true }, orderBy: { position: "asc" as const } } }
 
 // bekannte Produkte des Plans – Grundlage für die Vorschläge beim Eintippen und die Einstellungen
 export const productMemoryOfPlan = async (planId: string): Promise<ProductMemoryDTO[]> =>
 	(
 		await prisma.groceryProduct.findMany({
 			where: { planId },
-			select: { displayName: true, categoryId: true, usedAt: true },
+			select: { displayName: true, usedAt: true, ...productCategoriesSelect },
 			orderBy: { usedAt: "desc" },
 			take: 2000,
 		})
-	).map((entry) => ({ ...entry, usedAt: entry.usedAt.toISOString() }))
+	).map((entry) => ({
+		displayName: entry.displayName,
+		categoryIds: entry.categories.map((category) => category.categoryId),
+		usedAt: entry.usedAt.toISOString(),
+	}))
 
-// zuletzt gemerkte Kategorie eines Produkts
+// Hauptkategorie eines Produkts (die erste)
 export const recallCategory = async (planId: string, name: string) => {
 	const product = await prisma.groceryProduct.findUnique({
 		where: { planId_name: { planId, name: normalizeItemName(name) } },
-		select: { categoryId: true },
+		select: productCategoriesSelect,
 	})
-	return product?.categoryId ?? null
+	return product?.categories[0]?.categoryId ?? null
 }
 
-// Schreibweise + Kategorie merken. updateCategory=false: nur Name/Zeitpunkt auffrischen, Kategorie behalten
+// Kategorien eines (bestehenden) Produkts in dieser Reihenfolge ersetzen
+export const replaceProductCategories = (planId: string, productName: string, categoryIds: string[]) =>
+	prisma.$transaction([
+		prisma.groceryProductCategory.deleteMany({ where: { planId, productName } }),
+		prisma.groceryProductCategory.createMany({
+			data: [...new Set(categoryIds)].map((categoryId, position) => ({ planId, productName, categoryId, position })),
+		}),
+	])
+
+// Schreibweise merken. Mit updateCategory wird categoryId zur Hauptkategorie (weitere bleiben dahinter);
+// ohne Kategorie bleiben die gepflegten Kategorien unverändert. Neue Produkte übernehmen die Kategorie immer.
 export const rememberProduct = async (planId: string, name: string, categoryId: string | null, updateCategory = true) => {
 	const key = normalizeItemName(name)
 	if (!key) return
-	await prisma.groceryProduct.upsert({
+	const product = await prisma.groceryProduct.upsert({
 		where: { planId_name: { planId, name: key } },
-		create: { planId, name: key, displayName: name.trim(), categoryId },
-		update: { displayName: name.trim(), usedAt: new Date(), ...(updateCategory ? { categoryId } : {}) },
+		create: { planId, name: key, displayName: name.trim() },
+		update: { displayName: name.trim(), usedAt: new Date() },
+		select: productCategoriesSelect,
 	})
+	const current = product.categories.map((category) => category.categoryId)
+	if (!categoryId || current[0] === categoryId || (!updateCategory && current.length > 0)) return
+	await replaceProductCategories(planId, key, [categoryId, ...current.filter((id) => id !== categoryId)])
 }
 
 export const isCategoryOfPlan = async (categoryId: string, planId: string) =>
@@ -126,16 +147,25 @@ export const isCategoryOfPlan = async (categoryId: string, planId: string) =>
 export const seedDefaultProducts = async (planId: string) => {
 	const categories = await prisma.groceryCategory.findMany({ where: { planId }, select: { id: true, name: true } })
 	const usedAt = new Date("2000-01-01T00:00:00Z") // älter als alles Gelernte -> eigene Einträge gehen in Vorschlägen vor
+	const products = Object.entries(DEFAULT_PRODUCTS).flatMap(([category, names]) =>
+		names.map((displayName) => ({
+			name: normalizeItemName(displayName),
+			displayName,
+			categoryId: categories.find((candidate) => candidate.name === category)?.id,
+		})),
+	)
 	await prisma.groceryProduct.createMany({
-		data: Object.entries(DEFAULT_PRODUCTS).flatMap(([category, products]) =>
-			products.map((displayName) => ({
-				planId,
-				name: normalizeItemName(displayName),
-				displayName,
-				categoryId: categories.find((candidate) => candidate.name === category)?.id ?? null,
-				usedAt,
-			})),
-		),
+		data: products.map(({ name, displayName }) => ({ planId, name, displayName, usedAt })),
+		skipDuplicates: true,
+	})
+	// nur Produkte ohne eigene Kategorien bekommen die Standardkategorie
+	const categorized = new Set(
+		(await prisma.groceryProductCategory.findMany({ where: { planId }, select: { productName: true } })).map((entry) => entry.productName),
+	)
+	await prisma.groceryProductCategory.createMany({
+		data: products
+			.filter((product) => product.categoryId && !categorized.has(product.name))
+			.map((product) => ({ planId, productName: product.name, categoryId: product.categoryId!, position: 0 })),
 		skipDuplicates: true,
 	})
 }

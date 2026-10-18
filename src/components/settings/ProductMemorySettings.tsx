@@ -1,6 +1,6 @@
 "use client"
 
-import { forgetProduct, setProductCategory } from "@/lib/grocery/actions"
+import { forgetProduct, setProductCategories } from "@/lib/grocery/actions"
 import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import { foldForMatch } from "@/lib/grocery/suggest"
 import { useRouter } from "next/navigation"
@@ -28,10 +28,12 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 			router.refresh()
 		})
 
+	const update = (product: ProductMemoryDTO, categoryIds: string[]) => run(() => setProductCategories(planId, product.displayName, categoryIds))
+
 	const folded = foldForMatch(query)
 	const matching = products
 		.filter((product) => !folded || foldForMatch(product.displayName).includes(folded))
-		.filter((product) => filter === ALL || (filter === NONE ? !product.categoryId : product.categoryId === filter))
+		.filter((product) => filter === ALL || (filter === NONE ? product.categoryIds.length === 0 : product.categoryIds.includes(filter)))
 		.sort((a, b) => a.displayName.localeCompare(b.displayName, "de"))
 	const shown = matching.slice(0, limit)
 
@@ -52,32 +54,72 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 
 			<ul className="divide-y divide-black/5 dark:divide-white/10">
 				{shown.map((product) => (
-					<li key={product.displayName} className="flex items-center gap-2 py-1">
-						<span className="min-w-0 flex-1 truncate">{product.displayName}</span>
-						<select
-							className="input w-36 py-1 text-sm"
-							aria-label={`Kategorie von ${product.displayName}`}
-							value={product.categoryId ?? ""}
-							disabled={pending}
-							onChange={(event) => run(() => setProductCategory(planId, product.displayName, event.target.value || null))}
-						>
-							<option value="">Keine</option>
-							{categories.map((category) => (
-								<option key={category.id} value={category.id}>
-									{category.name}
-								</option>
-							))}
-						</select>
-						<button
-							type="button"
-							className="btn-link flex size-8 shrink-0 items-center justify-center text-red-600"
-							aria-label={`${product.displayName} vergessen`}
-							title="Vergessen"
-							disabled={pending}
-							onClick={() => run(() => forgetProduct(planId, product.displayName))}
-						>
-							✕
-						</button>
+					<li key={product.displayName} className="space-y-1 py-2">
+						<div className="flex items-center gap-2">
+							<span className="min-w-0 flex-1 truncate">{product.displayName}</span>
+							<button
+								type="button"
+								className="btn-link flex size-8 shrink-0 items-center justify-center text-red-600"
+								aria-label={`${product.displayName} vergessen`}
+								title="Vergessen"
+								disabled={pending}
+								onClick={() => run(() => forgetProduct(planId, product.displayName))}
+							>
+								✕
+							</button>
+						</div>
+						{/* Kategorien in Reihenfolge: die erste ist die Hauptkategorie, die weiteren springen ein,
+						    wenn eine Kategorie in einer Liste ausgeblendet ist */}
+						<div className="flex flex-wrap items-center gap-1" aria-label={`Kategorien von ${product.displayName}`}>
+							{product.categoryIds.map((id, index) => {
+								const category = categories.find((candidate) => candidate.id === id)
+								if (!category) return null
+								return (
+									<span
+										key={id}
+										className={`inline-flex items-center rounded-full border text-sm ${index === 0 ? "border-emerald-600 bg-emerald-700 text-white" : "border-(--border)"}`}
+									>
+										<button
+											type="button"
+											className="py-1 pl-3 pr-1 disabled:cursor-default"
+											aria-label={index === 0 ? `${category.name} (Hauptkategorie)` : `${category.name} als Hauptkategorie`}
+											title={index === 0 ? "Hauptkategorie" : "Als Hauptkategorie verwenden"}
+											disabled={pending || index === 0}
+											onClick={() => update(product, [id, ...product.categoryIds.filter((other) => other !== id)])}
+										>
+											{category.name}
+										</button>
+										<button
+											type="button"
+											className="flex size-7 items-center justify-center opacity-70 hover:opacity-100"
+											aria-label={`${category.name} von ${product.displayName} entfernen`}
+											disabled={pending}
+											onClick={() => update(product, product.categoryIds.filter((other) => other !== id))}
+										>
+											✕
+										</button>
+									</span>
+								)
+							})}
+							{categories.some((category) => !product.categoryIds.includes(category.id)) && (
+								<select
+									className="input w-auto py-1 text-sm"
+									aria-label={`Kategorie zu ${product.displayName} hinzufügen`}
+									value=""
+									disabled={pending}
+									onChange={(event) => event.target.value && update(product, [...product.categoryIds, event.target.value])}
+								>
+									<option value="">{product.categoryIds.length ? "+ Ausweichkategorie" : "+ Kategorie"}</option>
+									{categories
+										.filter((category) => !product.categoryIds.includes(category.id))
+										.map((category) => (
+											<option key={category.id} value={category.id}>
+												{category.name}
+											</option>
+										))}
+								</select>
+							)}
+						</div>
 					</li>
 				))}
 				{matching.length === 0 && <li className="py-1 text-sm opacity-60">Keine Produkte gefunden.</li>}
@@ -93,7 +135,7 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 				onSubmit={(event) => {
 					event.preventDefault()
 					run(async () => {
-						await setProductCategory(planId, newName, newCategory || null)
+						await setProductCategories(planId, newName, newCategory ? [newCategory] : [])
 						setNewName("")
 					})
 				}}

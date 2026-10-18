@@ -14,6 +14,7 @@ import {
 import ItemEditDialog from "@/components/items/ItemEditDialog"
 import ItemTile from "@/components/items/ItemTile"
 import type { CategoryDTO, CategoryOrder, ProductMemoryDTO } from "@/lib/grocery/categories"
+import { normalizeItemName } from "@/lib/grocery/normalize"
 import { orderCategories } from "@/lib/grocery/order"
 import Link from "next/link"
 import ProductInput from "./ProductInput"
@@ -62,13 +63,20 @@ const groupByDish = (items: GroceryItemDTO[]): Group[] => {
 	)
 }
 
-// Laden: nach Kategorie in Laden-Reihenfolge, ohne Kategorie zuletzt unter "Sonstiges"
-const groupByCategory = (items: GroceryItemDTO[], categories: CategoryDTO[]): Group[] => {
-	const groups = categories
-		.map((category) => ({ key: category.id, title: category.name, items: items.filter((item) => item.categoryId === category.id) }))
-		.filter((group) => group.items.length > 0)
+// Laden: nach Kategorie in Laden-Reihenfolge, ohne Kategorie zuletzt unter "Sonstiges".
+// categories = in dieser Liste sichtbare Kategorien. Ist die Kategorie des Eintrags hier ausgeblendet,
+// gilt die erste sichtbare Ausweichkategorie des Produkts.
+const groupByCategory = (items: GroceryItemDTO[], categories: CategoryDTO[], productCategories: Map<string, string[]>): Group[] => {
 	const known = new Set(categories.map((category) => category.id))
-	const rest = items.filter((item) => !item.categoryId || !known.has(item.categoryId))
+	const effective = (item: GroceryItemDTO) =>
+		item.categoryId && known.has(item.categoryId)
+			? item.categoryId
+			: (productCategories.get(normalizeItemName(item.name))?.find((id) => known.has(id)) ?? null)
+	const byItem = new Map(items.map((item) => [item.id, effective(item)]))
+	const groups = categories
+		.map((category) => ({ key: category.id, title: category.name, items: items.filter((item) => byItem.get(item.id) === category.id) }))
+		.filter((group) => group.items.length > 0)
+	const rest = items.filter((item) => !byItem.get(item.id))
 	if (rest.length) groups.push({ key: "rest", title: "Sonstiges", items: rest })
 	for (const group of groups) group.items.sort((a, b) => a.name.localeCompare(b.name, "de"))
 	return groups
@@ -121,7 +129,9 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 	const hidden = (listId && hiddenCategories[listId]) || []
 	const listCategories = orderCategories(categories, listId ? categoryOrder[listId] : []).filter((category) => !hidden.includes(category.id))
 	const groups =
-		view === "store" ? groupByCategory(visible, listCategories) : view === "alpha" ? sortAlphabetically(visible) : groupByDish(visible)
+		view === "store"
+			? groupByCategory(visible, listCategories, new Map(memory.map((entry) => [normalizeItemName(entry.displayName), entry.categoryIds])))
+			 : view === "alpha" ? sortAlphabetically(visible) : groupByDish(visible)
 
 	const toggle = async (item: GroceryItemDTO) => {
 		setItems((current) => upsert(current, { ...item, checked: !item.checked }))
