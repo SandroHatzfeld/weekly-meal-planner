@@ -7,7 +7,7 @@ export type IngredientEntry = PlanIngredient & {
 	selected: boolean
 	listId: string | null // null = Standardliste der Planung
 	tagIds: string[]
-	categoryId: string | null // null = gemerkte Kategorie der Ziel-Liste verwenden
+	categoryId: string | null // null = gemerkte Kategorie verwenden
 }
 
 export type PlannedItem = { name: string; details: string | null; listId: string; tagIds: string[]; categoryId?: string | null }

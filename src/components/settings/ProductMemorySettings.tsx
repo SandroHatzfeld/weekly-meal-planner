@@ -10,10 +10,10 @@ const NONE = "__none"
 const ALL = "__all"
 const PAGE = 60
 
-type ProductMemorySettingsProps = { listId: string; categories: CategoryDTO[]; products: ProductMemoryDTO[] }
+type ProductMemorySettingsProps = { planId: string; categories: CategoryDTO[]; products: ProductMemoryDTO[] }
 
-// Gedächtnis einer Liste: welche Produkte bekannt sind und in welche Kategorie sie automatisch kommen
-export default function ProductMemorySettings({ listId, categories, products }: ProductMemorySettingsProps) {
+// Gedächtnis des Plans: welche Produkte bekannt sind und in welche Kategorie sie automatisch kommen
+export default function ProductMemorySettings({ planId, categories, products }: ProductMemorySettingsProps) {
 	const router = useRouter()
 	const [query, setQuery] = useState("")
 	const [filter, setFilter] = useState(ALL)
@@ -59,7 +59,7 @@ export default function ProductMemorySettings({ listId, categories, products }: 
 							aria-label={`Kategorie von ${product.displayName}`}
 							value={product.categoryId ?? ""}
 							disabled={pending}
-							onChange={(event) => run(() => setProductCategory(listId, product.displayName, event.target.value || null))}
+							onChange={(event) => run(() => setProductCategory(planId, product.displayName, event.target.value || null))}
 						>
 							<option value="">Keine</option>
 							{categories.map((category) => (
@@ -74,7 +74,7 @@ export default function ProductMemorySettings({ listId, categories, products }: 
 							aria-label={`${product.displayName} vergessen`}
 							title="Vergessen"
 							disabled={pending}
-							onClick={() => run(() => forgetProduct(listId, product.displayName))}
+							onClick={() => run(() => forgetProduct(planId, product.displayName))}
 						>
 							✕
 						</button>
@@ -93,7 +93,7 @@ export default function ProductMemorySettings({ listId, categories, products }: 
 				onSubmit={(event) => {
 					event.preventDefault()
 					run(async () => {
-						await setProductCategory(listId, newName, newCategory || null)
+						await setProductCategory(planId, newName, newCategory || null)
 						setNewName("")
 					})
 				}}

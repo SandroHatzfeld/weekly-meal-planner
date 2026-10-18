@@ -11,14 +11,13 @@ type ProductInputProps = {
 	onPick: (suggestion: ProductSuggestion) => void
 	memory: ProductMemoryDTO[]
 	categories: CategoryDTO[]
-	listId: string
 	placeholder: string
 	className?: string
 }
 
 // Eingabe für Produkte mit Vorschlägen aus bekannten Produkten des Plans (auch bei Vertippern)
-export default function ProductInput({ value, onChange, onPick, memory, categories, listId, placeholder, className = "" }: ProductInputProps) {
-	const suggestions = suggestProducts(value, memory, listId)
+export default function ProductInput({ value, onChange, onPick, memory, categories, placeholder, className = "" }: ProductInputProps) {
+	const suggestions = suggestProducts(value, memory)
 		// exakt das Getippte vorzuschlagen bringt nichts
 		.filter((suggestion) => suggestion.displayName !== value.trim() || suggestion.categoryId !== null)
 	const combobox = useCombobox(suggestions, onPick)

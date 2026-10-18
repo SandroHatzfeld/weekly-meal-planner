@@ -107,13 +107,13 @@ export const planRecipe = async (recipeId: string, target: { planId: string; dat
 	const items = target.items.filter((item) => item.name.trim())
 	if (items.some((item) => !listIds.has(item.listId))) return { error: "Liste gehört nicht zum Plan" }
 
-	// Kategorie je Zutat: im Popup gewählt (muss zur Ziel-Liste gehören) oder zuletzt gemerkte
-	const categories = await prisma.groceryCategory.findMany({ where: { listId: { in: [...listIds] } }, select: { id: true, listId: true } })
+	// Kategorie je Zutat: im Popup gewählt (muss zum Ziel-Plan gehören) oder zuletzt gemerkte
+	const categories = await prisma.groceryCategory.findMany({ where: { planId: target.planId }, select: { id: true } })
 	const categoryIds = await Promise.all(
 		items.map(async (item) =>
-			item.categoryId && categories.some((category) => category.id === item.categoryId && category.listId === item.listId)
+			item.categoryId && categories.some((category) => category.id === item.categoryId)
 				? item.categoryId
-				: recallCategory(item.listId, item.name),
+				: recallCategory(target.planId, item.name),
 		),
 	)
 
@@ -140,7 +140,7 @@ export const planRecipe = async (recipeId: string, target: { planId: string; dat
 	})
 
 	await Promise.all(
-		items.map((item, index) => rememberProduct(item.listId, item.name, categoryIds[index], item.categoryId === categoryIds[index] && !!item.categoryId)),
+		items.map((item, index) => rememberProduct(target.planId, item.name, categoryIds[index], item.categoryId === categoryIds[index] && !!item.categoryId)),
 	)
 	emitToPlan(target.planId, "dish-created", toDishDTO(dish))
 	for (const item of dish.groceryItems) emitToPlan(target.planId, "grocery-item-created", toGroceryItemDTO(item))

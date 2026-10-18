@@ -1,10 +1,10 @@
 "use client"
 
 import { createGroceryList, deleteGroceryList, renameGroceryList, setDefaultGroceryList } from "@/lib/grocery/actions"
-import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
+import type { CategoryDTO, CategoryOrder } from "@/lib/grocery/categories"
+import { orderCategories } from "@/lib/grocery/order"
 import { useRouter } from "next/navigation"
 import CategorySettings from "./CategorySettings"
-import ProductMemorySettings from "./ProductMemorySettings"
 import { useState, useTransition } from "react"
 
 type List = { id: string; name: string }
@@ -15,20 +15,17 @@ function ListRow({
 	isDefault,
 	canDelete,
 	categories,
-	products,
 }: {
 	planId: string
 	list: List
 	isDefault: boolean
 	canDelete: boolean
 	categories: CategoryDTO[]
-	products: ProductMemoryDTO[]
 }) {
 	const router = useRouter()
 	const [name, setName] = useState(list.name)
 	const [error, setError] = useState<string | null>(null)
 	const [showCategories, setShowCategories] = useState(false)
-	const [showProducts, setShowProducts] = useState(false)
 	const [pending, startTransition] = useTransition()
 	const dirty = name.trim() !== list.name
 
@@ -77,15 +74,11 @@ function ListRow({
 			</div>
 			{error && <p className="error">{error}</p>}
 			<button type="button" className="btn-link block text-sm" aria-expanded={showCategories} onClick={() => setShowCategories(!showCategories)}>
-				{showCategories ? "▾" : "▸"} Kategorien ({categories.length}) – Reihenfolge im Laden
+				{showCategories ? "▾" : "▸"} Reihenfolge der Kategorien im Laden
 			</button>
 			{showCategories && (
 				<CategorySettings listId={list.id} categories={categories} />
 			)}
-			<button type="button" className="btn-link block text-sm" aria-expanded={showProducts} onClick={() => setShowProducts(!showProducts)}>
-				{showProducts ? "▾" : "▸"} Bekannte Produkte ({products.length}) – automatische Kategorie
-			</button>
-			{showProducts && <ProductMemorySettings listId={list.id} categories={categories} products={products} />}
 		</li>
 	)
 }
@@ -95,13 +88,13 @@ export default function ListSettings({
 	lists,
 	defaultListId,
 	categories,
-	products,
+	categoryOrder,
 }: {
 	planId: string
 	lists: List[]
 	defaultListId: string
 	categories: CategoryDTO[]
-	products: ProductMemoryDTO[]
+	categoryOrder: CategoryOrder
 }) {
 	const router = useRouter()
 	const [name, setName] = useState("")
@@ -118,8 +111,7 @@ export default function ListSettings({
 						list={list}
 						isDefault={list.id === defaultListId}
 						canDelete={lists.length > 1}
-						categories={categories.filter((category) => category.listId === list.id)}
-						products={products.filter((product) => product.listId === list.id)}
+						categories={orderCategories(categories, categoryOrder[list.id])}
 					/>
 				))}
 			</ul>

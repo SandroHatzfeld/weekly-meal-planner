@@ -1,9 +1,11 @@
 import { ApiTokens, GenericInvite, InviteForm, LeavePlanButton, PlanNameForm, RemoveMemberButton, RevokeInviteButton } from "@/components/settings/SettingsControls"
+import CategoryManager from "@/components/settings/CategoryManager"
 import ListSettings from "@/components/settings/ListSettings"
+import ProductMemorySettings from "@/components/settings/ProductMemorySettings"
 import TagSettings from "@/components/tags/TagSettings"
 import { signOut } from "@/lib/auth/auth"
 import { listsWithDefault } from "@/lib/grocery/queries"
-import { categoriesOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
+import { categoriesOfPlan, categoryOrderOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
 import { appUrl } from "@/lib/mail"
 import { prisma } from "@/lib/prisma"
 import { requireActivePlan } from "@/lib/session"
@@ -26,7 +28,7 @@ export default async function SettingsPage() {
 	const personalInvites = plan.invites.filter((invite) => invite.type === "PERSONAL")
 	const tags = await tagsOfPlan(planId)
 	const { lists, defaultListId } = await listsWithDefault(planId)
-	const [categories, products] = await Promise.all([categoriesOfPlan(planId), productMemoryOfPlan(planId)])
+	const [categories, categoryOrder, products] = await Promise.all([categoriesOfPlan(planId), categoryOrderOfPlan(planId), productMemoryOfPlan(planId)])
 	const apiTokens = await prisma.apiToken.findMany({
 		where: { userId: user.id },
 		select: { id: true, name: true, createdAt: true, lastUsedAt: true },
@@ -87,7 +89,21 @@ export default async function SettingsPage() {
 				<p className="text-sm opacity-70">
 					Zutaten landen beim Planen auf der Standardliste, solange du im Popup keine andere wählst.
 				</p>
-				<ListSettings planId={plan.id} lists={lists} defaultListId={defaultListId} categories={categories} products={products} />
+				<ListSettings planId={plan.id} lists={lists} defaultListId={defaultListId} categories={categories} categoryOrder={categoryOrder} />
+			</section>
+
+			<section className="card space-y-3">
+				<h2 className="text-lg font-semibold">Kategorien & Produkte</h2>
+				<p className="text-sm opacity-70">
+					Gelten für alle Listen dieses Plans. Bekannte Produkte landen beim Eintragen automatisch in ihrer Kategorie, die Reihenfolge im Laden stellst du pro Liste ein.
+				</p>
+				<CategoryManager planId={plan.id} categories={categories} />
+				<details className="group">
+					<summary className="btn-link cursor-pointer text-sm">Bekannte Produkte ({products.length})</summary>
+					<div className="mt-2">
+						<ProductMemorySettings planId={plan.id} categories={categories} products={products} />
+					</div>
+				</details>
 			</section>
 
 			<section className="card space-y-3">

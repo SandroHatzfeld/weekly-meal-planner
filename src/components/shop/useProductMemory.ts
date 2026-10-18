@@ -17,8 +17,8 @@ export const useProductMemory = (initial: ProductMemoryDTO[]) => {
 
 	const learn = (item: GroceryItemDTO) =>
 		setMemory((current) => [
-			{ listId: item.listId, displayName: item.name, categoryId: item.categoryId, usedAt: new Date().toISOString() },
-			...current.filter((entry) => !(entry.listId === item.listId && normalizeItemName(entry.displayName) === normalizeItemName(item.name))),
+			{ displayName: item.name, categoryId: item.categoryId, usedAt: new Date().toISOString() },
+			...current.filter((entry) => normalizeItemName(entry.displayName) !== normalizeItemName(item.name)),
 		])
 
 	usePlanEvent("grocery-item-created", learn)

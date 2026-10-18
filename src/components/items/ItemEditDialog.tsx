@@ -8,7 +8,7 @@ import { useState } from "react"
 
 // categoryId undefined = noch nicht festgelegt (Planen: gemerkte Kategorie wird verwendet)
 export type EditableItem = { id: string; name: string; details: string | null; listId: string; tagIds: string[]; categoryId?: string | null }
-// categoryId undefined = automatisch (nach Listenwechsel: gemerkte Kategorie der neuen Liste)
+// categoryId undefined = automatisch (gemerkte Kategorie des Produkts)
 export type ItemChanges = { name: string; details: string; listId: string; tagIds: string[]; categoryId?: string | null }
 
 const AUTO = "__auto"
@@ -47,7 +47,6 @@ function EditForm<T extends EditableItem>({
 	const [tagIds, setTagIds] = useState(item.tagIds)
 	const initialCategory = item.categoryId === undefined ? AUTO : (item.categoryId ?? "")
 	const [categoryId, setCategoryId] = useState<string>(initialCategory)
-	const listCategories = categories.filter((category) => category.listId === listId)
 	const [saving, setSaving] = useState(false)
 
 	return (
@@ -75,11 +74,7 @@ function EditForm<T extends EditableItem>({
 						id="item-list"
 						className="input"
 						value={listId}
-						onChange={(event) => {
-							setListId(event.target.value)
-							// Kategorien sind pro Liste
-							setCategoryId(event.target.value === item.listId ? initialCategory : AUTO)
-						}}
+						onChange={(event) => setListId(event.target.value)}
 					>
 						{lists.map((list) => (
 							<option key={list.id} value={list.id}>
@@ -89,13 +84,13 @@ function EditForm<T extends EditableItem>({
 					</select>
 				</>
 			)}
-			{(listCategories.length > 0 || categoryId === AUTO) && (
+			{(categories.length > 0 || categoryId === AUTO) && (
 				<>
 					<label htmlFor="item-category">Kategorie</label>
 					<select id="item-category" className="input" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
 						{categoryId === AUTO && <option value={AUTO}>Automatisch (zuletzt verwendete)</option>}
 						<option value="">Keine (Sonstiges)</option>
-						{listCategories.map((category) => (
+						{categories.map((category) => (
 							<option key={category.id} value={category.id}>
 								{category.name}
 							</option>

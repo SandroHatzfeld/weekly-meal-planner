@@ -13,7 +13,8 @@ import {
 } from "@/lib/grocery/actions"
 import ItemEditDialog from "@/components/items/ItemEditDialog"
 import ItemTile from "@/components/items/ItemTile"
-import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
+import type { CategoryDTO, CategoryOrder, ProductMemoryDTO } from "@/lib/grocery/categories"
+import { orderCategories } from "@/lib/grocery/order"
 import Link from "next/link"
 import ProductInput from "./ProductInput"
 import { useProductMemory } from "./useProductMemory"
@@ -25,6 +26,7 @@ type ShopListProps = {
 	lists: { id: string; name: string }[]
 	tags: TagDTO[]
 	categories: CategoryDTO[]
+	categoryOrder: CategoryOrder
 	productMemory: ProductMemoryDTO[]
 	initialListId: string | undefined
 	initialItems: GroceryItemDTO[]
@@ -79,7 +81,7 @@ const upsert = (items: GroceryItemDTO[], item: GroceryItemDTO) => {
 	return exists ? items.map((existing) => (existing.id === item.id ? item : existing)) : [...items, item]
 }
 
-export default function ShopList({ lists, tags, categories, productMemory, initialListId, initialItems }: ShopListProps) {
+export default function ShopList({ lists, tags, categories, categoryOrder, productMemory, initialListId, initialItems }: ShopListProps) {
 	const router = useRouter()
 	const [items, setItems] = useState(initialItems)
 	const [listId, setListId] = useState(initialListId)
@@ -114,7 +116,7 @@ export default function ShopList({ lists, tags, categories, productMemory, initi
 	}
 
 	const visible = items.filter((item) => item.listId === listId)
-	const listCategories = categories.filter((category) => category.listId === listId)
+	const listCategories = orderCategories(categories, listId ? categoryOrder[listId] : [])
 	const groups =
 		view === "store" ? groupByCategory(visible, listCategories) : view === "alpha" ? sortAlphabetically(visible) : groupByDish(visible)
 
@@ -182,8 +184,7 @@ export default function ShopList({ lists, tags, categories, productMemory, initi
 								setPickedCategory(suggestion.categoryId)
 							}}
 							memory={memory}
-							categories={listCategories}
-							listId={currentList.id}
+							categories={categories}
 						/>
 						<input className="input min-w-0 flex-1 sm:w-36 sm:flex-none" placeholder="Details (z.B. 500 g)" value={details} onChange={(event) => setDetails(event.target.value)} />
 						<button type="submit" className="btn">

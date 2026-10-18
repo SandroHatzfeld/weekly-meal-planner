@@ -41,6 +41,8 @@ model Plan {
   activeForUsers User[]
   groceryLists   GroceryList[] @relation("PlanGroceryLists")
   tags           PlanTag[]
+  categories     GroceryCategory[]
+  products       GroceryProduct[]
   // Liste für Zutaten beim Planen; NULL = erste Liste des Plans
   defaultListId  String?
   defaultList    GroceryList?  @relation("PlanDefaultList", fields: [defaultListId], references: [id], onDelete: SetNull)
@@ -144,8 +146,7 @@ model GroceryList {
   plan           Plan                    @relation("PlanGroceryLists", fields: [planId], references: [id], onDelete: Cascade)
   items          GroceryItem[]
   defaultOf      Plan[]                  @relation("PlanDefaultList")
-  categories     GroceryCategory[]
-  categoryMemory GroceryCategoryMemory[]
+  categoryOrder  GroceryListCategory[]
 }
 
 model GroceryItem {
@@ -203,30 +204,43 @@ model EmailVerificationToken {
 }
 
 /**
- * Kategorien pro Einkaufsliste (Reihenfolge im Laden) + gelernte Zuordnung Produkt -> Kategorie
+ * Kategorien und bekannte Produkte pro Plan, Reihenfolge der Kategorien im Laden pro Einkaufsliste
  */
 
+// Kategorien gelten für den ganzen Plan (z.B. "Kühlregal"), die Reihenfolge im Laden pro Liste
 model GroceryCategory {
-  id       String                  @id @default(cuid())
-  listId   String
-  name     String // z.B. "Obst & Gemüse"
-  position Int // Reihenfolge im Laden
-  list     GroceryList             @relation(fields: [listId], references: [id], onDelete: Cascade)
-  items    GroceryItem[]
-  memory   GroceryCategoryMemory[]
+  id        String                @id @default(cuid())
+  planId    String
+  name      String
+  plan      Plan                  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  items     GroceryItem[]
+  products  GroceryProduct[]
+  listOrder GroceryListCategory[]
 
+  @@unique([planId, name])
+}
+
+// Reihenfolge der Kategorien im Laden, eine Zeile je Liste und Kategorie
+model GroceryListCategory {
+  listId     String
+  categoryId String
+  position   Int
+  list       GroceryList     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  category   GroceryCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([listId, categoryId])
   @@index([listId, position])
 }
 
-// pro Liste: zuletzt verwendete Schreibweise und Kategorie eines Produkts (für Vorschläge und automatisches Einsortieren)
-model GroceryCategoryMemory {
-  listId      String
+// bekannte Produkte des Plans: zuletzt verwendete Schreibweise und Kategorie (für Vorschläge und automatisches Einsortieren)
+model GroceryProduct {
+  planId      String
   name        String // normalisiert, siehe normalizeItemName()
   displayName String
   categoryId  String?
   usedAt      DateTime         @default(now())
-  list        GroceryList      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  plan        Plan             @relation(fields: [planId], references: [id], onDelete: Cascade)
   category    GroceryCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  @@id([listId, name])
+  @@id([planId, name])
 }

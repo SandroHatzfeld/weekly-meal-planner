@@ -28,14 +28,11 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 			plan: {
 				include: {
 					groceryLists: {
-						select: {
-							id: true,
-							name: true,
-							categories: { select: { id: true, listId: true, name: true, position: true }, orderBy: { position: "asc" } },
-						},
+						select: { id: true, name: true },
 						orderBy: { createdAt: "asc" },
 					},
 					tags: { orderBy: { createdAt: "asc" } },
+					categories: { select: { id: true, name: true }, orderBy: { name: "asc" } },
 				},
 			},
 		},
@@ -45,7 +42,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 		id: plan.id,
 		name: plan.name,
 		lists: plan.groceryLists.map((list) => ({ id: list.id, name: list.name })),
-		categories: plan.groceryLists.flatMap((list) => list.categories),
+		categories: plan.categories,
 		defaultListId: resolveDefaultListId(plan.groceryLists, plan.defaultListId),
 		tags: plan.tags.map(toTagDTO),
 	}))

@@ -64,7 +64,7 @@ export default function IngredientPicker({ entries, onChange, lists, tags, categ
 						// Standardliste nicht fest übernehmen, damit ein späterer Wechsel der Standardliste weiter greift
 						listId: changes.listId === defaultListId ? null : changes.listId,
 						tagIds: changes.tagIds,
-						// "automatisch" = beim Planen die gemerkte Kategorie der Liste verwenden
+						// "automatisch" = beim Planen die gemerkte Kategorie des Produkts verwenden
 						categoryId: changes.categoryId ?? null,
 						// wer eine Zutat bearbeitet, will sie auch übernehmen
 						selected: true,

@@ -58,34 +58,22 @@ export const matchRank = (query: string, candidate: string): number | null => {
 
 export type ProductSuggestion = { displayName: string; categoryId: string | null }
 
-export const suggestProducts = (
-	query: string,
-	memory: ProductMemoryDTO[],
-	listId: string,
-	limit = 6,
-): ProductSuggestion[] => {
+export const suggestProducts = (query: string, memory: ProductMemoryDTO[], limit = 6): ProductSuggestion[] => {
 	const folded = foldForMatch(query)
 	if (folded.length < 2) return []
 
-	// pro Produktname nur ein Treffer: Eintrag der aktuellen Liste bevorzugen, sonst der zuletzt benutzte
-	const best = new Map<string, { entry: ProductMemoryDTO; rank: number; ownList: boolean }>()
+	// pro Produktname nur ein Treffer, der zuletzt benutzte
+	const best = new Map<string, { entry: ProductMemoryDTO; rank: number }>()
 	for (const entry of memory) {
 		const key = foldForMatch(entry.displayName)
 		const rank = matchRank(folded, key)
 		if (rank === null) continue
-		const ownList = entry.listId === listId
 		const existing = best.get(key)
-		if (!existing || (ownList && !existing.ownList) || (ownList === existing.ownList && entry.usedAt > existing.entry.usedAt)) {
-			best.set(key, { entry, rank, ownList })
-		}
+		if (!existing || entry.usedAt > existing.entry.usedAt) best.set(key, { entry, rank })
 	}
 
 	return [...best.values()]
-		.sort((a, b) => a.rank - b.rank || Number(b.ownList) - Number(a.ownList) || b.entry.usedAt.localeCompare(a.entry.usedAt))
+		.sort((a, b) => a.rank - b.rank || b.entry.usedAt.localeCompare(a.entry.usedAt))
 		.slice(0, limit)
-		.map(({ entry, ownList }) => ({
-			displayName: entry.displayName,
-			// Kategorien sind pro Liste: aus anderen Listen nur den Namen übernehmen
-			categoryId: ownList ? entry.categoryId : null,
-		}))
+		.map(({ entry }) => ({ displayName: entry.displayName, categoryId: entry.categoryId }))
 }

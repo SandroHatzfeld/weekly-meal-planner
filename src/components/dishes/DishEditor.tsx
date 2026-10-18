@@ -262,7 +262,7 @@ function AddDishItem({
 	const [name, setName] = useState("")
 	const [details, setDetails] = useState("")
 	const [listId, setListId] = useState(defaultListId)
-	// Kategorie aus einem gewählten Vorschlag; weitertippen oder Listenwechsel setzt sie zurück
+	// Kategorie aus einem gewählten Vorschlag; weitertippen setzt sie zurück
 	const [pickedCategory, setPickedCategory] = useState<string | null>(null)
 
 	return (
@@ -289,8 +289,7 @@ function AddDishItem({
 					setPickedCategory(suggestion.categoryId)
 				}}
 				memory={memory}
-				categories={categories.filter((category) => category.listId === listId)}
-				listId={listId}
+				categories={categories}
 			/>
 			<input className="input min-w-0 flex-1 sm:w-32 sm:flex-none" placeholder="Menge" value={details} onChange={(event) => setDetails(event.target.value)} />
 			{lists.length > 1 && (
@@ -299,7 +298,6 @@ function AddDishItem({
 					value={listId}
 					onChange={(event) => {
 						setListId(event.target.value)
-						setPickedCategory(null)
 					}}
 				>
 					{lists.map((list) => (
