@@ -1,11 +1,11 @@
-import NewRecipe from "@/components/recipes/NewRecipe"
+import RecipeWithImport from "@/components/recipes/RecipeWithImport"
 import { llmConfig } from "@/lib/recipes/import/llm"
 
 export default function NewRecipePage() {
 	return (
 		<div className="space-y-4">
 			<h2 className="text-xl font-semibold">Neues Rezept</h2>
-			<NewRecipe importEnabled={!!llmConfig()} />
+			<RecipeWithImport importEnabled={!!llmConfig()} />
 		</div>
 	)
 }

@@ -4,9 +4,10 @@ import RecipeForm from "@/components/recipes/RecipeForm"
 import { importRecipeFromUrl, type RecipeInput } from "@/lib/recipes/actions"
 import { useState, useTransition } from "react"
 
-// Neues Rezept: optional per Link vorbefüllen. Das Formular zeigt das aufbereitete Rezept zur Kontrolle, gespeichert wird dort.
-export default function NewRecipe({ importEnabled }: { importEnabled: boolean }) {
-	const [url, setUrl] = useState("")
+// Neues oder bestehendes Rezept: optional per Link befüllen. Das Formular zeigt das aufbereitete Rezept zur Kontrolle,
+// gespeichert wird erst dort. Beim Bearbeiten ersetzt der Import die Felder im Formular, gespeichert ist noch nichts.
+export default function RecipeWithImport({ importEnabled, recipeId, initial }: { importEnabled: boolean; recipeId?: string; initial?: RecipeInput }) {
+	const [url, setUrl] = useState(initial?.sourceUrl ?? "")
 	const [imported, setImported] = useState<{ recipe: RecipeInput; version: number } | null>(null)
 	const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null)
 	const [pending, startTransition] = useTransition()
@@ -16,8 +17,12 @@ export default function NewRecipe({ importEnabled }: { importEnabled: boolean })
 			setMessage(null)
 			const result = await importRecipeFromUrl(url, refresh)
 			if ("error" in result) return setMessage({ text: result.error, error: true })
-			setImported((current) => ({ recipe: result.recipe, version: (current?.version ?? 0) + 1 }))
-			setMessage({ text: `${result.cached ? "Aus dem Zwischenspeicher geladen" : "Rezept geladen"} – bitte prüfen und speichern.` })
+			// bestehendes Bild behalten (ein importiertes würde das eigene beim Speichern ersetzen)
+			const recipe = initial?.imageUrl ? { ...result.recipe, imageUrl: initial.imageUrl } : result.recipe
+			setImported((current) => ({ recipe, version: (current?.version ?? 0) + 1 }))
+			setMessage({
+				text: `${result.cached ? "Aus dem Zwischenspeicher geladen" : "Rezept geladen"} – bitte prüfen und speichern${recipeId ? " (ersetzt dann dieses Rezept)" : ""}.`,
+			})
 		})
 
 	return (
@@ -46,7 +51,7 @@ export default function NewRecipe({ importEnabled }: { importEnabled: boolean })
 						<button type="submit" className="btn" disabled={pending}>
 							{pending ? "Lade …" : "Importieren"}
 						</button>
-						{imported && (
+						{(imported || (recipeId && initial?.sourceUrl)) && (
 							<button type="button" className="btn-secondary" disabled={pending} onClick={() => run(true)}>
 								Neu laden
 							</button>
@@ -59,7 +64,7 @@ export default function NewRecipe({ importEnabled }: { importEnabled: boolean })
 				</form>
 			)}
 			{/* key: neuer Import baut das Formular mit den neuen Werten neu auf */}
-			<RecipeForm key={imported?.version ?? 0} initial={imported?.recipe} />
+			<RecipeForm key={imported?.version ?? 0} recipeId={recipeId} initial={imported?.recipe ?? initial} />
 		</div>
 	)
 }

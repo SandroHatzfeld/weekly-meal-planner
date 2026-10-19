@@ -1,4 +1,5 @@
-import RecipeForm from "@/components/recipes/RecipeForm"
+import RecipeWithImport from "@/components/recipes/RecipeWithImport"
+import { llmConfig } from "@/lib/recipes/import/llm"
 import { prisma } from "@/lib/prisma"
 import { requireUser } from "@/lib/session"
 import { notFound } from "next/navigation"
@@ -13,7 +14,8 @@ export default async function EditRecipePage({ params }: PageProps<"/recipes/[id
 	return (
 		<div className="space-y-4">
 			<h2 className="text-xl font-semibold">Rezept bearbeiten</h2>
-			<RecipeForm
+			<RecipeWithImport
+				importEnabled={!!llmConfig()}
 				recipeId={recipe.id}
 				initial={{
 					name: recipe.name,
