@@ -73,6 +73,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 						plans={plans}
 						initialPlanId={planId}
 						initialDate={todayKey()}
+						today={todayKey()}
 					/>
 					{isOwner && (
 						<>

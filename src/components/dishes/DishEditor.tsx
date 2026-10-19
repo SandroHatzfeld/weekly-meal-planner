@@ -13,6 +13,7 @@ import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
 import ProductInput from "@/components/shop/ProductInput"
 import { useProductMemory } from "@/components/shop/useProductMemory"
+import { PAST_DAY_MESSAGE } from "@/lib/dates"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -27,6 +28,7 @@ type DishEditorProps = {
 	productMemory: ProductMemoryDTO[]
 	sourceRecipe: { id: string; name: string } | null
 	currentUserId: string
+	today: string
 }
 
 const toInput = (dish: DishDTO): DishInput => ({
@@ -65,7 +67,7 @@ const usePresence = (dishId: string) => {
 	return users
 }
 
-export default function DishEditor({ initialDish, initialItems, lists, defaultListId, tags, categories, productMemory, sourceRecipe, currentUserId }: DishEditorProps) {
+export default function DishEditor({ initialDish, initialItems, lists, defaultListId, tags, categories, productMemory, sourceRecipe, currentUserId, today }: DishEditorProps) {
 	const router = useRouter()
 	const [dish, setDish] = useState(initialDish)
 	const [form, setForm] = useState(toInput(initialDish))
@@ -170,7 +172,16 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 				<label htmlFor="name">Name</label>
 				<input id="name" value={form.name} onChange={(event) => update({ name: event.target.value })} required />
 				<label htmlFor="date">Datum</label>
-				<input id="date" type="date" value={form.date} onChange={(event) => update({ date: event.target.value })} required />
+				<input
+					id="date"
+					type="date"
+					value={form.date}
+					// ein Gericht an einem vergangenen Tag bleibt bearbeitbar, ein vergangenes Datum lässt sich aber nicht neu wählen
+					min={dish.date < today ? undefined : today}
+					onChange={(event) => update({ date: event.target.value })}
+					ref={(element) => element?.setCustomValidity(form.date < today && form.date !== dish.date ? PAST_DAY_MESSAGE : "")}
+					required
+				/>
 				<label htmlFor="description">Beschreibung</label>
 				<textarea id="description" rows={3} value={form.description} onChange={(event) => update({ description: event.target.value })} />
 				<ImageField value={form.imageUrl} onChange={(imageUrl) => update({ imageUrl })} />

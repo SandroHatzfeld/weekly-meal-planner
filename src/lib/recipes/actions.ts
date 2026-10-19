@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { auth } from "../auth/auth"
-import { parseDateKey } from "../dates"
+import { isPastDay, PAST_DAY_MESSAGE, parseDateKey } from "../dates"
 import { toDishDTO } from "../dto"
 import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
@@ -117,6 +117,7 @@ export const planRecipe = async (recipeId: string, target: { planId: string; dat
 	const { user } = await requireMember(target.planId)
 	const date = parseDateKey(target.date)
 	if (!date) return { error: "Bitte wähle einen Tag" }
+	if (isPastDay(target.date)) return { error: PAST_DAY_MESSAGE }
 
 	const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } })
 	if (!recipe || !(await canViewRecipe(user.id, recipe.userId))) return { error: "Rezept nicht gefunden" }

@@ -9,10 +9,22 @@ export const parseDateKey = (key: string) => {
 	return Number.isNaN(date.getTime()) ? null : date
 }
 
+// "Heute" gilt in der Zeitzone der App (APP_TIMEZONE, Standard Europe/Berlin), nicht in der des Servers – der läuft meist in UTC,
+// sodass nach Mitternacht noch der Vortag gelten würde.
 export const todayKey = () => {
-	const now = new Date()
-	return toDateKey(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())))
+	const timeZone = (typeof process !== "undefined" && process.env.APP_TIMEZONE) || "Europe/Berlin"
+	try {
+		return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())
+	} catch {
+		const now = new Date()
+		return toDateKey(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())))
+	}
 }
+
+// vergangene Tage lassen sich nicht mehr belegen (Schlüssel "YYYY-MM-DD" sind als Text vergleichbar)
+export const isPastDay = (key: string) => key < todayKey()
+
+export const PAST_DAY_MESSAGE = "Vergangene Tage können nicht mehr geplant werden"
 
 export const addDays = (key: string, days: number) => {
 	const date = parseDateKey(key)!

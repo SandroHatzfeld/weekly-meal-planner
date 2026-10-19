@@ -43,10 +43,12 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 	const dishesOn = (day: string) =>
 		dishes.filter((dish) => dish.date === day).sort((a, b) => a.name.localeCompare(b.name))
 
+	const isPast = (day: string) => day < today
+
 	const handleDrop = async (day: string) => {
 		const dish = dishes.find((candidate) => candidate.id === dragId)
 		setDragId(null)
-		if (!dish || dish.date === day) return
+		if (!dish || dish.date === day || isPast(day)) return
 		setDishes((current) => upsert(current, { ...dish, date: day }))
 		const updated = await moveDish(dish.id, day)
 		if (updated) setDishes((current) => upsert(current, updated))
@@ -73,6 +75,7 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 			plans={[{ id: planId, name: "", lists, defaultListId, tags, categories }]}
 			initialPlanId={planId}
 			initialDate={planningDay ?? today}
+			today={today}
 			onPlanned={(dish) => setDishes((current) => upsert(current, dish))}
 		/>
 	)
@@ -85,16 +88,17 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 					{days.map((day) => (
 						<li
 							key={day}
-							onDragOver={(event) => event.preventDefault()}
+							// auf vergangene Tage lässt sich nichts ziehen
+							onDragOver={(event) => !isPast(day) && event.preventDefault()}
 							onDrop={() => handleDrop(day)}
-							className={`card flex flex-col gap-2 sm:flex-row sm:items-center ${day === today ? "ring-2 ring-emerald-600" : ""}`}
+							className={`card flex flex-col gap-2 sm:flex-row sm:items-center ${day === today ? "ring-2 ring-emerald-600" : ""} ${isPast(day) ? "opacity-60" : ""}`}
 						>
 							<div className="font-semibold sm:w-44 sm:shrink-0">
 								{formatDay(day, { weekday: "long", day: "2-digit", month: "2-digit" })}
 							</div>
 							<div className="flex flex-1 flex-wrap items-center gap-2">
 								{dishChips(day)}
-								<PlanButton onClick={() => setPlanningDay(day)} />
+								{!isPast(day) && <PlanButton onClick={() => setPlanningDay(day)} />}
 							</div>
 						</li>
 					))}
@@ -118,9 +122,9 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 					<div
 						key={day}
 						onClick={() => setSelectedDay(day)}
-						onDragOver={(event) => event.preventDefault()}
+						onDragOver={(event) => !isPast(day) && event.preventDefault()}
 						onDrop={() => handleDrop(day)}
-						className={`card flex min-h-14 cursor-pointer flex-col gap-1 p-1 text-xs ${day === today ? "ring-2 ring-emerald-600" : ""} ${day === selectedDay ? "bg-emerald-50 dark:bg-emerald-950" : ""} sm:min-h-24 ${monthKey && !day.startsWith(monthKey) ? "opacity-40" : ""}`}
+						className={`card flex min-h-14 cursor-pointer flex-col gap-1 p-1 text-xs ${day === today ? "ring-2 ring-emerald-600" : ""} ${day === selectedDay ? "bg-emerald-50 dark:bg-emerald-950" : ""} sm:min-h-24 ${monthKey && !day.startsWith(monthKey) ? "opacity-40" : isPast(day) ? "opacity-60" : ""}`}
 					>
 						{/* Button für Tastaturbedienung, die ganze Zelle ist zusätzlich klickbar */}
 						<button
@@ -146,7 +150,7 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 			<section className="card space-y-3" aria-live="polite">
 				<div className="flex items-center justify-between gap-2">
 					<h3 className="font-semibold">{formatDay(selectedDay, { weekday: "long", day: "numeric", month: "long" })}</h3>
-					<PlanButton onClick={() => setPlanningDay(selectedDay)} />
+					{!isPast(selectedDay) && <PlanButton onClick={() => setPlanningDay(selectedDay)} />}
 				</div>
 				{selectedDishes.length > 0 ? (
 					<ul className="divide-y divide-black/5 dark:divide-white/10">
@@ -160,7 +164,7 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 						))}
 					</ul>
 				) : (
-					<p className="text-sm opacity-60">Für diesen Tag ist noch nichts geplant.</p>
+					<p className="text-sm opacity-60">{isPast(selectedDay) ? "Für diesen vergangenen Tag war nichts geplant." : "Für diesen Tag ist noch nichts geplant."}</p>
 				)}
 			</section>
 			{planDialog}

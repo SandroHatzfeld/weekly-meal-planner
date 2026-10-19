@@ -3,6 +3,7 @@
 import IngredientPicker from "@/components/recipes/IngredientPicker"
 import Modal from "@/components/ui/Modal"
 import { useCombobox } from "@/components/ui/useCombobox"
+import { PAST_DAY_MESSAGE } from "@/lib/dates"
 import { createDish } from "@/lib/dishes/actions"
 import type { DishDTO } from "@/lib/dto"
 import { planRecipe, searchRecipes, type RecipeSuggestion } from "@/lib/recipes/actions"
@@ -26,6 +27,8 @@ type PlanDishDialogProps = {
 	plans: PlanOption[]
 	initialPlanId: string
 	initialDate: string
+	// heute: frühestes wählbares Datum, vergangene Tage lassen sich nicht planen
+	today: string
 	initialRecipe?: RecipeSuggestion // Rezeptseite: Rezept ist schon gewählt
 	onPlanned: (dish: DishDTO) => void
 }
@@ -41,7 +44,7 @@ export default function PlanDishDialog({ open, onClose, ...props }: PlanDishDial
 	)
 }
 
-function PlanDishForm({ plans, initialPlanId, initialDate, initialRecipe, onPlanned, onClose }: Omit<PlanDishDialogProps, "open">) {
+function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe, onPlanned, onClose }: Omit<PlanDishDialogProps, "open">) {
 	const [planId, setPlanId] = useState(initialPlanId)
 	const plan = plans.find((candidate) => candidate.id === planId) ?? plans[0]
 	const [date, setDate] = useState(initialDate)
@@ -77,6 +80,7 @@ function PlanDishForm({ plans, initialPlanId, initialDate, initialRecipe, onPlan
 	const visible = combobox.visible
 
 	const submit = async () => {
+		if (date < today) return setError(PAST_DAY_MESSAGE)
 		setSaving(true)
 		setError(null)
 		const dish = recipe
@@ -153,7 +157,7 @@ function PlanDishForm({ plans, initialPlanId, initialDate, initialRecipe, onPlan
 			</div>
 
 			<label htmlFor="plan-dish-date">Datum</label>
-			<input id="plan-dish-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
+			<input id="plan-dish-date" type="date" value={date} min={today} onChange={(event) => setDate(event.target.value)} required />
 
 			{recipe && (
 				<IngredientPicker

@@ -1,6 +1,6 @@
 "use server"
 
-import { parseDateKey } from "../dates"
+import { isPastDay, PAST_DAY_MESSAGE, parseDateKey, toDateKey } from "../dates"
 import { toDishDTO, type DishDTO } from "../dto"
 import { deleteImageIfUnused, resolveImage } from "../images"
 import { prisma } from "../prisma"
@@ -17,7 +17,7 @@ const memberOfDish = async (dishId: string) => {
 export const createDish = async (planId: string, name: string, dateKey: string) => {
 	await requireMember(planId)
 	const date = parseDateKey(dateKey)
-	if (!name.trim() || !date) return null
+	if (!name.trim() || !date || isPastDay(dateKey)) return null
 	const dish = toDishDTO(await prisma.dish.create({ data: { planId, name: name.trim(), date } }))
 	emitToPlan(planId, "dish-created", dish)
 	return dish
@@ -38,6 +38,8 @@ export const updateDish = async (dishId: string, input: DishInput, loadedUpdated
 	const existing = await memberOfDish(dishId)
 	const date = parseDateKey(input.date)
 	if (!input.name.trim() || !date) return { ok: false, error: "Name und Datum sind Pflicht" }
+	// Gerichte an vergangenen Tagen bleiben bearbeitbar, aber nicht auf einen vergangenen Tag verschiebbar
+	if (input.date !== toDateKey(existing.date) && isPastDay(input.date)) return { ok: false, error: PAST_DAY_MESSAGE }
 	const image = await resolveImage(input.imageUrl)
 	if ("error" in image) return { ok: false, error: image.error }
 
@@ -67,7 +69,7 @@ export const updateDish = async (dishId: string, input: DishInput, loadedUpdated
 export const moveDish = async (dishId: string, dateKey: string) => {
 	const existing = await memberOfDish(dishId)
 	const date = parseDateKey(dateKey)
-	if (!date) return null
+	if (!date || isPastDay(dateKey)) return null
 	const dish = toDishDTO(await prisma.dish.update({ where: { id: dishId }, data: { date } }))
 	emitToPlan(existing.planId, "dish-updated", dish)
 	return dish

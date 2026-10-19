@@ -11,10 +11,11 @@ type PlanRecipeButtonProps = {
 	plans: PlanOption[]
 	initialPlanId: string
 	initialDate: string
+	today: string
 }
 
 // Icon-Button neben dem Rezeptnamen: öffnet dasselbe Planen-Popup wie Woche/Monat, Rezept ist vorausgewählt
-export default function PlanRecipeButton({ recipe, plans, initialPlanId, initialDate }: PlanRecipeButtonProps) {
+export default function PlanRecipeButton({ recipe, plans, initialPlanId, initialDate, today }: PlanRecipeButtonProps) {
 	const router = useRouter()
 	const [open, setOpen] = useState(false)
 
@@ -29,6 +30,7 @@ export default function PlanRecipeButton({ recipe, plans, initialPlanId, initial
 				plans={plans}
 				initialPlanId={initialPlanId}
 				initialDate={initialDate}
+				today={today}
 				initialRecipe={recipe}
 				// geplant -> Rezept schließen, zurück zur Übersicht
 				onPlanned={() => router.push("/recipes")}
