@@ -1,5 +1,6 @@
 "use client"
 
+import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import { createCategory, deleteCategory, renameCategory } from "@/lib/grocery/actions"
 import type { CategoryDTO } from "@/lib/grocery/categories"
 import { useRouter } from "next/navigation"
@@ -35,7 +36,8 @@ export default function CategoryManager({ planId, categories }: { planId: string
 						<CategoryName key={category.name} category={category} onRename={(name) => run(() => renameCategory(category.id, name))} />
 						<button
 							type="button"
-							className="btn-link flex size-8 shrink-0 items-center justify-center text-red-600"
+							className={`${iconButtonClass} text-red-600`}
+							title="Löschen"
 							aria-label={`${category.name} löschen`}
 							disabled={pending}
 							onClick={() => {
@@ -46,7 +48,7 @@ export default function CategoryManager({ planId, categories }: { planId: string
 									)
 							}}
 						>
-							✕
+							<Icon name="trash" />
 						</button>
 					</li>
 				))}

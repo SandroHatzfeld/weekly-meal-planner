@@ -1,6 +1,6 @@
 "use client"
 
-import Icon from "@/components/ui/Icon"
+import Icon, { handleButtonClass, iconButtonClass } from "@/components/ui/Icon"
 import { useSortable } from "@/components/ui/useSortable"
 import { createGroceryList, deleteGroceryList, renameGroceryList, reorderGroceryLists, setDefaultGroceryList } from "@/lib/grocery/actions"
 import type { CategoryDTO, CategoryOrder } from "@/lib/grocery/categories"
@@ -49,10 +49,10 @@ function ListRow({
 					type="button"
 					aria-label={`${list.name} verschieben`}
 					title="Ziehen oder Pfeiltasten zum Sortieren"
-					className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center opacity-60 select-none active:cursor-grabbing"
+					className={`${iconButtonClass} ${handleButtonClass}`}
 					{...sortable.handleProps(list.id)}
 				>
-					⋮⋮
+					<Icon name="grip" />
 				</button>
 				<input className="input min-w-0 flex-1" value={name} aria-label="Name der Liste" onChange={(event) => setName(event.target.value)} />
 				{dirty && (
@@ -68,15 +68,16 @@ function ListRow({
 					title={isDefault ? "Standardliste beim Planen" : "Als Standardliste beim Planen verwenden"}
 					disabled={pending || isDefault}
 					onClick={() => run(() => setDefaultGroceryList(planId, list.id))}
-					className={`flex size-9 shrink-0 items-center justify-center ${isDefault ? "text-amber-500" : "opacity-60 hover:opacity-100"}`}
+					className={`${iconButtonClass} ${isDefault ? "text-amber-500 disabled:opacity-100" : ""}`}
 				>
 					<Icon name="star" filled={isDefault} />
 				</button>
 				{canDelete && (
 					<button
 						type="button"
-						className="btn-link flex size-9 shrink-0 items-center justify-center text-red-600"
+						className={`${iconButtonClass} text-red-600`}
 						aria-label={`${list.name} löschen`}
+						title="Löschen"
 						disabled={pending}
 						onClick={() => {
 							if (!confirm(`Liste "${list.name}" mit allen Einträgen löschen?`)) return
@@ -86,7 +87,7 @@ function ListRow({
 							})
 						}}
 					>
-						✕
+						<Icon name="trash" />
 					</button>
 				)}
 			</div>

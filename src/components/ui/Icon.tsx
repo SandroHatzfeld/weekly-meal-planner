@@ -8,6 +8,7 @@ const ICONS = {
 		"M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143",
 		"m2 2 20 20",
 	],
+	grip: ["M8 5a1 1 0 1 0 2 0a1 1 0 1 0-2 0", "M8 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0", "M8 19a1 1 0 1 0 2 0a1 1 0 1 0-2 0", "M14 5a1 1 0 1 0 2 0a1 1 0 1 0-2 0", "M14 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0", "M14 19a1 1 0 1 0 2 0a1 1 0 1 0-2 0"],
 	pencil: ["M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z", "m15 5 4 4"],
 	star: [
 		"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z",
@@ -39,5 +40,8 @@ export default function Icon({ name, className = "size-5", filled = false }: { n
 }
 
 // quadratischer Icon-Button mit zugänglichem Namen
+// Griff zum Ziehen: wie ein Icon-Button, aber ohne Scrollen bei Touch
+export const handleButtonClass = "touch-none cursor-grab select-none active:cursor-grabbing"
+
 export const iconButtonClass =
 	"flex size-10 shrink-0 items-center justify-center rounded-full border border-(--border) bg-(--surface) text-(--foreground) hover:no-underline disabled:opacity-50"

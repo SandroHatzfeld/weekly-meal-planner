@@ -1,5 +1,6 @@
 "use client"
 
+import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import { createTag, deleteTag, updateTag } from "@/lib/tags/actions"
 import { TAG_ICONS, type TagDTO, type TagIconKey } from "@/lib/tags/icons"
 import { useState, useTransition } from "react"
@@ -63,14 +64,15 @@ function TagRow({ tag }: { tag: TagDTO }) {
 				)}
 				<button
 					type="button"
-					className="btn-link flex size-9 shrink-0 items-center justify-center text-red-600"
+					className={`${iconButtonClass} text-red-600`}
+					title="Löschen"
 					aria-label={`${tag.name} löschen`}
 					disabled={pending}
 					onClick={() => {
 						if (confirm(`Tag "${tag.name}" löschen? Er wird auch von allen Einträgen entfernt.`)) startTransition(() => deleteTag(tag.id))
 					}}
 				>
-					✕
+					<Icon name="trash" />
 				</button>
 			</div>
 			{picking && <IconPicker value={icon} onChange={setIcon} />}

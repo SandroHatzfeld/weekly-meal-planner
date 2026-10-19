@@ -1,5 +1,6 @@
 "use client"
 
+import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import {
 	invitePerson,
 	leavePlan,
@@ -35,13 +36,15 @@ export function RemoveMemberButton({ planId, userId, name }: { planId: string; u
 	return (
 		<button
 			type="button"
-			className="btn-link text-sm text-red-600"
+			className={`${iconButtonClass} text-red-600`}
+			aria-label={`${name} aus dem Plan entfernen`}
+			title="Aus dem Plan entfernen"
 			disabled={pending}
 			onClick={() => {
 				if (confirm(`${name} aus dem Plan entfernen?`)) startTransition(() => removeMember(planId, userId))
 			}}
 		>
-			Entfernen
+			<Icon name="trash" />
 		</button>
 	)
 }
@@ -166,12 +169,14 @@ export function ApiTokens({ tokens }: { tokens: TokenRow[] }) {
 						</span>
 						<button
 							type="button"
-							className="btn-link text-xs text-red-600"
+							className={`${iconButtonClass} text-red-600`}
+							aria-label={`Token ${token.name} widerrufen`}
+							title="Widerrufen"
 							onClick={() => {
 								if (confirm(`Token "${token.name}" widerrufen?`)) startTransition(() => deleteApiToken(token.id))
 							}}
 						>
-							Widerrufen
+							<Icon name="trash" />
 						</button>
 					</li>
 				))}

@@ -1,5 +1,6 @@
 "use client"
 
+import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import { forgetProduct, setProductCategories } from "@/lib/grocery/actions"
 import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import { foldForMatch } from "@/lib/grocery/suggest"
@@ -59,13 +60,13 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 							<span className="min-w-0 flex-1 truncate">{product.displayName}</span>
 							<button
 								type="button"
-								className="btn-link flex size-8 shrink-0 items-center justify-center text-red-600"
+								className={`${iconButtonClass} text-red-600`}
 								aria-label={`${product.displayName} vergessen`}
 								title="Vergessen"
 								disabled={pending}
 								onClick={() => run(() => forgetProduct(planId, product.displayName))}
 							>
-								✕
+								<Icon name="trash" />
 							</button>
 						</div>
 						{/* Kategorien in Reihenfolge: die erste ist die Hauptkategorie, die weiteren springen ein,
