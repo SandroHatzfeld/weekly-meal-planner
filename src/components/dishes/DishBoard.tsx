@@ -118,18 +118,28 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 						{weekday}
 					</div>
 				))}
-				{days.map((day) => (
+				{days.map((day) => {
+					// erstes Bild der Gerichte dieses Tages als Kachel-Hintergrund
+					const cover = dishesOn(day).find((dish) => dish.imageUrl)?.imageUrl
+					return (
 					<div
 						key={day}
 						onClick={() => setSelectedDay(day)}
 						onDragOver={(event) => !isPast(day) && event.preventDefault()}
 						onDrop={() => handleDrop(day)}
-						className={`card flex min-h-14 cursor-pointer flex-col gap-1 p-1 text-xs ${day === today ? "ring-2 ring-emerald-600" : ""} ${day === selectedDay ? "bg-emerald-50 dark:bg-emerald-950" : ""} sm:min-h-24 ${monthKey && !day.startsWith(monthKey) ? "opacity-40" : isPast(day) ? "opacity-60" : ""}`}
+						className={`card relative isolate flex min-h-14 cursor-pointer flex-col gap-1 overflow-hidden p-1 text-xs ${day === today ? "ring-2 ring-emerald-600" : ""} ${day === selectedDay ? "bg-emerald-50 dark:bg-emerald-950" : ""} sm:min-h-24 ${monthKey && !day.startsWith(monthKey) ? "opacity-40" : isPast(day) ? "opacity-60" : ""}`}
 					>
+						{cover && (
+							<>
+								{/* eslint-disable-next-line @next/next/no-img-element */}
+								<img src={cover} alt="" aria-hidden="true" className="absolute inset-0 -z-10 size-full object-cover" />
+								<span className="absolute inset-0 -z-10 bg-black/50" aria-hidden="true" />
+							</>
+						)}
 						{/* Button für Tastaturbedienung, die ganze Zelle ist zusätzlich klickbar */}
 						<button
 							type="button"
-							className="self-start font-semibold"
+							className={`self-start font-semibold ${cover ? "text-white" : ""}`}
 							aria-pressed={day === selectedDay}
 							aria-label={formatDay(day, { weekday: "long", day: "numeric", month: "long" })}
 						>
@@ -137,13 +147,14 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 						</button>
 						<div className="hidden flex-col gap-1 sm:flex">{dishChips(day)}</div>
 						{/* mobil ist für Namen kein Platz: ein Punkt pro Gericht, Details in der Liste darunter */}
-						<div className="flex flex-wrap gap-0.5 sm:hidden" aria-hidden="true">
+						<div className="flex flex-1 flex-wrap content-center items-center justify-center gap-1 sm:hidden" aria-hidden="true">
 							{dishesOn(day).map((dish) => (
-								<span key={dish.id} className="size-1.5 rounded-full bg-emerald-600" />
+								<span key={dish.id} className={`size-2 rounded-full ${cover ? "bg-white" : "bg-emerald-600"}`} />
 							))}
 						</div>
 					</div>
-				))}
+					)
+				})}
 			</div>
 
 			{/* Gerichte des ausgewählten Tages */}
