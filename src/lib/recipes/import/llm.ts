@@ -14,7 +14,7 @@ export type ImportedRecipe = {
 }
 
 // bei jeder inhaltlichen Änderung am Prompt erhöhen: ältere Ergebnisse im Zwischenspeicher werden dann neu aufbereitet
-export const PROMPT_VERSION = 2
+export const PROMPT_VERSION = 3
 
 export const llmConfig = () => {
 	const baseUrl = process.env.LLM_BASE_URL?.trim().replace(/\/+$/, "")
@@ -30,9 +30,10 @@ Regeln:
 - "name" ist der Rezepttitel ohne Seitenname, Zusätze wie "einfach & lecker" oder Autor.
 - "description": höchstens zwei kurze Sätze, sachlich, ohne Werbung und Lebensgeschichten. Leer lassen, wenn nichts Passendes da ist.
 - "ingredients": pro Zutat ein Eintrag mit "name" und "details".
-  - "name" ist ausschließlich die schlichte Grundbezeichnung der Zutat, wie sie in der Einkaufsliste stehen würde: ein einzelnes Wort bzw. der übliche Produktname ("Paprika", "Zwiebel", "Kokosmilch", "Hähnchenbrustfilet"). Nichts anderes gehört in den Namen: keine Menge, keine Einheit, keine Farbe, keine Sorte oder Eigenschaft ("rot", "frisch", "groß", "reif", "mild", "tiefgekühlt", "Bio"), kein Zustand, keine Zubereitung ("gehackt", "in Streifen", "gewürfelt"), keine Alternative und keine Anmerkung in Klammern.
-  - "details" enthält alles andere, kurz und mit Komma getrennt, Reihenfolge: Menge und Einheit, dann Eigenschaften, dann Zubereitung. Einheiten abkürzen (g, kg, ml, l, EL, TL), Mengen nicht umrechnen. Gibt es nichts weiter zu sagen, bleibt "details" leer.
-  - Beispiele: "2 rote Paprika, in Streifen geschnitten" → {"name": "Paprika", "details": "2, rot, in Streifen"}; "400 ml Kokosmilch" → {"name": "Kokosmilch", "details": "400 ml"}; "1 große Zwiebel, fein gehackt" → {"name": "Zwiebel", "details": "1, groß, fein gehackt"}; "frischer Koriander nach Belieben" → {"name": "Koriander", "details": "frisch, nach Belieben"}; "Salz" → {"name": "Salz", "details": ""}; "250 g Mie-Nudeln" → {"name": "Mie-Nudeln", "details": "250 g"}.
+  - "name" ist ausschließlich die schlichte Grundbezeichnung der Zutat, wie sie in der Einkaufsliste stehen würde: ein einzelnes Wort bzw. der übliche Produktname ("Paprika", "Zwiebel", "Kokosmilch", "Hähnchenbrustfilet"). Nichts anderes gehört in den Namen: keine Menge, keine Einheit, keine Eigenschaft ("rot", "frisch", "groß", "mild", "Bio") und keine Zubereitung.
+  - "details" enthält Menge und Einheit ("400 ml", "2 EL", "1 Prise", "3"), danach nur Angaben, die beim Einkaufen helfen: Farbe, Sorte, Größe ("rot", "groß", "tiefgekühlt", "mehligkochend"). Einheiten abkürzen (g, kg, ml, l, EL, TL), Mengen nicht umrechnen. Gibt es nichts davon, bleibt "details" leer.
+  - Zubereitungshinweise gehören nirgends hin und werden weggelassen: "gehackt", "fein gehackt", "gewürfelt", "in Streifen", "in Scheiben", "geschält", "gewaschen", "gerieben", "zerdrückt", "weich" usw. Ebenso Alternativen, Tipps und Anmerkungen in Klammern. Auch "nach Belieben", "zum Servieren" und "optional" entfallen.
+  - Beispiele: "2 rote Paprika, in Streifen geschnitten" → {"name": "Paprika", "details": "2, rot"}; "400 ml Kokosmilch" → {"name": "Kokosmilch", "details": "400 ml"}; "1 große Zwiebel, fein gehackt" → {"name": "Zwiebel", "details": "1, groß"}; "3 Knoblauchzehen, gepresst" → {"name": "Knoblauch", "details": "3 Zehen"}; "frischer Koriander nach Belieben" → {"name": "Koriander", "details": "frisch"}; "250 g Mie-Nudeln" → {"name": "Mie-Nudeln", "details": "250 g"}; "200 g Karotten, gewürfelt" → {"name": "Karotte", "details": "200 g"}; "Salz" → {"name": "Salz", "details": ""}.
   - Überschriften von Zutatengruppen sind keine Zutaten.
 - "steps": kurze Einzelschritte in der richtigen Reihenfolge, ohne Nummerierung und ohne Überschriften.
 - "imageUrl": die Bild-URL aus den Daten, sonst leer.
