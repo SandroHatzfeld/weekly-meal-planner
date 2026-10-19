@@ -13,6 +13,9 @@ export type ImportedRecipe = {
 	ingredients: { name: string; details: string }[]
 }
 
+// bei jeder inhaltlichen Änderung am Prompt erhöhen: ältere Ergebnisse im Zwischenspeicher werden dann neu aufbereitet
+export const PROMPT_VERSION = 2
+
 export const llmConfig = () => {
 	const baseUrl = process.env.LLM_BASE_URL?.trim().replace(/\/+$/, "")
 	const model = process.env.LLM_MODEL?.trim()
@@ -26,7 +29,11 @@ Regeln:
 - Alle Texte auf Deutsch (übersetze, falls nötig). Zutatennamen im Singular bzw. in der üblichen Einkaufsform ("Zwiebel", "Kokosmilch").
 - "name" ist der Rezepttitel ohne Seitenname, Zusätze wie "einfach & lecker" oder Autor.
 - "description": höchstens zwei kurze Sätze, sachlich, ohne Werbung und Lebensgeschichten. Leer lassen, wenn nichts Passendes da ist.
-- "ingredients": pro Zutat ein Eintrag. "name" ist nur die Zutat ohne Menge und ohne Zubereitungshinweis ("Zwiebel" statt "1 Zwiebel, fein gehackt"). "details" enthält Menge und Einheit knapp und einheitlich ("400 ml", "2 EL", "1 Prise", "3"), Zubereitungshinweise gehören dazu, wenn sie wichtig sind ("fein gehackt"). Einheiten abkürzen (g, kg, ml, l, EL, TL). Keine Umrechnung der Mengen. Überschriften von Zutatengruppen sind keine Zutaten.
+- "ingredients": pro Zutat ein Eintrag mit "name" und "details".
+  - "name" ist ausschließlich die schlichte Grundbezeichnung der Zutat, wie sie in der Einkaufsliste stehen würde: ein einzelnes Wort bzw. der übliche Produktname ("Paprika", "Zwiebel", "Kokosmilch", "Hähnchenbrustfilet"). Nichts anderes gehört in den Namen: keine Menge, keine Einheit, keine Farbe, keine Sorte oder Eigenschaft ("rot", "frisch", "groß", "reif", "mild", "tiefgekühlt", "Bio"), kein Zustand, keine Zubereitung ("gehackt", "in Streifen", "gewürfelt"), keine Alternative und keine Anmerkung in Klammern.
+  - "details" enthält alles andere, kurz und mit Komma getrennt, Reihenfolge: Menge und Einheit, dann Eigenschaften, dann Zubereitung. Einheiten abkürzen (g, kg, ml, l, EL, TL), Mengen nicht umrechnen. Gibt es nichts weiter zu sagen, bleibt "details" leer.
+  - Beispiele: "2 rote Paprika, in Streifen geschnitten" → {"name": "Paprika", "details": "2, rot, in Streifen"}; "400 ml Kokosmilch" → {"name": "Kokosmilch", "details": "400 ml"}; "1 große Zwiebel, fein gehackt" → {"name": "Zwiebel", "details": "1, groß, fein gehackt"}; "frischer Koriander nach Belieben" → {"name": "Koriander", "details": "frisch, nach Belieben"}; "Salz" → {"name": "Salz", "details": ""}; "250 g Mie-Nudeln" → {"name": "Mie-Nudeln", "details": "250 g"}.
+  - Überschriften von Zutatengruppen sind keine Zutaten.
 - "steps": kurze Einzelschritte in der richtigen Reihenfolge, ohne Nummerierung und ohne Überschriften.
 - "imageUrl": die Bild-URL aus den Daten, sonst leer.
 - Erfinde nichts. Was in den Daten fehlt, bleibt leer.

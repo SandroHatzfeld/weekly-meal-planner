@@ -2,7 +2,7 @@ import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../prisma"
 import { FetchError, safeFetch } from "../../safeFetch"
 import { extractPage, normalizeUrl, type ExtractedPage } from "./extract"
-import { LlmError, structureRecipe, validateRecipe, type ImportedRecipe } from "./llm"
+import { LlmError, PROMPT_VERSION, structureRecipe, validateRecipe, type ImportedRecipe } from "./llm"
 
 const MAX_PAGE_BYTES = 2 * 1024 * 1024
 const CACHE_DAYS = 30
@@ -32,6 +32,10 @@ const loadPage = async (url: string): Promise<ExtractedPage> => {
 	return extractPage(body.toString("utf8"))
 }
 
+// Ergebnisse gelten nur für die Prompt-Version, mit der sie entstanden sind (steht hinter dem Modellnamen)
+const promptTag = `#p${PROMPT_VERSION}`
+const isCurrent = (entry: { result: unknown; model: string | null }) => !!entry.result && !!entry.model?.endsWith(promptTag)
+
 const toUrl = (rawUrl: string) => {
 	try {
 		return normalizeUrl(rawUrl)
@@ -50,7 +54,7 @@ export const prepareImport = async (userId: string, rawUrl: string, refresh = fa
 	await prisma.recipeImportCache.deleteMany({ where: { fetchedAt: { lt: new Date(Date.now() - CACHE_DAYS * 86_400_000) } } })
 
 	const cached = refresh ? null : await prisma.recipeImportCache.findUnique({ where: { url } })
-	if (cached?.result) {
+	if (cached && isCurrent(cached)) {
 		try {
 			validateRecipe(cached.result)
 			return { ready: true }
@@ -79,7 +83,7 @@ export const finishImport = async (userId: string, rawUrl: string): Promise<{ re
 	const url = toUrl(rawUrl)
 	const entry = await prisma.recipeImportCache.findUnique({ where: { url } })
 	if (!entry) throw new ImportError("Die Seite wurde noch nicht geladen – bitte den Import erneut starten")
-	if (entry.result) {
+	if (isCurrent(entry)) {
 		try {
 			return { recipe: validateRecipe(entry.result), sourceUrl: url, cached: true }
 		} catch {
@@ -90,7 +94,7 @@ export const finishImport = async (userId: string, rawUrl: string): Promise<{ re
 	checkRateLimit("llm", userId, LLM_LIMIT)
 	try {
 		const { recipe, model } = await structureRecipe(entry.extracted as unknown as ExtractedPage)
-		await prisma.recipeImportCache.update({ where: { url }, data: { result: recipe as unknown as Prisma.InputJsonValue, model } })
+		await prisma.recipeImportCache.update({ where: { url }, data: { result: recipe as unknown as Prisma.InputJsonValue, model: model + promptTag } })
 		return { recipe, sourceUrl: url, cached: false }
 	} catch (error) {
 		throw asImportError(error)
