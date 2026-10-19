@@ -107,11 +107,23 @@ model Recipe {
   description String?
   imageUrl    String?
   steps       String[]
+  sourceUrl   String? // Link, von dem das Rezept importiert wurde
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
   user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   ingredients RecipeIngredient[]
   dishes      Dish[] // nur Traceability, kein Live-Sync
+}
+
+// Zwischenspeicher für importierte Webseiten: Rohdaten der Seite und das aufbereitete Rezept, damit derselbe Link
+// nicht erneut geladen und vom LLM verarbeitet werden muss
+model RecipeImportCache {
+  id        String   @id @default(cuid())
+  url       String   @unique // normalisiert, siehe normalizeUrl()
+  fetchedAt DateTime @default(now())
+  extracted Json // Rohdaten (JSON-LD-Rezept oder Seitentext)
+  result    Json? // aufbereitetes Rezept (RecipeInput)
+  model     String? // LLM, das result erzeugt hat
 }
 
 model RecipeIngredient {

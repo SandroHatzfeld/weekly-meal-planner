@@ -17,6 +17,20 @@ npm run dev                 # startet server.js (Next.js + Socket.io) auf :3000
 
 Ohne `RESEND_API_KEY` werden E-Mails (Verifizierung, Einladungen) nur in die Konsole geloggt – der Link kann von dort kopiert werden.
 
+### Rezept-Import per Link
+
+Unter *Rezepte → Neu* lässt sich ein Rezept von einer Webseite importieren: Der Server lädt die Seite, speichert die Rohdaten 30 Tage zwischen und lässt ein
+Sprachmodell Titel, Zutaten (Details + Name) und Schritte in das einheitliche Format bringen. Das Ergebnis erscheint zur Kontrolle im normalen Rezept-Formular.
+Dafür braucht es ein Sprachmodell mit OpenAI-kompatibler Schnittstelle in der `.env`:
+
+```
+LLM_BASE_URL=https://api.openai.com/v1   # oder z.B. http://ollama:11434/v1
+LLM_MODEL=gpt-4o-mini
+LLM_API_KEY=…                            # bei lokalen Modellen oft nicht nötig
+```
+
+Ohne `LLM_BASE_URL` und `LLM_MODEL` wird der Import-Bereich ausgeblendet. Pro Nutzer sind 20 Importe pro Stunde möglich; Seiten im lokalen Netz werden nicht geladen.
+
 ## Architektur
 
 - `server.js` – Custom Server: Next.js und Socket.io teilen sich den HTTP-Server. Die Socket.io-Instanz liegt auf `globalThis.__wmpIO` und wird über `src/lib/realtime.ts` aus Server Actions/Route Handlern angesprochen.

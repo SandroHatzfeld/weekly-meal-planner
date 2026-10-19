@@ -99,6 +99,14 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 					))}
 				</ul>
 			</section>
+			{recipe.sourceUrl && (
+				<p className="text-sm opacity-70">
+					Quelle:{" "}
+					<a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="underline">
+						{new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")}
+					</a>
+				</p>
+			)}
 			{recipe.steps.length > 0 && (
 				<section>
 					<h3 className="font-semibold">Zubereitung</h3>

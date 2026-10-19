@@ -11,6 +11,8 @@ import { groceryItemInclude, toGroceryItemDTO } from "../dto"
 import { deleteImageIfUnused, resolveImage } from "../images"
 import { recallCategory, rememberProduct } from "../grocery/categories"
 import { canViewRecipe, coMemberIds } from "./access"
+import { ImportError, importRecipe } from "./import/service"
+import { llmConfig } from "./import/llm"
 import type { PlanIngredient, PlannedItem } from "./planning"
 
 export type IngredientInput = { name: string; details: string }
@@ -20,6 +22,7 @@ export type RecipeInput = {
 	imageUrl: string
 	steps: string[]
 	ingredients: IngredientInput[]
+	sourceUrl?: string
 }
 
 const requireSessionUser = async () => {
@@ -32,10 +35,24 @@ const normalize = (input: RecipeInput) => ({
 	name: input.name.trim(),
 	description: input.description.trim() || null,
 	steps: input.steps.map((step) => step.trim()).filter(Boolean),
+	sourceUrl: /^https?:\/\//i.test(input.sourceUrl ?? "") ? input.sourceUrl!.slice(0, 2000) : null,
 	ingredients: input.ingredients
 		.filter((ingredient) => ingredient.name.trim())
 		.map((ingredient) => ({ name: ingredient.name.trim(), details: ingredient.details.trim() || null })),
 })
+
+// Rezept von einem Link laden und aufbereiten; liefert nur die Vorbelegung für das Formular, gespeichert wird erst dort
+export const importRecipeFromUrl = async (url: string, refresh = false): Promise<{ recipe: RecipeInput; cached: boolean } | { error: string }> => {
+	const user = await requireSessionUser()
+	if (!llmConfig()) return { error: "Der Import ist nicht eingerichtet (LLM_BASE_URL und LLM_MODEL in der .env)" }
+	try {
+		const { recipe, sourceUrl, cached } = await importRecipe(user.id, url, refresh)
+		return { recipe: { ...recipe, sourceUrl }, cached }
+	} catch (error) {
+		if (error instanceof ImportError) return { error: error.message }
+		throw error
+	}
+}
 
 export const createRecipe = async (input: RecipeInput) => {
 	const user = await requireSessionUser()

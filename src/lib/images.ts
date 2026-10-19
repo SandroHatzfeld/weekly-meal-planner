@@ -1,9 +1,8 @@
 import { randomBytes } from "crypto"
-import { lookup } from "dns/promises"
 import { mkdir, readFile, unlink, writeFile } from "fs/promises"
-import { BlockList, isIP } from "net"
 import path from "path"
 import { prisma } from "./prisma"
+import { FetchError, safeFetch } from "./safeFetch"
 
 // Bilder liegen lokal auf dem Server (Docker: eigenes Volume) und werden über /api/images/<name> ausgeliefert.
 // public/ geht nicht: Next.js liefert dort nur Dateien aus, die beim Build schon existierten.
@@ -59,95 +58,14 @@ export const readImage = async (name: string) => {
 
 // --- Bilder von fremden URLs herunterladen ---
 
-// Schutz gegen SSRF: keine Requests ins interne Netz (Docker-Netz, Router, Loopback, Cloud-Metadaten)
-const blockedRanges = new BlockList()
-for (const [network, prefix] of [
-	["0.0.0.0", 8],
-	["10.0.0.0", 8],
-	["100.64.0.0", 10],
-	["127.0.0.0", 8],
-	["169.254.0.0", 16],
-	["172.16.0.0", 12],
-	["192.168.0.0", 16],
-	["224.0.0.0", 3],
-] as const) {
-	blockedRanges.addSubnet(network, prefix, "ipv4")
-}
-for (const [network, prefix] of [
-	["::", 128],
-	["::1", 128],
-	["fc00::", 7],
-	["fe80::", 10],
-	["ff00::", 8],
-] as const) {
-	blockedRanges.addSubnet(network, prefix, "ipv6")
-}
-
-const isPublicAddress = (address: string) => {
-	const family = isIP(address)
-	if (family === 0) return false
-	// IPv4-mapped IPv6 (::ffff:10.0.0.1) wie IPv4 behandeln
-	const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address)
-	if (mapped) return !blockedRanges.check(mapped[1], "ipv4")
-	return !blockedRanges.check(address, family === 4 ? "ipv4" : "ipv6")
-}
-
-const assertPublicUrl = async (url: URL) => {
-	if (url.protocol !== "http:" && url.protocol !== "https:") throw new ImageError("Nur http- und https-Links sind erlaubt")
-	const hostname = url.hostname.replace(/^\[|\]$/g, "")
-	const addresses = isIP(hostname) ? [{ address: hostname }] : await lookup(hostname, { all: true }).catch(() => [])
-	if (addresses.length === 0) throw new ImageError("Die Adresse des Bildes konnte nicht aufgelöst werden")
-	if (!addresses.every(({ address }) => isPublicAddress(address))) {
-		throw new ImageError("Bilder aus dem lokalen Netzwerk können nicht geladen werden")
-	}
-}
-
-const readLimited = async (response: Response) => {
-	const reader = response.body?.getReader()
-	if (!reader) throw new ImageError("Leere Antwort")
-	const chunks: Uint8Array[] = []
-	let size = 0
-	for (;;) {
-		const { done, value } = await reader.read()
-		if (done) break
-		size += value.length
-		if (size > MAX_IMAGE_BYTES) {
-			await reader.cancel()
-			throw new ImageError("Das Bild ist größer als 10 MB")
-		}
-		chunks.push(value)
-	}
-	return Buffer.concat(chunks)
-}
-
 export const downloadImage = async (rawUrl: string) => {
-	let url: URL
 	try {
-		url = new URL(rawUrl)
-	} catch {
-		throw new ImageError("Ungültige Bild-URL")
+		const { body } = await safeFetch(rawUrl, { accept: "image/*", maxBytes: MAX_IMAGE_BYTES, what: "Bild" })
+		return saveImage(body)
+	} catch (error) {
+		if (error instanceof FetchError) throw new ImageError(error.message)
+		throw error
 	}
-
-	// Weiterleitungen manuell folgen, damit jedes Ziel geprüft wird
-	for (let redirects = 0; redirects <= 3; redirects++) {
-		await assertPublicUrl(url)
-		const response = await fetch(url, {
-			redirect: "manual",
-			signal: AbortSignal.timeout(10_000),
-			headers: { Accept: "image/*", "User-Agent": "WeeklyMealPlanner/1.0" },
-		}).catch(() => {
-			throw new ImageError("Das Bild konnte nicht geladen werden")
-		})
-
-		const location = response.headers.get("location")
-		if (response.status >= 300 && response.status < 400 && location) {
-			url = new URL(location, url)
-			continue
-		}
-		if (!response.ok) throw new ImageError(`Das Bild konnte nicht geladen werden (HTTP ${response.status})`)
-		return saveImage(await readLimited(response))
-	}
-	throw new ImageError("Zu viele Weiterleitungen")
 }
 
 // Formularwert -> was in der DB landet: leer, bereits lokales Bild oder fremde URL (wird heruntergeladen)
