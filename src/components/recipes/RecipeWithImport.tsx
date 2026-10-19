@@ -1,6 +1,7 @@
 "use client"
 
 import RecipeForm from "@/components/recipes/RecipeForm"
+import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import { finishRecipeImport, prepareRecipeImport, type RecipeInput } from "@/lib/recipes/actions"
 import { useEffect, useRef, useState } from "react"
 
@@ -20,6 +21,7 @@ export default function RecipeWithImport({ importEnabled, recipeId, initial }: {
 	const [seconds, setSeconds] = useState(0)
 	const running = useRef(false)
 	const busy = status.step === "loading" || status.step === "structuring"
+	const linkValid = /^https?:\/\/\S+$/i.test(url.trim())
 
 	// Sekundenzähler, solange das Sprachmodell arbeitet (es meldet selbst keinen Fortschritt)
 	const since = status.step === "structuring" ? status.since : null
@@ -63,26 +65,49 @@ export default function RecipeWithImport({ importEnabled, recipeId, initial }: {
 					<label htmlFor="import-url" className="font-semibold">
 						Rezept von Link importieren
 					</label>
-					<div className="flex flex-wrap gap-2">
+					<div className="flex items-center gap-2">
 						<input
 							id="import-url"
 							type="url"
-							className="input min-w-0 flex-1 basis-full sm:basis-0"
+							className="input min-w-0 flex-1"
 							placeholder="https://… (Link zu einem Rezept)"
 							value={url}
 							onChange={(event) => setUrl(event.target.value)}
 							required
 						/>
-						<button type="submit" className="btn" disabled={busy}>
-							Importieren
-						</button>
-						{(imported || (recipeId && initial?.sourceUrl)) && (
-							<button type="button" className="btn-secondary" disabled={busy} onClick={() => run(true)}>
-								Neu laden
+						{/* Link im neuen Tab öffnen */}
+						{linkValid ? (
+							<a href={url.trim()} target="_blank" rel="noopener noreferrer nofollow" className={iconButtonClass} aria-label="Link öffnen" title="Link öffnen">
+								<Icon name="externalLink" />
+							</a>
+						) : (
+							<button type="button" className={iconButtonClass} aria-label="Link öffnen" title="Link öffnen" disabled>
+								<Icon name="externalLink" />
 							</button>
 						)}
-						<ImportStatus status={status} seconds={seconds} replaces={!!recipeId} />
+						{(imported || (recipeId && initial?.sourceUrl)) && (
+							<button
+								type="button"
+								className={iconButtonClass}
+								aria-label="Neu laden"
+								title="Neu laden (Zwischenspeicher ignorieren)"
+								disabled={busy}
+								onClick={() => run(true)}
+							>
+								<Icon name="refresh" />
+							</button>
+						)}
+						<button
+							type="submit"
+							className={`${iconButtonClass} border-emerald-700 bg-emerald-700 text-white`}
+							aria-label="Importieren"
+							title="Importieren"
+							disabled={busy}
+						>
+							<Icon name="download" />
+						</button>
 					</div>
+					<ImportStatus status={status} seconds={seconds} replaces={!!recipeId} />
 				</form>
 			)}
 			{/* key: neuer Import baut das Formular mit den neuen Werten neu auf */}
@@ -98,11 +123,12 @@ function ImportStatus({ status, seconds, replaces }: { status: Status; seconds: 
 	if (status.step === "structuring") text = `2/2 Rezept wird aufbereitet … ${seconds} s`
 	if (status.step === "done") text = `${status.cached ? "Aus dem Zwischenspeicher geladen" : "Fertig"} – bitte prüfen und speichern${replaces ? " (ersetzt dann dieses Rezept)" : ""}`
 	if (status.step === "error") text = status.text
+	if (!text) return null
 	return (
 		<p
 			role={status.step === "error" ? "alert" : "status"}
 			aria-live="polite"
-			className={`flex min-w-0 items-center gap-2 py-2 text-sm ${status.step === "error" ? "text-red-600" : status.step === "done" ? "text-emerald-600" : "opacity-80"}`}
+			className={`flex min-w-0 items-center gap-2 text-sm ${status.step === "error" ? "text-red-600" : status.step === "done" ? "text-emerald-600" : "opacity-80"}`}
 		>
 			{(status.step === "loading" || status.step === "structuring") && (
 				<span className="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
