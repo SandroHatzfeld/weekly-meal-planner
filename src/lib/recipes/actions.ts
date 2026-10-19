@@ -37,8 +37,8 @@ const normalize = (input: RecipeInput) => ({
 	steps: input.steps.map((step) => step.trim()).filter(Boolean),
 	sourceUrl: /^https?:\/\//i.test(input.sourceUrl ?? "") ? input.sourceUrl!.slice(0, 2000) : null,
 	ingredients: input.ingredients
-		.filter((ingredient) => ingredient.name.trim())
-		.map((ingredient) => ({ name: ingredient.name.trim(), details: ingredient.details.trim() || null })),
+		.filter((ingredient) => ingredient?.name?.trim())
+		.map((ingredient) => ({ name: ingredient.name.trim(), details: ingredient.details?.trim() || null })),
 })
 
 // Rezept-Import in zwei Schritten, damit die Oberfläche den Fortschritt zeigen kann. Geliefert wird nur die Vorbelegung

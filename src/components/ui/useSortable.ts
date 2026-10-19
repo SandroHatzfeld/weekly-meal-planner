@@ -18,8 +18,11 @@ export const useSortable = (ids: string[], onPersist: (ids: string[]) => void) =
 	// Stand für die Fenster-Handler (laufen außerhalb von React-Renders)
 	const orderRef = useRef(order)
 	const persistRef = useRef(onPersist)
+	// auch Änderungen von außen (Zeile hinzugefügt/entfernt, neuer Serverstand) in den Ref übernehmen, sonst arbeitet das nächste
+	// Ziehen mit einer veralteten Reihenfolge
 	useEffect(() => {
 		persistRef.current = onPersist
+		orderRef.current = order
 	})
 	const setOrder = (next: string[]) => {
 		orderRef.current = next
@@ -45,6 +48,7 @@ export const useSortable = (ids: string[], onPersist: (ids: string[]) => void) =
 	// Bewegung und Loslassen am Fenster verfolgen statt per Pointer Capture am Griff: Wandert die Zeile beim Umsortieren
 	// im DOM, geht die Zeigerbindung verloren – das darf das Ziehen weder beenden noch hängen lassen (auch bei schnellen Zügen).
 	const startDrag = (id: string, pointerId: number) => {
+		orderRef.current = order
 		setDragId(id)
 		const onMove = (event: globalThis.PointerEvent) => {
 			if (event.pointerId === pointerId) dragTo(id, event.clientY)

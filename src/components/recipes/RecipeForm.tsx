@@ -26,11 +26,13 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 	})
 	const [keys, setKeys] = useState(() => recipe.ingredients.map(ingredientKey))
 	const sortable = useSortable(keys, (ids) => {
+		// nur bekannte Zeilen übernehmen: eine veraltete Reihenfolge darf keine leeren Einträge erzeugen
+		const known = ids.filter((id) => keys.includes(id))
 		setRecipe((current) => ({
 			...current,
-			ingredients: ids.map((id) => current.ingredients[keys.indexOf(id)]),
+			ingredients: known.map((id) => current.ingredients[keys.indexOf(id)]).filter(Boolean),
 		}))
-		setKeys(ids)
+		setKeys(known)
 	})
 	const addIngredient = () => {
 		setRecipe((current) => ({
