@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react"
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react"
 
 // Sortieren per Griff: Ziehen (Pointer Events, auch Touch) oder Pfeiltasten auf dem fokussierten Griff.
 // ids kommen sortiert vom Server; onPersist speichert die neue Reihenfolge.
@@ -15,6 +15,30 @@ export const useSortable = (ids: string[], onPersist: (ids: string[]) => void) =
 		setOrder(ids)
 	}
 	const rows = useRef(new Map<string, HTMLElement>())
+	// aktueller Stand für Handler, die nach dem letzten Render feuern (Loslassen am Fenster)
+	const latest = useRef({ dragId, order, onPersist })
+	useEffect(() => {
+		latest.current = { dragId, order, onPersist }
+	})
+
+	// Ziehen beenden – genau einmal, egal ob über pointerup, verlorene Zeigerbindung oder Loslassen am Fenster.
+	// Auf Touch-Geräten geht die Bindung verloren, wenn die Zeile im DOM wandert; dann kommt pointerup nicht mehr am Griff an.
+	const endDrag = () => {
+		const { dragId: active, order: current, onPersist: persist } = latest.current
+		if (!active) return
+		latest.current = { ...latest.current, dragId: null }
+		setDragId(null)
+		persist(current)
+	}
+	useEffect(() => {
+		if (!dragId) return
+		window.addEventListener("pointerup", endDrag)
+		window.addEventListener("pointercancel", endDrag)
+		return () => {
+			window.removeEventListener("pointerup", endDrag)
+			window.removeEventListener("pointercancel", endDrag)
+		}
+	}, [dragId])
 
 	// Zeile an die Position verschieben, über deren Mitte der Finger gerade ist
 	const dragTo = (clientY: number) => {
@@ -58,14 +82,8 @@ export const useSortable = (ids: string[], onPersist: (ids: string[]) => void) =
 				setDragId(id)
 			},
 			onPointerMove: (event: PointerEvent<HTMLElement>) => dragTo(event.clientY),
-			onPointerUp: () => {
-				if (dragId) onPersist(order)
-				setDragId(null)
-			},
-			onPointerCancel: () => {
-				setDragId(null)
-				setOrder(ids)
-			},
+			onPointerUp: endDrag,
+			onLostPointerCapture: endDrag,
 			onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
 				if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
 				event.preventDefault()
