@@ -41,7 +41,10 @@ export default function ProductInput({ value, onChange, onPick, memory, categori
 				<ul {...combobox.listboxProps} className="suggestions sm:w-full">
 					{combobox.visible.map((suggestion, index) => (
 						<li key={suggestion.displayName} {...combobox.optionProps(index)}>
-							<span>{suggestion.displayName}</span>
+							<span>
+								{suggestion.displayName}
+								{suggestion.via && <span className="text-xs opacity-60"> · {suggestion.via}</span>}
+							</span>
 							{categoryName(suggestion.categoryId) && (
 								<span className="text-xs opacity-60">
 									{categoryName(suggestion.categoryId)}

@@ -1,7 +1,7 @@
 "use client"
 
 import Icon, { iconButtonClass } from "@/components/ui/Icon"
-import { forgetProduct, setProductCategories } from "@/lib/grocery/actions"
+import { forgetProduct, setProductAliases, setProductCategories } from "@/lib/grocery/actions"
 import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import { foldForMatch } from "@/lib/grocery/suggest"
 import { useRouter } from "next/navigation"
@@ -33,7 +33,8 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 
 	const folded = foldForMatch(query)
 	const matching = products
-		.filter((product) => !folded || foldForMatch(product.displayName).includes(folded))
+		// auch über alternative Namen finden
+		.filter((product) => !folded || [product.displayName, ...product.aliases].some((name) => foldForMatch(name).includes(folded)))
 		.filter((product) => filter === ALL || (filter === NONE ? product.categoryIds.length === 0 : product.categoryIds.includes(filter)))
 		.sort((a, b) => a.displayName.localeCompare(b.displayName, "de"))
 	const shown = matching.slice(0, limit)
@@ -121,6 +122,7 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 								</select>
 							)}
 						</div>
+						<AliasRow planId={planId} product={product} />
 					</li>
 				))}
 				{matching.length === 0 && <li className="py-1 text-sm opacity-60">Keine Produkte gefunden.</li>}
@@ -154,6 +156,74 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 					Hinzufügen
 				</button>
 			</form>
+		</div>
+	)
+}
+
+// Alternative Namen eines Produkts ("Hühnchen" für "Hähnchen"): gleiche Kategorien, der Eintrag behält den eingegebenen Namen
+function AliasRow({ planId, product }: { planId: string; product: ProductMemoryDTO }) {
+	const router = useRouter()
+	const [value, setValue] = useState("")
+	const [error, setError] = useState<string | null>(null)
+	const [pending, startTransition] = useTransition()
+
+	const save = (aliases: string[], mergeExisting = false): void =>
+		startTransition(async () => {
+			const result = await setProductAliases(planId, product.displayName, aliases, mergeExisting)
+			if (result.ok) {
+				setError(null)
+				setValue("")
+			} else if (result.conflicts && !mergeExisting) {
+				// vorhandene eigene Produkte lassen sich als alternative Namen zusammenführen
+				const list = result.conflicts.map((name) => `"${name}"`).join(", ")
+				if (confirm(`${list} gibt es schon als eigenes Produkt. Als alternativen Namen von "${product.displayName}" zusammenführen? Das eigene Produkt wird dabei gelöscht.`)) {
+					return save(aliases, true)
+				}
+			} else {
+				setError(result.error)
+			}
+			router.refresh()
+		})
+
+	const add = () => {
+		const names = value.split(/[,;\n]/).map((name) => name.trim()).filter(Boolean)
+		if (names.length) save([...product.aliases, ...names])
+	}
+
+	return (
+		<div className="space-y-1">
+			<div className="flex flex-wrap items-center gap-1" aria-label={`Alternative Namen von ${product.displayName}`}>
+				{product.aliases.map((alias) => (
+					<span key={alias} className="inline-flex items-center rounded-full border border-dashed border-(--border) text-sm">
+						<span className="py-1 pr-1 pl-3">{alias}</span>
+						<button
+							type="button"
+							className="flex size-7 items-center justify-center opacity-70 hover:opacity-100"
+							aria-label={`${alias} als alternativen Namen von ${product.displayName} entfernen`}
+							disabled={pending}
+							onClick={() => save(product.aliases.filter((other) => other !== alias))}
+						>
+							✕
+						</button>
+					</span>
+				))}
+				<input
+					className="input w-40 min-w-0 py-1 text-sm"
+					placeholder="+ Alternativer Name"
+					aria-label={`Alternativen Namen zu ${product.displayName} hinzufügen`}
+					value={value}
+					disabled={pending}
+					onChange={(event) => setValue(event.target.value)}
+					onBlur={add}
+					onKeyDown={(event) => {
+						if (event.key === "Enter" || event.key === ",") {
+							event.preventDefault()
+							add()
+						}
+					}}
+				/>
+			</div>
+			{error && <p className="error text-sm">{error}</p>}
 		</div>
 	)
 }

@@ -202,6 +202,48 @@ export const setProductCategories = async (planId: string, name: string, categor
 	emitToPlan(planId, "grocery-lists-changed", { planId })
 }
 
+export type SetAliasesResult = { ok: true } | { ok: false; error: string; conflicts?: string[] }
+
+// Alternative Namen eines Produkts setzen (ersetzt die bisherigen). Existiert ein Alias schon als eigenes Produkt, wird mit
+// mergeExisting dieses Produkt (samt seinen Kategorien) gelöscht und als Alias übernommen; seine Aliase wandern mit.
+export const setProductAliases = async (planId: string, productName: string, aliases: string[], mergeExisting = false): Promise<SetAliasesResult> => {
+	await requireMember(planId)
+	const key = normalizeItemName(productName)
+	const product = await prisma.groceryProduct.findUnique({ where: { planId_name: { planId, name: key } } })
+	if (!product) return { ok: false, error: "Produkt nicht gefunden" }
+
+	const wanted = new Map<string, string>()
+	for (const alias of aliases.slice(0, 60)) {
+		const aliasKey = normalizeItemName(alias)
+		if (aliasKey && aliasKey !== key && aliasKey.length <= 60) wanted.set(aliasKey, alias.trim().replace(/\s+/g, " "))
+	}
+	const keys = [...wanted.keys()]
+	const [clashingProducts, clashingAliases] = await Promise.all([
+		prisma.groceryProduct.findMany({ where: { planId, name: { in: keys } }, include: { aliases: true } }),
+		prisma.groceryProductAlias.findMany({ where: { planId, name: { in: keys }, productName: { not: key } } }),
+	])
+	if (clashingAliases.length > 0) {
+		const names = clashingAliases.map((alias) => `"${alias.displayName}" (${alias.productName})`).join(", ")
+		return { ok: false, error: `Schon alternativer Name eines anderen Produkts: ${names}` }
+	}
+	if (clashingProducts.length > 0 && !mergeExisting) {
+		return { ok: false, error: "Es gibt schon eigene Produkte mit diesem Namen", conflicts: clashingProducts.map((entry) => entry.displayName) }
+	}
+	// zusammengeführte Produkte bringen ihre eigenen Aliase mit
+	for (const merged of clashingProducts) for (const alias of merged.aliases) if (alias.name !== key) wanted.set(alias.name, alias.displayName)
+
+	await prisma.$transaction([
+		prisma.groceryProductAlias.deleteMany({ where: { planId, OR: [{ productName: key }, { productName: { in: clashingProducts.map((entry) => entry.name) } }] } }),
+		prisma.groceryProduct.deleteMany({ where: { planId, name: { in: clashingProducts.map((entry) => entry.name) } } }),
+		prisma.groceryProductAlias.createMany({
+			data: [...wanted].map(([name, displayName]) => ({ planId, name, displayName, productName: key })),
+			skipDuplicates: true,
+		}),
+	])
+	emitToPlan(planId, "grocery-lists-changed", { planId })
+	return { ok: true }
+}
+
 export const forgetProduct = async (planId: string, name: string) => {
 	await requireMember(planId)
 	await prisma.groceryProduct.deleteMany({ where: { planId, name: normalizeItemName(name) } })

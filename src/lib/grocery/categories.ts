@@ -87,16 +87,23 @@ export const seedPlanGroceries = async (planId: string) => {
 }
 
 // categoryIds in Reihenfolge: in jeder Liste gilt die erste, die dort nicht ausgeblendet ist
-export type ProductMemoryDTO = { displayName: string; categoryIds: string[]; usedAt: string }
+export type ProductMemoryDTO = { displayName: string; categoryIds: string[]; usedAt: string; aliases: string[] }
 
 const productCategoriesSelect = { categories: { select: { categoryId: true }, orderBy: { position: "asc" as const } } }
+
+// Name eines Produkts: der Name selbst, bei einem Alias der des zugehörigen Produkts, sonst null (unbekannt)
+export const resolveProductName = async (planId: string, key: string) => {
+	if (await prisma.groceryProduct.findUnique({ where: { planId_name: { planId, name: key } }, select: { name: true } })) return key
+	const alias = await prisma.groceryProductAlias.findUnique({ where: { planId_name: { planId, name: key } }, select: { productName: true } })
+	return alias?.productName ?? null
+}
 
 // bekannte Produkte des Plans – Grundlage für die Vorschläge beim Eintippen und die Einstellungen
 export const productMemoryOfPlan = async (planId: string): Promise<ProductMemoryDTO[]> =>
 	(
 		await prisma.groceryProduct.findMany({
 			where: { planId },
-			select: { displayName: true, usedAt: true, ...productCategoriesSelect },
+			select: { displayName: true, usedAt: true, ...productCategoriesSelect, aliases: { select: { displayName: true }, orderBy: { displayName: "asc" } } },
 			orderBy: { usedAt: "desc" },
 			take: 5000, // = Import-Maximum, damit ein Export immer vollständig ist
 		})
@@ -104,14 +111,14 @@ export const productMemoryOfPlan = async (planId: string): Promise<ProductMemory
 		displayName: entry.displayName,
 		categoryIds: entry.categories.map((category) => category.categoryId),
 		usedAt: entry.usedAt.toISOString(),
+		aliases: entry.aliases.map((alias) => alias.displayName),
 	}))
 
 // Hauptkategorie eines Produkts (die erste)
 export const recallCategory = async (planId: string, name: string) => {
-	const product = await prisma.groceryProduct.findUnique({
-		where: { planId_name: { planId, name: normalizeItemName(name) } },
-		select: productCategoriesSelect,
-	})
+	const key = await resolveProductName(planId, normalizeItemName(name))
+	if (!key) return null
+	const product = await prisma.groceryProduct.findUnique({ where: { planId_name: { planId, name: key } }, select: productCategoriesSelect })
 	return product?.categories[0]?.categoryId ?? null
 }
 
@@ -127,14 +134,19 @@ export const replaceProductCategories = (planId: string, productName: string, ca
 // Schreibweise merken. Mit updateCategory wird categoryId zur Hauptkategorie (weitere bleiben dahinter);
 // ohne Kategorie bleiben die gepflegten Kategorien unverändert. Neue Produkte übernehmen die Kategorie immer.
 export const rememberProduct = async (planId: string, name: string, categoryId: string | null, updateCategory = true) => {
-	const key = normalizeItemName(name)
-	if (!key) return
-	const product = await prisma.groceryProduct.upsert({
-		where: { planId_name: { planId, name: key } },
-		create: { planId, name: key, displayName: name.trim() },
-		update: { displayName: name.trim(), usedAt: new Date() },
-		select: productCategoriesSelect,
-	})
+	const typed = normalizeItemName(name)
+	if (!typed) return
+	// Alternativer Name: kein neues Produkt, Zeitpunkt und Kategorie gehen auf das Hauptprodukt (Schreibweise bleibt dessen)
+	const aliasOf = await prisma.groceryProductAlias.findUnique({ where: { planId_name: { planId, name: typed } }, select: { productName: true } })
+	const key = aliasOf?.productName ?? typed
+	const product = aliasOf
+		? await prisma.groceryProduct.update({ where: { planId_name: { planId, name: key } }, data: { usedAt: new Date() }, select: productCategoriesSelect })
+		: await prisma.groceryProduct.upsert({
+				where: { planId_name: { planId, name: key } },
+				create: { planId, name: key, displayName: name.trim() },
+				update: { displayName: name.trim(), usedAt: new Date() },
+				select: productCategoriesSelect,
+			})
 	const current = product.categories.map((category) => category.categoryId)
 	if (!categoryId || current[0] === categoryId || (!updateCategory && current.length > 0)) return
 	await replaceProductCategories(planId, key, [categoryId, ...current.filter((id) => id !== categoryId)])

@@ -13,6 +13,8 @@ const describe = (summary: ImportSummary) =>
 		`${summary.created} neu`,
 		`${summary.changed} geändert`,
 		`${summary.deleted} werden gelöscht`,
+		summary.aliases ? `${summary.aliases} alternative Namen` : null,
+		summary.skippedAliases.length ? `übersprungene Alternativen (Name schon vergeben): ${summary.skippedAliases.slice(0, 8).join(", ")}${summary.skippedAliases.length > 8 ? " …" : ""}` : null,
 		summary.newCategories.length ? `neue Kategorien: ${summary.newCategories.join(", ")}` : null,
 	]
 		.filter(Boolean)
@@ -30,6 +32,7 @@ export default function ProductCsv({ planId, categories, products }: { planId: s
 		const csv = productsToCsv(
 			products.map((product) => ({
 				displayName: product.displayName,
+				aliases: product.aliases,
 				categories: product.categoryIds.map((id) => names.get(id)).filter((name): name is string => !!name),
 			})),
 		)

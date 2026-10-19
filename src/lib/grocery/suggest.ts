@@ -56,25 +56,33 @@ export const matchRank = (query: string, candidate: string): number | null => {
 	return close ? 3 : null
 }
 
-// categoryId = Hauptkategorie, categoryIds = alle in Reihenfolge
-export type ProductSuggestion = { displayName: string; categoryId: string | null; categoryIds: string[] }
+// categoryId = Hauptkategorie, categoryIds = alle in Reihenfolge; via = der alternative Name, über den das Produkt gefunden wurde
+export type ProductSuggestion = { displayName: string; categoryId: string | null; categoryIds: string[]; via: string | null }
 
 export const suggestProducts = (query: string, memory: ProductMemoryDTO[], limit = 6): ProductSuggestion[] => {
 	const folded = foldForMatch(query)
 	if (folded.length < 2) return []
 
-	// pro Produktname nur ein Treffer, der zuletzt benutzte
-	const best = new Map<string, { entry: ProductMemoryDTO; rank: number }>()
+	// pro Produktname nur ein Treffer, der zuletzt benutzte; Hauptname und alternative Namen zählen gleich, der beste Treffer gilt
+	const best = new Map<string, { entry: ProductMemoryDTO; rank: number; via: string | null }>()
 	for (const entry of memory) {
 		const key = foldForMatch(entry.displayName)
-		const rank = matchRank(folded, key)
+		let rank = matchRank(folded, key)
+		let via: string | null = null
+		for (const alias of entry.aliases ?? []) {
+			const aliasRank = matchRank(folded, foldForMatch(alias))
+			if (aliasRank !== null && (rank === null || aliasRank < rank)) {
+				rank = aliasRank
+				via = alias
+			}
+		}
 		if (rank === null) continue
 		const existing = best.get(key)
-		if (!existing || entry.usedAt > existing.entry.usedAt) best.set(key, { entry, rank })
+		if (!existing || entry.usedAt > existing.entry.usedAt) best.set(key, { entry, rank, via })
 	}
 
 	return [...best.values()]
 		.sort((a, b) => a.rank - b.rank || b.entry.usedAt.localeCompare(a.entry.usedAt))
 		.slice(0, limit)
-		.map(({ entry }) => ({ displayName: entry.displayName, categoryId: entry.categoryIds[0] ?? null, categoryIds: entry.categoryIds }))
+		.map(({ entry, via }) => ({ displayName: entry.displayName, categoryId: entry.categoryIds[0] ?? null, categoryIds: entry.categoryIds, via }))
 }
