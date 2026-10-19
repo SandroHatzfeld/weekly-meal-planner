@@ -5,7 +5,7 @@ import { todayKey } from "@/lib/dates"
 import { prisma } from "@/lib/prisma"
 import { resolveDefaultListId } from "@/lib/grocery/queries"
 import { canViewRecipe } from "@/lib/recipes/access"
-import { ingredientDetails, ingredientLabel } from "@/lib/recipes/format"
+import { ingredientLabel } from "@/lib/recipes/format"
 import { toTagDTO } from "@/lib/tags/icons"
 import { requireActivePlan } from "@/lib/session"
 import Link from "next/link"
@@ -67,7 +67,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 							ingredients: recipe.ingredients.map((ingredient) => ({
 								id: ingredient.id,
 								name: ingredient.name,
-								details: ingredientDetails(ingredient),
+								details: ingredient.details,
 							})),
 						}}
 						plans={plans}

@@ -118,8 +118,7 @@ model RecipeIngredient {
   id       String  @id @default(cuid())
   recipeId String
   name     String
-  amount   Float?
-  unit     String?
+  details  String? // Menge/Info frei, z.B. "400 ml" (wird beim Planen zu GroceryItem.details)
   recipe   Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 }
 

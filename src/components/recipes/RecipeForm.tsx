@@ -22,7 +22,7 @@ const emptyRecipe: RecipeInput = {
 export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipeId?: string; initial?: RecipeInput }) {
 	const [recipe, setRecipe] = useState<RecipeInput>({
 		...initial,
-		ingredients: initial.ingredients.length ? initial.ingredients : [{ name: "", amount: "", unit: "" }],
+		ingredients: initial.ingredients.length ? initial.ingredients : [{ name: "", details: "" }],
 	})
 	const [keys, setKeys] = useState(() => recipe.ingredients.map(ingredientKey))
 	const sortable = useSortable(keys, (ids) => {
@@ -35,7 +35,7 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 	const addIngredient = () => {
 		setRecipe((current) => ({
 			...current,
-			ingredients: [...current.ingredients, { name: "", amount: "", unit: "" }],
+			ingredients: [...current.ingredients, { name: "", details: "" }],
 		}))
 		setKeys((current) => [...current, ingredientKey()])
 	}
@@ -95,16 +95,11 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 								<Icon name="grip" />
 							</button>
 							<input
-								className="input w-16 min-w-0 sm:w-20"
-								placeholder="Menge"
-								value={ingredient.amount}
-								onChange={(event) => setIngredient(index, { amount: event.target.value })}
-							/>
-							<input
-								className="input w-16 min-w-0 sm:w-24"
-								placeholder="Einheit"
-								value={ingredient.unit}
-								onChange={(event) => setIngredient(index, { unit: event.target.value })}
+								className="input w-24 min-w-0 sm:w-32"
+								placeholder="z.B. 400 ml"
+								aria-label="Menge / Info"
+								value={ingredient.details}
+								onChange={(event) => setIngredient(index, { details: event.target.value })}
 							/>
 							<input
 								className="input min-w-0 flex-1"

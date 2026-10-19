@@ -22,8 +22,7 @@ export default async function EditRecipePage({ params }: PageProps<"/recipes/[id
 					steps: recipe.steps,
 					ingredients: recipe.ingredients.map((ingredient) => ({
 						name: ingredient.name,
-						amount: ingredient.amount?.toString() ?? "",
-						unit: ingredient.unit ?? "",
+						details: ingredient.details ?? "",
 					})),
 				}}
 			/>

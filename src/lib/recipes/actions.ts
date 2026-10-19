@@ -11,10 +11,9 @@ import { groceryItemInclude, toGroceryItemDTO } from "../dto"
 import { deleteImageIfUnused, resolveImage } from "../images"
 import { recallCategory, rememberProduct } from "../grocery/categories"
 import { canViewRecipe, coMemberIds } from "./access"
-import { ingredientDetails } from "./format"
 import type { PlanIngredient, PlannedItem } from "./planning"
 
-export type IngredientInput = { name: string; amount: string; unit: string }
+export type IngredientInput = { name: string; details: string }
 export type RecipeInput = {
 	name: string
 	description: string
@@ -35,14 +34,7 @@ const normalize = (input: RecipeInput) => ({
 	steps: input.steps.map((step) => step.trim()).filter(Boolean),
 	ingredients: input.ingredients
 		.filter((ingredient) => ingredient.name.trim())
-		.map((ingredient) => {
-			const amount = parseFloat(ingredient.amount.replace(",", "."))
-			return {
-				name: ingredient.name.trim(),
-				amount: Number.isFinite(amount) ? amount : null,
-				unit: ingredient.unit.trim() || null,
-			}
-		}),
+		.map((ingredient) => ({ name: ingredient.name.trim(), details: ingredient.details.trim() || null })),
 })
 
 export const createRecipe = async (input: RecipeInput) => {
@@ -171,6 +163,6 @@ export const searchRecipes = async (planId: string, query: string): Promise<Reci
 		id: recipe.id,
 		name: recipe.name,
 		ownerName: recipe.userId === user.id ? null : recipe.user.name,
-		ingredients: recipe.ingredients.map((ingredient) => ({ id: ingredient.id, name: ingredient.name, details: ingredientDetails(ingredient) })),
+		ingredients: recipe.ingredients.map((ingredient) => ({ id: ingredient.id, name: ingredient.name, details: ingredient.details })),
 	}))
 }
