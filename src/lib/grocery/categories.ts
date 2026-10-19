@@ -98,7 +98,7 @@ export const productMemoryOfPlan = async (planId: string): Promise<ProductMemory
 			where: { planId },
 			select: { displayName: true, usedAt: true, ...productCategoriesSelect },
 			orderBy: { usedAt: "desc" },
-			take: 2000,
+			take: 5000, // = Import-Maximum, damit ein Export immer vollständig ist
 		})
 	).map((entry) => ({
 		displayName: entry.displayName,

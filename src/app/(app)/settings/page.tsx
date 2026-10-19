@@ -1,6 +1,7 @@
 import { ApiTokens, GenericInvite, InviteForm, LeavePlanButton, PlanNameForm, RemoveMemberButton, RevokeInviteButton } from "@/components/settings/SettingsControls"
 import CategoryManager from "@/components/settings/CategoryManager"
 import ListSettings from "@/components/settings/ListSettings"
+import ProductCsv from "@/components/settings/ProductCsv"
 import ProductMemorySettings from "@/components/settings/ProductMemorySettings"
 import TagSettings from "@/components/tags/TagSettings"
 import { signOut } from "@/lib/auth/auth"
@@ -103,6 +104,7 @@ export default async function SettingsPage() {
 					Gelten für alle Listen dieses Plans. Bekannte Produkte landen beim Eintragen automatisch in ihrer Kategorie, die Reihenfolge im Laden stellst du pro Liste ein.
 				</p>
 				<CategoryManager planId={plan.id} categories={categories} />
+				<ProductCsv planId={plan.id} categories={categories} products={products} />
 				<details className="group">
 					<summary className="btn-link cursor-pointer text-sm">Bekannte Produkte ({products.length})</summary>
 					<div className="mt-2">

@@ -5,6 +5,8 @@ import { emitToPlan } from "../realtime"
 import { requireMember } from "../session"
 import { appendCategoryToLists, initListCategoryOrder, replaceProductCategories } from "./categories"
 import { normalizeItemName } from "./normalize"
+import { parseProductCsv } from "./csv"
+import { importProducts } from "./productImport"
 import * as service from "./service"
 
 // jede Action prüft die Mitgliedschaft im Plan der betroffenen Liste/des Items
@@ -192,4 +194,17 @@ export const forgetProduct = async (planId: string, name: string) => {
 	await requireMember(planId)
 	await prisma.groceryProduct.deleteMany({ where: { planId, name: normalizeItemName(name) } })
 	emitToPlan(planId, "grocery-lists-changed", { planId })
+}
+
+// CSV-Import der Produkte (siehe csv.ts); apply=false liefert nur die Vorschau
+export const importProductsCsv = async (planId: string, csv: string, apply: boolean) => {
+	await requireMember(planId)
+	if (csv.length > 2_000_000) return { error: "Datei zu groß (max. 2 MB)" }
+	try {
+		const summary = await importProducts(planId, parseProductCsv(csv), apply)
+		if (apply) emitToPlan(planId, "grocery-lists-changed", { planId })
+		return { summary }
+	} catch (error) {
+		return { error: error instanceof Error ? error.message : "Import fehlgeschlagen" }
+	}
 }
