@@ -29,7 +29,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 				include: {
 					groceryLists: {
 						select: { id: true, name: true },
-						orderBy: { createdAt: "asc" },
+						orderBy: [{ position: "asc" }, { createdAt: "asc" }],
 					},
 					tags: { orderBy: { createdAt: "asc" } },
 					categories: { select: { id: true, name: true }, orderBy: { name: "asc" } },

@@ -4,7 +4,7 @@ export const listsOfPlan = (planId: string) =>
 	prisma.groceryList.findMany({
 		where: { planId },
 		select: { id: true, name: true },
-		orderBy: { createdAt: "asc" },
+		orderBy: [{ position: "asc" }, { createdAt: "asc" }],
 	})
 
 // wirksame Standardliste: in den Plan-Einstellungen gewählt, sonst die erste Liste

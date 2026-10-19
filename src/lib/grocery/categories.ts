@@ -64,7 +64,7 @@ export const initListCategoryOrder = async (planId: string, listId: string) => {
 	const [plan, first, categories, order] = await Promise.all([
 		prisma.plan.findUnique({ where: { id: planId }, select: { defaultListId: true } }),
 		// ohne gesetzte Standardliste gilt die erste Liste des Plans
-		prisma.groceryList.findFirst({ where: { planId, id: { not: listId } }, orderBy: { createdAt: "asc" }, select: { id: true } }),
+		prisma.groceryList.findFirst({ where: { planId, id: { not: listId } }, orderBy: [{ position: "asc" }, { createdAt: "asc" }], select: { id: true } }),
 		categoriesOfPlan(planId),
 		categoryOrderOfPlan(planId),
 	])

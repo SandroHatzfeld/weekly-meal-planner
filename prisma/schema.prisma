@@ -142,6 +142,7 @@ model GroceryList {
   id             String                  @id @default(cuid())
   planId         String
   name           String
+  position       Int                     @default(0) // Reihenfolge der Reiter (Einstellungen per Drag & Drop)
   createdAt      DateTime                @default(now())
   plan           Plan                    @relation("PlanGroceryLists", fields: [planId], references: [id], onDelete: Cascade)
   items          GroceryItem[]

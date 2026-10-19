@@ -93,7 +93,7 @@ export default async function SettingsPage() {
 			<section className="card space-y-3">
 				<h2 className="text-lg font-semibold">Einkaufslisten</h2>
 				<p className="text-sm opacity-70">
-					Zutaten landen beim Planen auf der Standardliste, solange du im Popup keine andere wählst.
+					Zutaten landen beim Planen auf der Standardliste (★), solange du im Popup keine andere wählst. Über ⋮⋮ ziehst du die Listen in die Reihenfolge der Reiter.
 				</p>
 				<ListSettings planId={plan.id} lists={lists} defaultListId={defaultListId} categories={categories} categoryOrder={categoryOrder} hiddenCategories={hiddenCategories} />
 			</section>

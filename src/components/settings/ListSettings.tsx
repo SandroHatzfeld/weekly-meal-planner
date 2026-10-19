@@ -1,6 +1,8 @@
 "use client"
 
-import { createGroceryList, deleteGroceryList, renameGroceryList, setDefaultGroceryList } from "@/lib/grocery/actions"
+import Icon from "@/components/ui/Icon"
+import { useSortable } from "@/components/ui/useSortable"
+import { createGroceryList, deleteGroceryList, renameGroceryList, reorderGroceryLists, setDefaultGroceryList } from "@/lib/grocery/actions"
 import type { CategoryDTO, CategoryOrder } from "@/lib/grocery/categories"
 import { orderCategories } from "@/lib/grocery/order"
 import { useRouter } from "next/navigation"
@@ -16,6 +18,7 @@ function ListRow({
 	canDelete,
 	categories,
 	hiddenIds,
+	sortable,
 }: {
 	planId: string
 	list: List
@@ -23,6 +26,7 @@ function ListRow({
 	canDelete: boolean
 	categories: CategoryDTO[]
 	hiddenIds: string[]
+	sortable: ReturnType<typeof useSortable>
 }) {
 	const router = useRouter()
 	const [name, setName] = useState(list.name)
@@ -38,23 +42,35 @@ function ListRow({
 		})
 
 	return (
-		<li className="space-y-1 py-2">
-			<div className="flex flex-wrap items-center gap-2">
+		<li ref={sortable.rowRef(list.id)} className={`space-y-1 py-2 ${sortable.dragId === list.id ? "rounded bg-(--surface) shadow-lg ring-2 ring-emerald-600" : ""}`}>
+			<div className="flex items-center gap-1">
+				{/* Griff: Reihenfolge der Listen (= Reiter in der Einkaufsliste) */}
+				<button
+					type="button"
+					aria-label={`${list.name} verschieben`}
+					title="Ziehen oder Pfeiltasten zum Sortieren"
+					className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center opacity-60 select-none active:cursor-grabbing"
+					{...sortable.handleProps(list.id)}
+				>
+					⋮⋮
+				</button>
 				<input className="input min-w-0 flex-1" value={name} aria-label="Name der Liste" onChange={(event) => setName(event.target.value)} />
 				{dirty && (
 					<button type="button" className="btn" disabled={pending || !name.trim()} onClick={() => run(() => renameGroceryList(list.id, name))}>
 						Speichern
 					</button>
 				)}
-				{/* Standardliste für Zutaten beim Planen */}
+				{/* Standardliste für Zutaten beim Planen: gefüllter Stern */}
 				<button
 					type="button"
 					aria-pressed={isDefault}
+					aria-label={isDefault ? `${list.name} ist die Standardliste` : `${list.name} als Standardliste`}
+					title={isDefault ? "Standardliste beim Planen" : "Als Standardliste beim Planen verwenden"}
 					disabled={pending || isDefault}
 					onClick={() => run(() => setDefaultGroceryList(planId, list.id))}
-					className={`rounded-full border px-3 py-1.5 text-sm ${isDefault ? "border-emerald-600 bg-emerald-700 text-white" : "border-(--border) opacity-70 hover:opacity-100"}`}
+					className={`flex size-9 shrink-0 items-center justify-center ${isDefault ? "text-amber-500" : "opacity-60 hover:opacity-100"}`}
 				>
-					{isDefault ? "Standard" : "Als Standard"}
+					<Icon name="star" filled={isDefault} />
 				</button>
 				{canDelete && (
 					<button
@@ -103,11 +119,21 @@ export default function ListSettings({
 	const router = useRouter()
 	const [name, setName] = useState("")
 	const [pending, startTransition] = useTransition()
+	const sortable = useSortable(
+		lists.map((list) => list.id),
+		(ids) =>
+			startTransition(async () => {
+				await reorderGroceryLists(planId, ids)
+				router.refresh()
+			}),
+	)
+	const byId = new Map(lists.map((list) => [list.id, list]))
+	const ordered = sortable.order.map((id) => byId.get(id)).filter((list): list is List => !!list)
 
 	return (
 		<div className="space-y-3">
 			<ul className="divide-y divide-black/5 dark:divide-white/10">
-				{lists.map((list) => (
+				{ordered.map((list) => (
 					// key mit Name: nach Umbenennen durch andere Mitglieder neu initialisieren
 					<ListRow
 						key={`${list.id}:${list.name}`}
@@ -117,6 +143,7 @@ export default function ListSettings({
 						canDelete={lists.length > 1}
 						categories={orderCategories(categories, categoryOrder[list.id])}
 						hiddenIds={hiddenCategories[list.id] ?? []}
+						sortable={sortable}
 					/>
 				))}
 			</ul>

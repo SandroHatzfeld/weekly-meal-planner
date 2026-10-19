@@ -76,7 +76,9 @@ export const clearCheckedItems = async (listId: string) => {
 export const createGroceryList = async (planId: string, name: string) => {
 	await requireMember(planId)
 	if (!name.trim()) return null
-	const list = await prisma.groceryList.create({ data: { planId, name: name.trim() } })
+	// neue Liste als letzter Reiter
+	const position = await prisma.groceryList.count({ where: { planId } })
+	const list = await prisma.groceryList.create({ data: { planId, name: name.trim(), position } })
 	await initListCategoryOrder(planId, list.id)
 	emitToPlan(planId, "grocery-lists-changed", { planId })
 	return { id: list.id, name: list.name }
@@ -96,6 +98,16 @@ export const setDefaultGroceryList = async (planId: string, listId: string) => {
 	if (!list || list.planId !== planId) return
 	await prisma.plan.update({ where: { id: planId }, data: { defaultListId: listId } })
 	emitToPlan(planId, "plan-changed", { planId })
+}
+
+// Reihenfolge der Listen (Reiter) nach Drag & Drop; fremde IDs werden ignoriert, fehlende hinten angehängt
+export const reorderGroceryLists = async (planId: string, orderedIds: string[]) => {
+	await requireMember(planId)
+	const existing = await prisma.groceryList.findMany({ where: { planId }, select: { id: true }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] })
+	const valid = orderedIds.filter((id) => existing.some((list) => list.id === id))
+	const ids = [...valid, ...existing.map((list) => list.id).filter((id) => !valid.includes(id))]
+	await prisma.$transaction(ids.map((id, position) => prisma.groceryList.update({ where: { id }, data: { position } })))
+	emitToPlan(planId, "grocery-lists-changed", { planId })
 }
 
 // die letzte Liste eines Plans bleibt bestehen, sonst gäbe es keinen Ort für neue Items
