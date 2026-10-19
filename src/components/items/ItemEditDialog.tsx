@@ -70,7 +70,7 @@ function EditForm<T extends EditableItem>({
 			<h2 id="item-edit-title" className="text-lg font-semibold">Eintrag bearbeiten</h2>
 			<label htmlFor="item-name">Name</label>
 			<input id="item-name" value={name} onChange={(event) => setName(event.target.value)} required autoFocus />
-			<label htmlFor="item-details">Menge / Info</label>
+			<label htmlFor="item-details">Details</label>
 			<input id="item-details" value={details} placeholder="z.B. 500 g" onChange={(event) => setDetails(event.target.value)} />
 			{lists.length > 1 && (
 				<>

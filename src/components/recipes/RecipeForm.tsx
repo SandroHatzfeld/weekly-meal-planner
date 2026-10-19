@@ -96,8 +96,8 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 							</button>
 							<input
 								className="input w-24 min-w-0 sm:w-32"
-								placeholder="z.B. 400 ml"
-								aria-label="Menge / Info"
+								placeholder="Details (z.B. 400 ml)"
+								aria-label="Details"
 								value={ingredient.details}
 								onChange={(event) => setIngredient(index, { details: event.target.value })}
 							/>

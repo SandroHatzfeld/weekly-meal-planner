@@ -291,7 +291,7 @@ function AddDishItem({
 				memory={memory}
 				categories={categories}
 			/>
-			<input className="input min-w-0 flex-1 sm:w-32 sm:flex-none" placeholder="Menge" value={details} onChange={(event) => setDetails(event.target.value)} />
+			<input className="input min-w-0 flex-1 sm:w-32 sm:flex-none" placeholder="Details (z.B. 500 g)" value={details} onChange={(event) => setDetails(event.target.value)} />
 			{lists.length > 1 && (
 				<select
 					className="input w-auto"
