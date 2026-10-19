@@ -137,10 +137,10 @@ export const createCategory = async (planId: string, name: string) => {
 	await requireMember(planId)
 	if (!name.trim()) return {}
 	if (await nameTaken(planId, name.trim())) return { error: `"${name.trim()}" gibt es schon` }
-	const category = await prisma.groceryCategory.create({ data: { planId, name: name.trim() } })
+	const category = await prisma.groceryCategory.create({ data: { planId, name: name.trim() }, select: { id: true, name: true } })
 	await appendCategoryToLists(planId, category.id)
 	emitToPlan(planId, "grocery-lists-changed", { planId })
-	return {}
+	return { category }
 }
 
 export const renameCategory = async (categoryId: string, name: string) => {
