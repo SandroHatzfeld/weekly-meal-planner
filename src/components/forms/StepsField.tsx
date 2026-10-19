@@ -1,5 +1,7 @@
 "use client"
 
+import Icon, { handleButtonClass, iconButtonClass } from "@/components/ui/Icon"
+import { useSortable } from "@/components/ui/useSortable"
 import { useState } from "react"
 
 type Step = { id: number; text: string }
@@ -8,7 +10,7 @@ type Step = { id: number; text: string }
 let nextStepId = 0
 const createStep = (text: string): Step => ({ id: nextStepId++, text })
 
-// Zubereitungsschritte als einzelne Felder; Reihenfolge über ↑/↓, neue Schritte über "+ Schritt"
+// Zubereitungsschritte als einzelne Felder; Reihenfolge über den Griff, neue Schritte über "+ Schritt"
 export default function StepsField({ initial, onChange }: { initial: string[]; onChange: (steps: string[]) => void }) {
 	const [steps, setSteps] = useState<Step[]>(() => (initial.length ? initial : [""]).map(createStep))
 	const [focusId, setFocusId] = useState<number | null>(null)
@@ -18,22 +20,32 @@ export default function StepsField({ initial, onChange }: { initial: string[]; o
 		onChange(next.map((step) => step.text))
 	}
 
-	const move = (index: number, delta: number) => {
-		const next = [...steps]
-		const [step] = next.splice(index, 1)
-		next.splice(index + delta, 0, step)
-		update(next)
-	}
+	const sortable = useSortable(
+		steps.map((step) => String(step.id)),
+		(ids) => update(ids.map((id) => steps.find((step) => String(step.id) === id)!).filter(Boolean)),
+	)
+	const ordered = sortable.order.map((id) => steps.find((step) => String(step.id) === id)).filter((step): step is Step => !!step)
 
 	return (
 		<fieldset className="space-y-2">
 			<legend className="font-semibold">Zubereitung</legend>
 			<ol className="space-y-2">
-				{steps.map((step, index) => (
-					<li key={step.id} className="flex items-start gap-2">
-						<span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs text-white">
-							{index + 1}
-						</span>
+				{ordered.map((step, index) => (
+					<li
+						key={step.id}
+						ref={sortable.rowRef(String(step.id))}
+						className={`flex items-start gap-2 ${sortable.dragId === String(step.id) ? "rounded shadow-lg ring-2 ring-emerald-600" : ""}`}
+					>
+						<button
+							type="button"
+							aria-label={`Schritt ${index + 1} verschieben`}
+							title="Ziehen oder Pfeiltasten zum Sortieren"
+							className={`${iconButtonClass} ${handleButtonClass}`}
+							{...sortable.handleProps(String(step.id))}
+						>
+							<Icon name="grip" />
+						</button>
+						<span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs text-white">{index + 1}</span>
 						<textarea
 							aria-label={`Schritt ${index + 1}`}
 							rows={2}
@@ -47,14 +59,6 @@ export default function StepsField({ initial, onChange }: { initial: string[]; o
 							}}
 							onChange={(event) => update(steps.map((current) => (current.id === step.id ? { ...current, text: event.target.value } : current)))}
 						/>
-						<div className="flex flex-col text-xs">
-							<button type="button" className="btn-link" aria-label="Nach oben" disabled={index === 0} onClick={() => move(index, -1)}>
-								↑
-							</button>
-							<button type="button" className="btn-link" aria-label="Nach unten" disabled={index === steps.length - 1} onClick={() => move(index, 1)}>
-								↓
-							</button>
-						</div>
 						<button
 							type="button"
 							className="btn-link mt-1"

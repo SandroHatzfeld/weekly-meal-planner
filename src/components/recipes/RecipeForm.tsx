@@ -3,16 +3,49 @@
 import { createRecipe, deleteRecipe, updateRecipe, type RecipeInput } from "@/lib/recipes/actions"
 import ImageField from "@/components/forms/ImageField"
 import StepsField from "@/components/forms/StepsField"
-import Icon, { iconButtonClass } from "@/components/ui/Icon"
+import Icon, { handleButtonClass, iconButtonClass } from "@/components/ui/Icon"
+import { useSortable } from "@/components/ui/useSortable"
 import { useState } from "react"
 
-const emptyRecipe: RecipeInput = { name: "", description: "", imageUrl: "", steps: [], ingredients: [] }
+// stabile Keys für Zutaten-Zeilen (Sortieren per Griff, Fokus bleibt beim Verschieben erhalten)
+let nextIngredientKey = 0
+const ingredientKey = () => `i${nextIngredientKey++}`
+
+const emptyRecipe: RecipeInput = {
+	name: "",
+	description: "",
+	imageUrl: "",
+	steps: [],
+	ingredients: [],
+}
 
 export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipeId?: string; initial?: RecipeInput }) {
 	const [recipe, setRecipe] = useState<RecipeInput>({
 		...initial,
 		ingredients: initial.ingredients.length ? initial.ingredients : [{ name: "", amount: "", unit: "" }],
 	})
+	const [keys, setKeys] = useState(() => recipe.ingredients.map(ingredientKey))
+	const sortable = useSortable(keys, (ids) => {
+		setRecipe((current) => ({
+			...current,
+			ingredients: ids.map((id) => current.ingredients[keys.indexOf(id)]),
+		}))
+		setKeys(ids)
+	})
+	const addIngredient = () => {
+		setRecipe((current) => ({
+			...current,
+			ingredients: [...current.ingredients, { name: "", amount: "", unit: "" }],
+		}))
+		setKeys((current) => [...current, ingredientKey()])
+	}
+	const removeIngredient = (index: number) => {
+		setRecipe((current) => ({
+			...current,
+			ingredients: current.ingredients.filter((_, i) => i !== index),
+		}))
+		setKeys((current) => current.filter((_, i) => i !== index))
+	}
 	const [error, setError] = useState<string | null>(null)
 	const [saving, setSaving] = useState(false)
 
@@ -42,26 +75,50 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 
 			<fieldset className="space-y-2">
 				<legend className="font-semibold">Zutaten</legend>
-				{recipe.ingredients.map((ingredient, index) => (
-					<div key={index} className="flex gap-2">
-						<input className="input w-20" placeholder="Menge" value={ingredient.amount} onChange={(event) => setIngredient(index, { amount: event.target.value })} />
-						<input className="input w-24" placeholder="Einheit" value={ingredient.unit} onChange={(event) => setIngredient(index, { unit: event.target.value })} />
-						<input className="input flex-1" placeholder="Zutat" value={ingredient.name} onChange={(event) => setIngredient(index, { name: event.target.value })} />
-						<button
-							type="button"
-							className="btn-link"
-							aria-label="Zutat entfernen"
-							onClick={() => setRecipe({ ...recipe, ingredients: recipe.ingredients.filter((_, i) => i !== index) })}
+				{sortable.order.map((key) => {
+					const index = keys.indexOf(key)
+					const ingredient = recipe.ingredients[index]
+					if (!ingredient) return null
+					return (
+						<div
+							key={key}
+							ref={sortable.rowRef(key)}
+							className={`flex items-center gap-2 ${sortable.dragId === key ? "rounded shadow-lg ring-2 ring-emerald-600" : ""}`}
 						>
-							✕
-						</button>
-					</div>
-				))}
-				<button
-					type="button"
-					className="btn-link"
-					onClick={() => setRecipe({ ...recipe, ingredients: [...recipe.ingredients, { name: "", amount: "", unit: "" }] })}
-				>
+							<button
+								type="button"
+								aria-label={`Zutat ${ingredient.name || index + 1} verschieben`}
+								title="Ziehen oder Pfeiltasten zum Sortieren"
+								className={`${iconButtonClass} ${handleButtonClass}`}
+								{...sortable.handleProps(key)}
+							>
+								<Icon name="grip" />
+							</button>
+							<input
+								className="input w-16 min-w-0 sm:w-20"
+								placeholder="Menge"
+								value={ingredient.amount}
+								onChange={(event) => setIngredient(index, { amount: event.target.value })}
+							/>
+							<input
+								className="input w-16 min-w-0 sm:w-24"
+								placeholder="Einheit"
+								value={ingredient.unit}
+								onChange={(event) => setIngredient(index, { unit: event.target.value })}
+							/>
+							<input
+								className="input min-w-0 flex-1"
+								placeholder="Zutat"
+								value={ingredient.name}
+								onChange={(event) => setIngredient(index, { name: event.target.value })}
+							/>
+							<button type="button" className="btn-link" aria-label="Zutat entfernen" onClick={() => removeIngredient(index)}>
+								✕
+							</button>
+						</div>
+					)
+				})}
+				<button type="button" className="btn-link" onClick={addIngredient}>
 					+ Zutat
 				</button>
 			</fieldset>
