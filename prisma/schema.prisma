@@ -253,8 +253,21 @@ model GroceryProduct {
   usedAt      DateTime                 @default(now())
   plan        Plan                     @relation(fields: [planId], references: [id], onDelete: Cascade)
   categories  GroceryProductCategory[]
+  aliases     GroceryProductAlias[]
 
   @@id([planId, name])
+}
+
+// Alternative Namen eines Produkts ("Hühnchen" für "Hähnchen"): gleiche Kategorien, Name im Eintrag bleibt wie eingegeben
+model GroceryProductAlias {
+  planId      String
+  name        String // normalisiert, pro Plan eindeutig und nie gleich einem Produktnamen
+  displayName String
+  productName String
+  product     GroceryProduct @relation(fields: [planId, productName], references: [planId, name], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([planId, name])
+  @@index([planId, productName])
 }
 
 // Kategorien eines Produkts in Reihenfolge: in jeder Liste gilt die erste, die dort nicht ausgeblendet ist

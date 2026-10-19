@@ -19,11 +19,14 @@ export const useProductMemory = (initial: ProductMemoryDTO[]) => {
 	const learn = (item: GroceryItemDTO) =>
 		setMemory((current) => {
 			const key = normalizeItemName(item.name)
-			const known = current.find((entry) => normalizeItemName(entry.displayName) === key)?.categoryIds ?? []
+			// ein alternativer Name gehört zum Hauptprodukt (Schreibweise bleibt dessen), es entsteht kein neuer Eintrag
+			const match = current.find((entry) => normalizeItemName(entry.displayName) === key || entry.aliases.some((alias) => normalizeItemName(alias) === key))
+			const known = match?.categoryIds ?? []
 			const categoryIds = item.categoryId ? [item.categoryId, ...known.filter((id) => id !== item.categoryId)] : known
+			const isAlias = !!match && normalizeItemName(match.displayName) !== key
 			return [
-				{ displayName: item.name, categoryIds, usedAt: new Date().toISOString() },
-				...current.filter((entry) => normalizeItemName(entry.displayName) !== key),
+				{ displayName: isAlias ? match.displayName : item.name, categoryIds, usedAt: new Date().toISOString(), aliases: match?.aliases ?? [] },
+				...current.filter((entry) => entry !== match),
 			]
 		})
 
