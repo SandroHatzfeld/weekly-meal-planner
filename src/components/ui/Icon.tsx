@@ -41,7 +41,7 @@ export default function Icon({ name, className = "size-5", filled = false }: { n
 
 // quadratischer Icon-Button mit zugänglichem Namen
 // Griff zum Ziehen: wie ein Icon-Button, aber ohne Scrollen bei Touch
-export const handleButtonClass = "touch-none cursor-grab select-none active:cursor-grabbing"
+export const handleButtonClass = "touch-none cursor-grab select-none [-webkit-touch-callout:none] active:cursor-grabbing"
 
 export const iconButtonClass =
 	"flex size-10 shrink-0 items-center justify-center rounded-full border border-(--border) bg-(--surface) text-(--foreground) hover:no-underline disabled:opacity-50"

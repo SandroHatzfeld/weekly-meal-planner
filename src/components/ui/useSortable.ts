@@ -6,44 +6,30 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } fr
 // ids kommen sortiert vom Server; onPersist speichert die neue Reihenfolge.
 export const useSortable = (ids: string[], onPersist: (ids: string[]) => void) => {
 	const [dragId, setDragId] = useState<string | null>(null)
-	const [order, setOrder] = useState(ids)
+	const [order, setOrderState] = useState(ids)
 	// neuer Stand vom Server (eigene oder fremde Änderung): übernehmen, solange nicht gezogen wird
 	const signature = ids.join()
 	const [synced, setSynced] = useState(signature)
 	if (synced !== signature && !dragId) {
 		setSynced(signature)
-		setOrder(ids)
+		setOrderState(ids)
 	}
 	const rows = useRef(new Map<string, HTMLElement>())
-	// aktueller Stand für Handler, die nach dem letzten Render feuern (Loslassen am Fenster)
-	const latest = useRef({ dragId, order, onPersist })
+	// Stand für die Fenster-Handler (laufen außerhalb von React-Renders)
+	const orderRef = useRef(order)
+	const persistRef = useRef(onPersist)
 	useEffect(() => {
-		latest.current = { dragId, order, onPersist }
+		persistRef.current = onPersist
 	})
-
-	// Ziehen beenden – genau einmal, egal ob über pointerup, verlorene Zeigerbindung oder Loslassen am Fenster.
-	// Auf Touch-Geräten geht die Bindung verloren, wenn die Zeile im DOM wandert; dann kommt pointerup nicht mehr am Griff an.
-	const endDrag = () => {
-		const { dragId: active, order: current, onPersist: persist } = latest.current
-		if (!active) return
-		latest.current = { ...latest.current, dragId: null }
-		setDragId(null)
-		persist(current)
+	const setOrder = (next: string[]) => {
+		orderRef.current = next
+		setOrderState(next)
 	}
-	useEffect(() => {
-		if (!dragId) return
-		window.addEventListener("pointerup", endDrag)
-		window.addEventListener("pointercancel", endDrag)
-		return () => {
-			window.removeEventListener("pointerup", endDrag)
-			window.removeEventListener("pointercancel", endDrag)
-		}
-	}, [dragId])
 
 	// Zeile an die Position verschieben, über deren Mitte der Finger gerade ist
-	const dragTo = (clientY: number) => {
-		if (!dragId) return
-		const others = order.filter((id) => id !== dragId)
+	const dragTo = (id: string, clientY: number) => {
+		const current = orderRef.current
+		const others = current.filter((other) => other !== id)
 		let index = others.length
 		for (let i = 0; i < others.length; i++) {
 			const box = rows.current.get(others[i])?.getBoundingClientRect()
@@ -52,8 +38,28 @@ export const useSortable = (ids: string[], onPersist: (ids: string[]) => void) =
 				break
 			}
 		}
-		const next = [...others.slice(0, index), dragId, ...others.slice(index)]
-		if (next.join() !== order.join()) setOrder(next)
+		const next = [...others.slice(0, index), id, ...others.slice(index)]
+		if (next.join() !== current.join()) setOrder(next)
+	}
+
+	// Bewegung und Loslassen am Fenster verfolgen statt per Pointer Capture am Griff: Wandert die Zeile beim Umsortieren
+	// im DOM, geht die Zeigerbindung verloren – das darf das Ziehen weder beenden noch hängen lassen (auch bei schnellen Zügen).
+	const startDrag = (id: string, pointerId: number) => {
+		setDragId(id)
+		const onMove = (event: globalThis.PointerEvent) => {
+			if (event.pointerId === pointerId) dragTo(id, event.clientY)
+		}
+		const end = (event: globalThis.PointerEvent) => {
+			if (event.pointerId !== pointerId) return
+			window.removeEventListener("pointermove", onMove)
+			window.removeEventListener("pointerup", end)
+			window.removeEventListener("pointercancel", end)
+			setDragId(null)
+			persistRef.current(orderRef.current)
+		}
+		window.addEventListener("pointermove", onMove)
+		window.addEventListener("pointerup", end)
+		window.addEventListener("pointercancel", end)
 	}
 
 	const move = (id: string, delta: number) => {
@@ -78,12 +84,11 @@ export const useSortable = (ids: string[], onPersist: (ids: string[]) => void) =
 		// auf den Griff legen; nur dort startet das Ziehen, damit die Seite sonst normal scrollt
 		handleProps: (id: string) => ({
 			onPointerDown: (event: PointerEvent<HTMLElement>) => {
-				event.currentTarget.setPointerCapture(event.pointerId)
-				setDragId(id)
+				if (event.button !== 0) return
+				startDrag(id, event.pointerId)
 			},
-			onPointerMove: (event: PointerEvent<HTMLElement>) => dragTo(event.clientY),
-			onPointerUp: endDrag,
-			onLostPointerCapture: endDrag,
+			// langes Drücken würde sonst das Kontextmenü öffnen und das Ziehen abbrechen
+			onContextMenu: (event: { preventDefault: () => void }) => event.preventDefault(),
 			onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
 				if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
 				event.preventDefault()
