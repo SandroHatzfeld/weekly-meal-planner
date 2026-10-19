@@ -14,7 +14,7 @@ export type ImportedRecipe = {
 }
 
 // bei jeder inhaltlichen Änderung am Prompt erhöhen: ältere Ergebnisse im Zwischenspeicher werden dann neu aufbereitet
-export const PROMPT_VERSION = 3
+export const PROMPT_VERSION = 4
 
 export const llmConfig = () => {
 	const baseUrl = process.env.LLM_BASE_URL?.trim().replace(/\/+$/, "")
@@ -31,9 +31,9 @@ Regeln:
 - "description": höchstens zwei kurze Sätze, sachlich, ohne Werbung und Lebensgeschichten. Leer lassen, wenn nichts Passendes da ist.
 - "ingredients": pro Zutat ein Eintrag mit "name" und "details".
   - "name" ist ausschließlich die schlichte Grundbezeichnung der Zutat, wie sie in der Einkaufsliste stehen würde: ein einzelnes Wort bzw. der übliche Produktname ("Paprika", "Zwiebel", "Kokosmilch", "Hähnchenbrustfilet"). Nichts anderes gehört in den Namen: keine Menge, keine Einheit, keine Eigenschaft ("rot", "frisch", "groß", "mild", "Bio") und keine Zubereitung.
-  - "details" enthält Menge und Einheit ("400 ml", "2 EL", "1 Prise", "3"), danach nur Angaben, die beim Einkaufen helfen: Farbe, Sorte, Größe ("rot", "groß", "tiefgekühlt", "mehligkochend"). Einheiten abkürzen (g, kg, ml, l, EL, TL), Mengen nicht umrechnen. Gibt es nichts davon, bleibt "details" leer.
+  - "details" beginnt immer mit der Mengenangabe aus den Daten. Sie wird nie weggelassen, auch nicht, wenn sie nur aus einer Zahl besteht oder eine ungewöhnliche Einheit hat ("1", "2", "½", "1 Bund", "1 Dose", "2 Zehen", "1 Stück", "1 Pck.", "1 Prise", "50 - 100 ml"). Steht in den Daten "Zwiebel(n)" oder "Zehe(n)", ist das nur die Einzahl/Mehrzahl-Schreibweise und kein Grund, die Menge zu streichen. Danach folgen nur Angaben, die beim Einkaufen helfen: Farbe, Sorte, Größe ("rot", "groß", "tiefgekühlt", "mehligkochend"). Einheiten abkürzen (g, kg, ml, l, EL, TL), Mengen nicht umrechnen. "details" bleibt nur leer, wenn in den Daten wirklich keine Menge steht (z.B. "Salz", "Pfeffer").
   - Zubereitungshinweise gehören nirgends hin und werden weggelassen: "gehackt", "fein gehackt", "gewürfelt", "in Streifen", "in Scheiben", "geschält", "gewaschen", "gerieben", "zerdrückt", "weich" usw. Ebenso Alternativen, Tipps und Anmerkungen in Klammern. Auch "nach Belieben", "zum Servieren" und "optional" entfallen.
-  - Beispiele: "2 rote Paprika, in Streifen geschnitten" → {"name": "Paprika", "details": "2, rot"}; "400 ml Kokosmilch" → {"name": "Kokosmilch", "details": "400 ml"}; "1 große Zwiebel, fein gehackt" → {"name": "Zwiebel", "details": "1, groß"}; "3 Knoblauchzehen, gepresst" → {"name": "Knoblauch", "details": "3 Zehen"}; "frischer Koriander nach Belieben" → {"name": "Koriander", "details": "frisch"}; "250 g Mie-Nudeln" → {"name": "Mie-Nudeln", "details": "250 g"}; "200 g Karotten, gewürfelt" → {"name": "Karotte", "details": "200 g"}; "Salz" → {"name": "Salz", "details": ""}.
+  - Beispiele: "2 rote Paprika, in Streifen geschnitten" → {"name": "Paprika", "details": "2, rot"}; "400 ml Kokosmilch" → {"name": "Kokosmilch", "details": "400 ml"}; "1 große Zwiebel, fein gehackt" → {"name": "Zwiebel", "details": "1, groß"}; "2 Knoblauchzehe(n)" → {"name": "Knoblauch", "details": "2 Zehen"}; "1 Zwiebel(n)" → {"name": "Zwiebel", "details": "1"}; "1 Bund Petersilie (oder TK)" → {"name": "Petersilie", "details": "1 Bund"}; "1 Dose Tomaten, geschälte (800 g)" → {"name": "Tomaten", "details": "1 Dose, 800 g"}; "frischer Koriander nach Belieben" → {"name": "Koriander", "details": "frisch"}; "250 g Mie-Nudeln" → {"name": "Mie-Nudeln", "details": "250 g"}; "200 g Karotten, gewürfelt" → {"name": "Karotte", "details": "200 g"}; "Salz" → {"name": "Salz", "details": ""}.
   - Überschriften von Zutatengruppen sind keine Zutaten.
 - "steps": kurze Einzelschritte in der richtigen Reihenfolge, ohne Nummerierung und ohne Überschriften.
 - "imageUrl": die Bild-URL aus den Daten, sonst leer.
@@ -67,6 +67,28 @@ export const validateRecipe = (raw: unknown): ImportedRecipe => {
 	if (!name || (ingredients.length === 0 && steps.length === 0)) throw new LlmError("Auf der Seite wurde kein Rezept gefunden")
 	const imageUrl = text(data.imageUrl, 2000)
 	return { name, description: text(data.description, 600), imageUrl: /^https?:\/\//i.test(imageUrl) ? imageUrl : "", steps, ingredients }
+}
+
+// Absicherung: Modelle lassen Mengen ohne Einheit ("1 Zwiebel", "1 Bund Petersilie") gelegentlich weg. Sind die Originalzeilen
+// bekannt (schema.org recipeIngredient) und die Details leer, wird die Menge vom Zeilenanfang übernommen.
+const QUANTITY =
+	/^\s*((?:\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?|[½¼¾⅓⅔⅛])(?:\s*[-–]\s*\d+(?:[.,]\d+)?)?)(?:\s*(g|kg|mg|ml|l|cl|dl|liter|el|tl|msp\.?|prise[n]?|bund|bünde|dose[n]?|zehe[n]?|stück|stk\.?|pck\.?|päckchen|packung|becher|glas|gläser|scheibe[n]?|zweig[e]?|stange[n]?|kopf|köpfe|handvoll|tasse[n]?|würfel|blatt|blätter)\b\.?)?/i
+
+export const restoreQuantities = (recipe: ImportedRecipe, page: ExtractedPage): ImportedRecipe => {
+	if (page.kind !== "jsonld") return recipe
+	const lines = (Array.isArray(page.recipe.recipeIngredient) ? page.recipe.recipeIngredient : []).filter((line): line is string => typeof line === "string")
+	if (lines.length === 0) return recipe
+	return {
+		...recipe,
+		ingredients: recipe.ingredients.map((ingredient) => {
+			if (ingredient.details) return ingredient
+			const name = ingredient.name.toLowerCase()
+			const stem = name.length > 5 ? name.slice(0, 5) : name
+			const line = lines.find((candidate) => candidate.toLowerCase().includes(name)) ?? lines.find((candidate) => candidate.toLowerCase().includes(stem))
+			const match = line && QUANTITY.exec(line)
+			return match ? { ...ingredient, details: match[0].trim().replace(/\s+/g, " ").slice(0, 60) } : ingredient
+		}),
+	}
 }
 
 // {"…"} aus einer Antwort holen, auch wenn das Modell Markdown-Zäune oder Text drumherum liefert
@@ -139,7 +161,7 @@ export const structureRecipe = async (page: ExtractedPage) => {
 	let lastError: unknown
 	for (let attempt = 0; attempt < 2; attempt++) {
 		try {
-			return { recipe: validateRecipe(await callModel(config, page)), model: config.model }
+			return { recipe: restoreQuantities(validateRecipe(await callModel(config, page)), page), model: config.model }
 		} catch (error) {
 			lastError = error
 			// nur eine unbrauchbare Antwort (kein/ungültiges JSON) lohnt eine Wiederholung; Verbindungsfehler,
