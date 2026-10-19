@@ -27,7 +27,7 @@ type ItemEditDialogProps<T extends EditableItem> = {
 
 export default function ItemEditDialog<T extends EditableItem>({ item, lists, tags, categories = [], hiddenCategories, onSave, onDelete, onClose }: ItemEditDialogProps<T>) {
 	return (
-		<Modal open={!!item} onClose={onClose} labelledBy="item-edit-title">
+		<Modal open={!!item} onClose={onClose} labelledBy="item-edit-title" focusDialog>
 			{/* key: Formular bei jedem geöffneten Eintrag frisch initialisieren */}
 			{item && <EditForm key={item.id} item={item} lists={lists} tags={tags} categories={categories} hiddenCategories={hiddenCategories} onSave={onSave} onDelete={onDelete} close={onClose} />}
 		</Modal>
@@ -69,7 +69,7 @@ function EditForm<T extends EditableItem>({
 		>
 			<h2 id="item-edit-title" className="text-lg font-semibold">Eintrag bearbeiten</h2>
 			<label htmlFor="item-name">Name</label>
-			<input id="item-name" value={name} onChange={(event) => setName(event.target.value)} required autoFocus />
+			<input id="item-name" value={name} onChange={(event) => setName(event.target.value)} required />
 			<label htmlFor="item-details">Details</label>
 			<input id="item-details" value={details} placeholder="z.B. 500 g" onChange={(event) => setDetails(event.target.value)} />
 			{lists.length > 1 && (

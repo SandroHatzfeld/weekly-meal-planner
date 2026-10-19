@@ -25,14 +25,14 @@ const memberOfItem = async (itemId: string) => {
 	return { ...item, planId: item.list.planId }
 }
 
-export const addGroceryItem = async (listId: string, name: string, details: string, dishId?: string, categoryId?: string | null) => {
+export const addGroceryItem = async (listId: string, name: string, details: string, dishId?: string, categoryId?: string | null, tagIds: string[] = []) => {
 	if (!name.trim()) return null
 	const list = await memberOfList(listId)
 	if (dishId) {
 		const dish = await prisma.dish.findUnique({ where: { id: dishId }, select: { planId: true } })
 		if (dish?.planId !== list.planId) throw new Error("Gericht gehört nicht zum Plan der Liste")
 	}
-	return service.createItem(list.planId, listId, { name: name.trim(), details: details.trim() || null, dishId, categoryId })
+	return service.createItem(list.planId, listId, { name: name.trim(), details: details.trim() || null, dishId, categoryId, tagIds })
 }
 
 export const toggleGroceryItem = async (itemId: string, checked: boolean) => {

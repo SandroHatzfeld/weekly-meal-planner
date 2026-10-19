@@ -12,6 +12,7 @@ import { applyItemChanges } from "@/lib/grocery/client"
 import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
 import ProductInput from "@/components/shop/ProductInput"
+import TagPicker from "@/components/tags/TagPicker"
 import { useProductMemory } from "@/components/shop/useProductMemory"
 import { PAST_DAY_MESSAGE } from "@/lib/dates"
 import Link from "next/link"
@@ -239,7 +240,7 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 				) : (
 					<p className="text-sm opacity-60">Noch keine</p>
 				)}
-				<AddDishItem dishId={dish.id} lists={lists} defaultListId={defaultListId} categories={categories} memory={memory} />
+				<AddDishItem dishId={dish.id} lists={lists} defaultListId={defaultListId} categories={categories} tags={tags} memory={memory} />
 				<ItemEditDialog
 					item={editingItem}
 					lists={lists}
@@ -262,12 +263,14 @@ function AddDishItem({
 	lists,
 	defaultListId,
 	categories,
+	tags,
 	memory,
 }: {
 	dishId: string
 	lists: { id: string; name: string }[]
 	defaultListId: string
 	categories: CategoryDTO[]
+	tags: TagDTO[]
 	memory: ProductMemoryDTO[]
 }) {
 	const [name, setName] = useState("")
@@ -275,16 +278,18 @@ function AddDishItem({
 	const [listId, setListId] = useState(defaultListId)
 	// Kategorie aus einem gewählten Vorschlag; weitertippen setzt sie zurück
 	const [pickedCategory, setPickedCategory] = useState<string | null>(null)
+	const [newTagIds, setNewTagIds] = useState<string[]>([])
 
 	return (
 		<form
 			className="flex flex-wrap gap-2"
 			onSubmit={async (event) => {
 				event.preventDefault()
-				await addGroceryItem(listId, name, details, dishId, pickedCategory)
+				await addGroceryItem(listId, name, details, dishId, pickedCategory, newTagIds)
 				setName("")
 				setDetails("")
 				setPickedCategory(null)
+				setNewTagIds([])
 			}}
 		>
 			<ProductInput
@@ -303,6 +308,7 @@ function AddDishItem({
 				categories={categories}
 			/>
 			<input className="input min-w-0 flex-1 sm:w-32 sm:flex-none" placeholder="Details (z.B. 500 g)" value={details} onChange={(event) => setDetails(event.target.value)} />
+			<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} />
 			{lists.length > 1 && (
 				<select
 					className="input w-auto"

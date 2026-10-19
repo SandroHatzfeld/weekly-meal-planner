@@ -17,6 +17,7 @@ import type { CategoryDTO, CategoryOrder, ProductMemoryDTO } from "@/lib/grocery
 import { normalizeItemName } from "@/lib/grocery/normalize"
 import { orderCategories } from "@/lib/grocery/order"
 import Link from "next/link"
+import TagPicker from "@/components/tags/TagPicker"
 import ProductInput from "./ProductInput"
 import { useProductMemory } from "./useProductMemory"
 import { useStoredView, type ShopView } from "./useStoredView"
@@ -98,6 +99,8 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 	const [details, setDetails] = useState("")
 	// Kategorie aus einem gewählten Vorschlag; weitertippen setzt sie zurück
 	const [pickedCategory, setPickedCategory] = useState<string | null>(null)
+	// Tags für den nächsten Eintrag (Dropdown neben dem Hinzufügen-Button)
+	const [newTagIds, setNewTagIds] = useState<string[]>([])
 	const [editing, setEditing] = useState<GroceryItemDTO | null>(null)
 	const [view, setView] = useStoredView()
 	const { memory, learn } = useProductMemory(productMemory)
@@ -148,7 +151,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						key={list.id}
 						type="button"
 						onClick={() => selectList(list.id)}
-						className={list.id === listId ? "btn" : "btn-secondary"}
+						className={list.id === listId ? "btn border border-transparent" : "btn-secondary"}
 					>
 						{list.name} ({items.filter((item) => item.listId === list.id && !item.checked).length})
 					</button>
@@ -156,7 +159,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 				{/* Ansicht: am Ende der Reiter-Zeile, bricht bei vielen Listen mit um */}
 				<select
 					aria-label="Ansicht"
-					className="input ml-auto w-auto py-2"
+					className="input ml-auto w-auto py-[6.5px]"
 					value={view}
 					onChange={(event) => setView(event.target.value as ShopView)}
 				>
@@ -174,7 +177,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						className="flex flex-wrap gap-2"
 						onSubmit={async (event) => {
 							event.preventDefault()
-							const item = await addGroceryItem(currentList.id, name, details, undefined, pickedCategory)
+							const item = await addGroceryItem(currentList.id, name, details, undefined, pickedCategory, newTagIds)
 							if (item) {
 								setItems((current) => upsert(current, item))
 								learn(item)
@@ -182,6 +185,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 							setName("")
 							setDetails("")
 							setPickedCategory(null)
+							setNewTagIds([])
 						}}
 					>
 						<ProductInput
@@ -200,6 +204,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 							categories={categories}
 						/>
 						<input className="input min-w-0 flex-1 sm:w-36 sm:flex-none" placeholder="Details (z.B. 500 g)" value={details} onChange={(event) => setDetails(event.target.value)} />
+						<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} />
 						<button type="submit" className="btn">
 							Hinzufügen
 						</button>

@@ -56,6 +56,9 @@ export const useCombobox = <T>(items: T[], onPick: (item: T) => void) => {
 			onMouseDown: (event: { preventDefault: () => void }) => {
 				event.preventDefault()
 				pick(visible[index])
+				// nach der Auswahl das Feld verlassen, damit auf dem Handy die Tastatur verschwindet
+				const field = document.activeElement
+				if (field instanceof HTMLElement && field.getAttribute("role") === "combobox") field.blur()
 			},
 		}),
 	}

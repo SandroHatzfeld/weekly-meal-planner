@@ -25,13 +25,15 @@ export const listItems = async (listId: string) => {
 export const createItem = async (
 	planId: string,
 	listId: string,
-	data: { name: string; details?: string | null; dishId?: string | null; categoryId?: string | null },
+	data: { name: string; details?: string | null; dishId?: string | null; categoryId?: string | null; tagIds?: string[] },
 ) => {
 	// explizite Kategorie (z.B. aus einem Vorschlag) gewinnt, sonst die zuletzt gemerkte
 	const explicit = data.categoryId && (await isCategoryOfPlan(data.categoryId, planId)) ? data.categoryId : null
 	const categoryId = explicit ?? (await recallCategory(planId, data.name))
+	// nur Tags des Plans (wie beim nachträglichen Setzen)
+	const tags = data.tagIds?.length ? await prisma.planTag.findMany({ where: { planId, id: { in: data.tagIds } }, select: { id: true } }) : []
 	const item = await prisma.groceryItem.create({
-		data: { listId, name: data.name, details: data.details || null, dishId: data.dishId ?? null, categoryId },
+		data: { listId, name: data.name, details: data.details || null, dishId: data.dishId ?? null, categoryId, tags: { connect: tags } },
 		include: groceryItemInclude,
 	})
 	await rememberProduct(planId, data.name, categoryId, explicit !== null)
