@@ -73,15 +73,19 @@ const parseJson = (content: string) => {
 	}
 }
 
-const callModel = async (config: NonNullable<ReturnType<typeof llmConfig>>, page: ExtractedPage) => {
-	const response = await fetch(`${config.baseUrl}/chat/completions`, {
+// Platz für ein ganzes Rezept; Anbieter wie Cloudflare Workers AI schneiden sonst schon nach wenigen hundert Tokens ab
+const MAX_OUTPUT_TOKENS = 4096
+
+const request = (config: NonNullable<ReturnType<typeof llmConfig>>, page: ExtractedPage, jsonMode: boolean) =>
+	fetch(`${config.baseUrl}/chat/completions`, {
 		method: "POST",
 		signal: AbortSignal.timeout(90_000),
 		headers: { "Content-Type": "application/json", ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}) },
 		body: JSON.stringify({
 			model: config.model,
 			temperature: 0,
-			response_format: { type: "json_object" },
+			max_tokens: MAX_OUTPUT_TOKENS,
+			...(jsonMode ? { response_format: { type: "json_object" } } : {}),
 			messages: [
 				{ role: "system", content: SYSTEM_PROMPT },
 				{ role: "user", content: buildInput(page) },
@@ -90,11 +94,34 @@ const callModel = async (config: NonNullable<ReturnType<typeof llmConfig>>, page
 	}).catch((error) => {
 		throw new LlmError(error?.name === "TimeoutError" ? "Das Modell hat zu lange gebraucht" : "Das Modell ist nicht erreichbar")
 	})
-	if (!response.ok) throw new LlmError(`Das Modell hat mit einem Fehler geantwortet (HTTP ${response.status})`)
-	const body = (await response.json().catch(() => null)) as { choices?: { message?: { content?: string } }[] } | null
-	const content = body?.choices?.[0]?.message?.content
-	if (!content) throw new LlmError("Das Modell hat keine Antwort geliefert")
-	return parseJson(content)
+
+const callModel = async (config: NonNullable<ReturnType<typeof llmConfig>>, page: ExtractedPage) => {
+	let response = await request(config, page, true)
+	// nicht jedes Modell kennt den JSON-Modus: dann ohne ihn erneut versuchen (das JSON wird ohnehin aus dem Text geholt)
+	if (response.status === 400 || response.status === 422) response = await request(config, page, false)
+	if (!response.ok) {
+		console.error(`[recipe-import] Modell-Fehler HTTP ${response.status}:`, (await response.text().catch(() => "")).slice(0, 500))
+		throw new LlmError(`Das Modell hat mit einem Fehler geantwortet (HTTP ${response.status})`)
+	}
+	const body = (await response.json().catch(() => null)) as {
+		choices?: { message?: { content?: unknown }; finish_reason?: string }[]
+		result?: { response?: unknown }
+	} | null
+	const choice = body?.choices?.[0]
+	// manche Anbieter liefern das JSON schon als Objekt oder im Feld "result.response"
+	const content = choice?.message?.content ?? body?.result?.response
+	if (content && typeof content === "object") return content
+	if (typeof content !== "string" || !content.trim()) throw new LlmError("Das Modell hat keine Antwort geliefert")
+	if (choice?.finish_reason === "length") {
+		console.error("[recipe-import] Antwort abgeschnitten (max_tokens erreicht):", content.slice(-200))
+		throw new LlmError("Die Antwort des Modells wurde abgeschnitten – bitte ein Modell mit größerem Ausgabelimit wählen")
+	}
+	try {
+		return parseJson(content)
+	} catch (error) {
+		console.error("[recipe-import] Antwort kein gültiges JSON:", content.slice(0, 300), "…", content.slice(-200))
+		throw error
+	}
 }
 
 // ein zweiter Versuch, falls die Antwort unbrauchbar war (kaputtes JSON kommt bei kleineren Modellen vor)
@@ -107,8 +134,9 @@ export const structureRecipe = async (page: ExtractedPage) => {
 			return { recipe: validateRecipe(await callModel(config, page)), model: config.model }
 		} catch (error) {
 			lastError = error
-			// "kein Rezept" und Verbindungsfehler ändern sich durch Wiederholen nicht
-			if (error instanceof LlmError && !/JSON|Antwort/.test(error.message)) break
+			// nur eine unbrauchbare Antwort (kein/ungültiges JSON) lohnt eine Wiederholung; Verbindungsfehler,
+			// Abbrüche durch das Token-Limit und "kein Rezept" ändern sich dadurch nicht
+			if (!(error instanceof LlmError) || !/JSON|keine Antwort/.test(error.message)) break
 		}
 	}
 	throw lastError
