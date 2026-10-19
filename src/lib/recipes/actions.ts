@@ -11,7 +11,7 @@ import { groceryItemInclude, toGroceryItemDTO } from "../dto"
 import { deleteImageIfUnused, resolveImage } from "../images"
 import { recallCategory, rememberProduct } from "../grocery/categories"
 import { canViewRecipe, coMemberIds } from "./access"
-import { ImportError, importRecipe } from "./import/service"
+import { finishImport, ImportError, prepareImport } from "./import/service"
 import { llmConfig } from "./import/llm"
 import type { PlanIngredient, PlannedItem } from "./planning"
 
@@ -41,18 +41,33 @@ const normalize = (input: RecipeInput) => ({
 		.map((ingredient) => ({ name: ingredient.name.trim(), details: ingredient.details.trim() || null })),
 })
 
-// Rezept von einem Link laden und aufbereiten; liefert nur die Vorbelegung für das Formular, gespeichert wird erst dort
-export const importRecipeFromUrl = async (url: string, refresh = false): Promise<{ recipe: RecipeInput; cached: boolean } | { error: string }> => {
+// Rezept-Import in zwei Schritten, damit die Oberfläche den Fortschritt zeigen kann. Geliefert wird nur die Vorbelegung
+// für das Formular, gespeichert wird erst dort.
+const importUser = async () => {
 	const user = await requireSessionUser()
-	if (!llmConfig()) return { error: "Der Import ist nicht eingerichtet (LLM_BASE_URL und LLM_MODEL in der .env)" }
+	if (!llmConfig()) throw new ImportError("Der Import ist nicht eingerichtet (LLM_BASE_URL und LLM_MODEL in der .env)")
+	return user
+}
+
+const importResult = async <T>(action: () => Promise<T>): Promise<T | { error: string }> => {
 	try {
-		const { recipe, sourceUrl, cached } = await importRecipe(user.id, url, refresh)
-		return { recipe: { ...recipe, sourceUrl }, cached }
+		return await action()
 	} catch (error) {
 		if (error instanceof ImportError) return { error: error.message }
 		throw error
 	}
 }
+
+// Schritt 1: Seite laden. ready = Ergebnis liegt schon im Zwischenspeicher
+export const prepareRecipeImport = async (url: string, refresh = false) =>
+	importResult(async () => prepareImport((await importUser()).id, url, refresh))
+
+// Schritt 2: vom Sprachmodell aufbereiten lassen
+export const finishRecipeImport = async (url: string): Promise<{ recipe: RecipeInput; cached: boolean } | { error: string }> =>
+	importResult(async () => {
+		const { recipe, sourceUrl, cached } = await finishImport((await importUser()).id, url)
+		return { recipe: { ...recipe, sourceUrl }, cached }
+	})
 
 export const createRecipe = async (input: RecipeInput) => {
 	const user = await requireSessionUser()
