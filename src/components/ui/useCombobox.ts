@@ -13,6 +13,8 @@ export const useCombobox = <T>(items: T[], onPick: (item: T) => void) => {
 
 	const pick = (item: T) => {
 		setActiveIndex(-1)
+		// nach der Auswahl Vorschläge schließen (bis wieder getippt wird)
+		setDismissed(true)
 		onPick(item)
 	}
 

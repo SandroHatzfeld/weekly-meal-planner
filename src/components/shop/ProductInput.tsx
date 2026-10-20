@@ -42,7 +42,7 @@ export default function ProductInput({ value, onChange, onPick, memory, categori
 				}}
 			/>
 			{combobox.visible.length > 0 && (
-				<ul {...combobox.listboxProps} className={`suggestions sm:w-full ${inlineSuggestions ? "sm:static" : ""}`}>
+				<ul {...combobox.listboxProps} className={`suggestions sm:w-full ${inlineSuggestions ? "static! sm:w-full" : ""}`}>
 					{combobox.visible.map((suggestion, index) => (
 						<li key={suggestion.displayName} {...combobox.optionProps(index)}>
 							<span>
