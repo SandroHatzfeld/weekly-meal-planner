@@ -141,8 +141,18 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center gap-2">
-				<Link href={`/week?start=${dish.date}`} className="btn-link">
-					← Zur Woche
+				<Link
+					href={`/week?start=${dish.date}`}
+					className="btn-link"
+					onClick={(event) => {
+						// zurück dorthin, woher man kam (Woche, Monat, Einkaufsliste); ohne Verlauf (direkter Link) zur Woche des Gerichts
+						if (window.history.length > 1) {
+							event.preventDefault()
+							router.back()
+						}
+					}}
+				>
+					← Zurück
 				</Link>
 				{others.length > 0 && (
 					<span className="ml-auto rounded bg-amber-100 px-2 py-1 text-xs text-amber-900">
