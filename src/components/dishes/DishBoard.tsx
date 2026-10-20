@@ -4,7 +4,7 @@ import { usePlanEvent } from "@/components/realtime/SocketProvider"
 import { formatDay } from "@/lib/dates"
 import { moveDish } from "@/lib/dishes/actions"
 import type { DishDTO } from "@/lib/dto"
-import type { CategoryDTO } from "@/lib/grocery/categories"
+import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
 import Link from "next/link"
 import PlanDishDialog from "./PlanDishDialog"
@@ -18,6 +18,7 @@ type DishBoardProps = {
 	defaultListId?: string
 	tags?: TagDTO[]
 	categories?: CategoryDTO[]
+	productMemory?: ProductMemoryDTO[]
 	mode: "week" | "month"
 	monthKey?: string
 	today: string
@@ -25,7 +26,7 @@ type DishBoardProps = {
 
 const upsert = (dishes: DishDTO[], dish: DishDTO) => [...dishes.filter((existing) => existing.id !== dish.id), dish]
 
-export default function DishBoard({ planId, days, initialDishes, lists = [], defaultListId = "", tags = [], categories = [], mode, monthKey, today }: DishBoardProps) {
+export default function DishBoard({ planId, days, initialDishes, lists = [], defaultListId = "", tags = [], categories = [], productMemory = [], mode, monthKey, today }: DishBoardProps) {
 	const [dishes, setDishes] = useState(initialDishes)
 	const [dragId, setDragId] = useState<string | null>(null)
 	// Tag, für den das Planen-Popup offen ist
@@ -72,7 +73,7 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 		<PlanDishDialog
 			open={planningDay !== null}
 			onClose={() => setPlanningDay(null)}
-			plans={[{ id: planId, name: "", lists, defaultListId, tags, categories }]}
+			plans={[{ id: planId, name: "", lists, defaultListId, tags, categories, memory: productMemory }]}
 			initialPlanId={planId}
 			initialDate={planningDay ?? today}
 			today={today}

@@ -1,3 +1,4 @@
+import { productMemoryOfPlan } from "@/lib/grocery/categories"
 import PlanRecipeButton from "@/components/recipes/PlanRecipeButton"
 import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import { DeleteRecipeButton } from "@/components/recipes/RecipeForm"
@@ -38,13 +39,15 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 		},
 		orderBy: { joinedAt: "asc" },
 	})
-	const plans = memberships.map(({ plan }) => ({
+	const memories = await Promise.all(memberships.map(({ plan }) => productMemoryOfPlan(plan.id)))
+	const plans = memberships.map(({ plan }, index) => ({
 		id: plan.id,
 		name: plan.name,
 		lists: plan.groceryLists.map((list) => ({ id: list.id, name: list.name })),
 		categories: plan.categories,
 		defaultListId: resolveDefaultListId(plan.groceryLists, plan.defaultListId),
 		tags: plan.tags.map(toTagDTO),
+		memory: memories[index],
 	}))
 	const isOwner = recipe.userId === user.id
 

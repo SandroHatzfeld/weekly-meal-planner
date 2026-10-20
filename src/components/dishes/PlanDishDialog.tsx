@@ -3,12 +3,13 @@
 import IngredientPicker from "@/components/recipes/IngredientPicker"
 import Modal from "@/components/ui/Modal"
 import { useCombobox } from "@/components/ui/useCombobox"
+import ManualItemRow, { isManualEntry } from "@/components/dishes/ManualItemRow"
 import { PAST_DAY_MESSAGE } from "@/lib/dates"
 import { createDish } from "@/lib/dishes/actions"
 import type { DishDTO } from "@/lib/dto"
-import { planRecipe, searchRecipes, type RecipeSuggestion } from "@/lib/recipes/actions"
+import { planDish, planRecipe, searchRecipes, type RecipeSuggestion } from "@/lib/recipes/actions"
 import { initialEntries, toPlannedItems, type IngredientEntry } from "@/lib/recipes/planning"
-import type { CategoryDTO } from "@/lib/grocery/categories"
+import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
 import { useEffect, useState } from "react"
 
@@ -19,6 +20,8 @@ export type PlanOption = {
 	defaultListId: string
 	tags: TagDTO[]
 	categories: CategoryDTO[]
+	// bekannte Produkte für die Vorschläge beim manuellen Hinzufügen
+	memory: ProductMemoryDTO[]
 }
 
 type PlanDishDialogProps = {
@@ -70,10 +73,13 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 		}
 	}, [name, planId, recipe])
 
+	// von Hand hinzugefügte Produkte bleiben, wenn Rezept oder Plan wechseln
+	const withManual = (recipeEntries: IngredientEntry[]) => (current: IngredientEntry[]) => [...recipeEntries, ...current.filter(isManualEntry)]
+
 	const pickRecipe = (suggestion: RecipeSuggestion) => {
 		setRecipe(suggestion)
 		setName(suggestion.name)
-		setEntries(initialEntries(suggestion.ingredients))
+		setEntries(withManual(initialEntries(suggestion.ingredients)))
 	}
 	// nur Ergebnisse zur aktuellen Eingabe anzeigen
 	const combobox = useCombobox(!recipe && suggestions.query === name.trim() ? suggestions.recipes : [], pickRecipe)
@@ -83,9 +89,12 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 		if (date < today) return setError(PAST_DAY_MESSAGE)
 		setSaving(true)
 		setError(null)
+		const items = toPlannedItems(entries, plan.defaultListId)
 		const dish = recipe
-			? ((await planRecipe(recipe.id, { planId, date, items: toPlannedItems(entries, plan.defaultListId) })) as { dish?: DishDTO; error?: string })
-			: { dish: (await createDish(planId, name, date)) ?? undefined, error: "Bitte Name und Datum angeben" }
+			? ((await planRecipe(recipe.id, { planId, date, items })) as { dish?: DishDTO; error?: string })
+			: items.length > 0
+				? ((await planDish({ planId, date, name, items })) as { dish?: DishDTO; error?: string })
+				: { dish: (await createDish(planId, name, date)) ?? undefined, error: "Bitte Name und Datum angeben" }
 		setSaving(false)
 		if (!dish.dish) return setError(dish.error ?? "Planen fehlgeschlagen")
 		onPlanned(dish.dish)
@@ -115,7 +124,7 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 						onChange={(event) => {
 							setPlanId(event.target.value)
 							// Listen und Tags gehören zum Plan -> Anpassungen zurücksetzen
-							if (recipe) setEntries(initialEntries(recipe.ingredients))
+							setEntries(withManual(recipe ? initialEntries(recipe.ingredients) : []))
 						}}
 					>
 						{plans.map((candidate) => (
@@ -137,8 +146,11 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 					{...combobox.inputProps}
 					required
 					onChange={(event) => {
-						// weitertippen hebt eine gewählte Rezept-Vorlage auf
-						if (recipe) setRecipe(null)
+						// weitertippen hebt eine gewählte Rezept-Vorlage auf (ihre Zutaten gehen mit, eigene Produkte bleiben)
+						if (recipe) {
+							setRecipe(null)
+							setEntries(withManual([]))
+						}
 						setName(event.target.value)
 						combobox.reset()
 					}}
@@ -159,7 +171,7 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 			<label htmlFor="plan-dish-date">Datum</label>
 			<input id="plan-dish-date" type="date" value={date} min={today} onChange={(event) => setDate(event.target.value)} required />
 
-			{recipe && (
+			{(recipe || entries.length > 0) && (
 				<IngredientPicker
 					entries={entries}
 					onChange={setEntries}
@@ -171,9 +183,17 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 				/>
 			)}
 
+			{/* Produkte von Hand auf die Einkaufsliste setzen, mit oder ohne Rezept */}
+			<ManualItemRow
+				memory={plan.memory}
+				categories={plan.categories}
+				tags={plan.tags}
+				onAdd={(entry) => setEntries((current) => [...current, entry])}
+			/>
+
 			{error && <p className="error">{error}</p>}
 			<div className="mt-1 flex items-center gap-3">
-				<button type="submit" className="px-5 py-2" disabled={saving || (!!recipe && !plan.defaultListId)}>
+				<button type="submit" className="px-5 py-2" disabled={saving || ((!!recipe || entries.length > 0) && !plan.defaultListId)}>
 					Planen
 				</button>
 				<button type="button" className="btn-secondary py-2" onClick={onClose}>

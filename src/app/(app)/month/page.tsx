@@ -3,7 +3,7 @@ import { addDays, formatDay, startOfWeek, todayKey } from "@/lib/dates"
 import { dishesInRange } from "@/lib/dishes/queries"
 import { listsWithDefault } from "@/lib/grocery/queries"
 import { tagsOfPlan } from "@/lib/tags/queries"
-import { categoriesOfPlan } from "@/lib/grocery/categories"
+import { categoriesOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
 import { requireActivePlan } from "@/lib/session"
 import Link from "next/link"
 
@@ -27,10 +27,11 @@ export default async function MonthPage({ searchParams }: PageProps<"/month">) {
 	for (let day = gridStart; day <= gridEnd; day = addDays(day, 1)) days.push(day)
 
 	const dishes = await dishesInRange(planId, gridStart, gridEnd)
-	const [{ lists, defaultListId }, tags, categories] = await Promise.all([
+	const [{ lists, defaultListId }, tags, categories, productMemory] = await Promise.all([
 		listsWithDefault(planId),
 		tagsOfPlan(planId),
 		categoriesOfPlan(planId),
+		productMemoryOfPlan(planId),
 	])
 
 	return (
@@ -47,7 +48,7 @@ export default async function MonthPage({ searchParams }: PageProps<"/month">) {
 					Heute
 				</Link>
 			</div>
-			<DishBoard key={monthKey} planId={planId} days={days} initialDishes={dishes} lists={lists} defaultListId={defaultListId} tags={tags} categories={categories} mode="month" monthKey={monthKey} today={todayKey()} />
+			<DishBoard key={monthKey} planId={planId} days={days} initialDishes={dishes} lists={lists} defaultListId={defaultListId} tags={tags} categories={categories} productMemory={productMemory} mode="month" monthKey={monthKey} today={todayKey()} />
 		</div>
 	)
 }

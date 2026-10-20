@@ -17,13 +17,18 @@ export default function TagPicker({ tags, value, onChange }: { tags: TagDTO[]; v
 			if (!root.current?.contains(event.target as Node)) setOpen(false)
 		}
 		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") setOpen(false)
+			if (event.key === "Escape") {
+				// nur das Dropdown schließen, nicht das umgebende Popup (natives <dialog> schließt sonst bei Escape)
+				event.preventDefault()
+				event.stopPropagation()
+				setOpen(false)
+			}
 		}
 		document.addEventListener("pointerdown", onPointerDown)
-		document.addEventListener("keydown", onKeyDown)
+		document.addEventListener("keydown", onKeyDown, true)
 		return () => {
 			document.removeEventListener("pointerdown", onPointerDown)
-			document.removeEventListener("keydown", onKeyDown)
+			document.removeEventListener("keydown", onKeyDown, true)
 		}
 	}, [open])
 

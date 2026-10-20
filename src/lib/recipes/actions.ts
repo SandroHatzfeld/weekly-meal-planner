@@ -112,45 +112,46 @@ export const deleteRecipe = async (recipeId: string) => {
 	redirect("/recipes")
 }
 
-// Copy-on-Plan: Snapshot des Rezepts als neuer Dish + die ausgewählten (ggf. angepassten) Zutaten als GroceryItems
-export const planRecipe = async (recipeId: string, target: { planId: string; date: string; items: PlannedItem[] }) => {
-	const { user } = await requireMember(target.planId)
-	const date = parseDateKey(target.date)
-	if (!date) return { error: "Bitte wähle einen Tag" }
-	if (isPastDay(target.date)) return { error: PAST_DAY_MESSAGE }
+type DishBase = {
+	planId: string
+	date: Date
+	name: string
+	description: string | null
+	imageUrl: string | null
+	steps: string[]
+	sourceRecipeId: string | null
+}
 
-	const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } })
-	if (!recipe || !(await canViewRecipe(user.id, recipe.userId))) return { error: "Rezept nicht gefunden" }
-
+// Gericht anlegen und die gewählten (ggf. angepassten) Zutaten/Produkte als GroceryItems verknüpfen – für Rezepte und freie Gerichte
+const createDishWithItems = async (base: DishBase, rawItems: PlannedItem[]) => {
+	const { planId } = base
 	// Listen und Tags müssen zum Ziel-Plan gehören
 	const [lists, tags] = await Promise.all([
-		prisma.groceryList.findMany({ where: { planId: target.planId }, select: { id: true } }),
-		prisma.planTag.findMany({ where: { planId: target.planId }, select: { id: true } }),
+		prisma.groceryList.findMany({ where: { planId }, select: { id: true } }),
+		prisma.planTag.findMany({ where: { planId }, select: { id: true } }),
 	])
 	const listIds = new Set(lists.map((list) => list.id))
 	const tagIds = new Set(tags.map((tag) => tag.id))
-	const items = target.items.filter((item) => item.name.trim())
+	const items = rawItems.filter((item) => item.name.trim())
 	if (items.some((item) => !listIds.has(item.listId))) return { error: "Liste gehört nicht zum Plan" }
 
 	// Kategorie je Zutat: im Popup gewählt (muss zum Ziel-Plan gehören) oder zuletzt gemerkte
-	const categories = await prisma.groceryCategory.findMany({ where: { planId: target.planId }, select: { id: true } })
+	const categories = await prisma.groceryCategory.findMany({ where: { planId }, select: { id: true } })
 	const categoryIds = await Promise.all(
 		items.map(async (item) =>
-			item.categoryId && categories.some((category) => category.id === item.categoryId)
-				? item.categoryId
-				: recallCategory(target.planId, item.name),
+			item.categoryId && categories.some((category) => category.id === item.categoryId) ? item.categoryId : recallCategory(planId, item.name),
 		),
 	)
 
 	const dish = await prisma.dish.create({
 		data: {
-			planId: target.planId,
-			sourceRecipeId: recipe.id,
-			name: recipe.name,
-			description: recipe.description,
-			imageUrl: recipe.imageUrl,
-			steps: recipe.steps,
-			date,
+			planId,
+			sourceRecipeId: base.sourceRecipeId,
+			name: base.name,
+			description: base.description,
+			imageUrl: base.imageUrl,
+			steps: base.steps,
+			date: base.date,
 			groceryItems: {
 				create: items.map((item, index) => ({
 					listId: item.listId,
@@ -164,13 +165,38 @@ export const planRecipe = async (recipeId: string, target: { planId: string; dat
 		include: { groceryItems: { include: groceryItemInclude } },
 	})
 
-	await Promise.all(
-		items.map((item, index) => rememberProduct(target.planId, item.name, categoryIds[index], item.categoryId === categoryIds[index] && !!item.categoryId)),
-	)
-	emitToPlan(target.planId, "dish-created", toDishDTO(dish))
-	for (const item of dish.groceryItems) emitToPlan(target.planId, "grocery-item-created", toGroceryItemDTO(item))
+	await Promise.all(items.map((item, index) => rememberProduct(planId, item.name, categoryIds[index], item.categoryId === categoryIds[index] && !!item.categoryId)))
+	emitToPlan(planId, "dish-created", toDishDTO(dish))
+	for (const item of dish.groceryItems) emitToPlan(planId, "grocery-item-created", toGroceryItemDTO(item))
 
 	return { dishId: dish.id, dish: toDishDTO(dish) }
+}
+
+// Copy-on-Plan: Snapshot des Rezepts als neuer Dish + die ausgewählten (ggf. angepassten) Zutaten als GroceryItems
+export const planRecipe = async (recipeId: string, target: { planId: string; date: string; items: PlannedItem[] }) => {
+	const { user } = await requireMember(target.planId)
+	const date = parseDateKey(target.date)
+	if (!date) return { error: "Bitte wähle einen Tag" }
+	if (isPastDay(target.date)) return { error: PAST_DAY_MESSAGE }
+
+	const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } })
+	if (!recipe || !(await canViewRecipe(user.id, recipe.userId))) return { error: "Rezept nicht gefunden" }
+
+	return createDishWithItems(
+		{ planId: target.planId, date, name: recipe.name, description: recipe.description, imageUrl: recipe.imageUrl, steps: recipe.steps, sourceRecipeId: recipe.id },
+		target.items,
+	)
+}
+
+// Freies Gericht ohne Rezept, optional mit von Hand gewählten Produkten für die Einkaufsliste
+export const planDish = async (target: { planId: string; date: string; name: string; items: PlannedItem[] }) => {
+	await requireMember(target.planId)
+	const date = parseDateKey(target.date)
+	if (!date) return { error: "Bitte wähle einen Tag" }
+	if (isPastDay(target.date)) return { error: PAST_DAY_MESSAGE }
+	const name = target.name.trim()
+	if (!name) return { error: "Bitte gib einen Namen an" }
+	return createDishWithItems({ planId: target.planId, date, name, description: null, imageUrl: null, steps: [], sourceRecipeId: null }, target.items)
 }
 
 export type RecipeSuggestion = {
