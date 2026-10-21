@@ -78,7 +78,7 @@ body {
     @apply block truncate rounded bg-emerald-100 px-2 py-1 text-emerald-950 no-underline hover:no-underline dark:bg-emerald-900 dark:text-emerald-50;
   }
   .suggestions {
-    @apply mt-1 w-full overflow-hidden sm:absolute sm:top-full sm:left-0 sm:z-10 sm:w-72 rounded border border-(--border) bg-(--surface) shadow-lg;
+    @apply absolute top-full left-0 z-10 mt-1 w-full overflow-hidden sm:w-72 rounded border border-(--border) bg-(--surface) shadow-lg;
   }
   .suggestions li {
     @apply flex cursor-pointer items-center justify-between gap-2 px-2 py-1;

@@ -157,7 +157,7 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 				/>
 				{visible.length > 0 && (
 					// im Popup im Fluss statt schwebend, damit nichts am Rand abgeschnitten wird
-					<ul {...combobox.listboxProps} className="suggestions sm:static sm:w-full">
+					<ul {...combobox.listboxProps} className="suggestions static! sm:w-full">
 						{visible.map((suggestion, index) => (
 							<li key={suggestion.id} {...combobox.optionProps(index)}>
 								<span>{suggestion.name}</span>
