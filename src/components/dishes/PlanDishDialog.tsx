@@ -3,6 +3,7 @@
 import IngredientPicker from "@/components/recipes/IngredientPicker"
 import Modal from "@/components/ui/Modal"
 import { useCombobox } from "@/components/ui/useCombobox"
+import { formatMinutes } from "@/lib/recipes/format"
 import ManualItemRow, { isManualEntry } from "@/components/dishes/ManualItemRow"
 import { PAST_DAY_MESSAGE } from "@/lib/dates"
 import { createDish } from "@/lib/dishes/actions"
@@ -161,7 +162,9 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 						{visible.map((suggestion, index) => (
 							<li key={suggestion.id} {...combobox.optionProps(index)}>
 								<span>{suggestion.name}</span>
-								<span className="text-xs opacity-60">{suggestion.ownerName ? `von ${suggestion.ownerName}` : "Mein Rezept"}</span>
+								<span className="text-xs opacity-60">
+									{[suggestion.minutes ? formatMinutes(suggestion.minutes) : null, suggestion.rating ? `${suggestion.rating}★` : null, suggestion.ownerName ? `von ${suggestion.ownerName}` : "Mein Rezept"].filter(Boolean).join(" · ")}
+								</span>
 							</li>
 						))}
 					</ul>

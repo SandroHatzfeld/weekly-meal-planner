@@ -63,6 +63,14 @@ const visibleText = (html: string) => {
 		.slice(0, MAX_TEXT)
 }
 
+// schema.org-Dauer (ISO 8601, z.B. "PT1H30M", "P1DT2H") in Minuten; null bei fehlenden oder unlesbaren Werten
+export const isoDurationMinutes = (value: unknown): number | null => {
+	const match = typeof value === "string" ? /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:\d+S)?)?$/i.exec(value.trim()) : null
+	if (!match) return null
+	const minutes = Number(match[1] ?? 0) * 1440 + Number(match[2] ?? 0) * 60 + Number(match[3] ?? 0)
+	return minutes > 0 ? minutes : null
+}
+
 export const extractPage = (html: string): ExtractedPage => {
 	const pageTitle = decodeEntities(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? "").trim() || metaContent(html, "og:title") || ""
 

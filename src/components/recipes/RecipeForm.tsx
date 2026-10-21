@@ -4,6 +4,7 @@ import { createRecipe, deleteRecipe, updateRecipe, type RecipeInput } from "@/li
 import ImageField from "@/components/forms/ImageField"
 import StepsField from "@/components/forms/StepsField"
 import Icon, { handleButtonClass, iconButtonClass } from "@/components/ui/Icon"
+import StarRating from "@/components/recipes/StarRating"
 import { useSortable } from "@/components/ui/useSortable"
 import { useState } from "react"
 
@@ -17,6 +18,8 @@ const emptyRecipe: RecipeInput = {
 	imageUrl: "",
 	steps: [],
 	ingredients: [],
+	minutes: null,
+	rating: null,
 }
 
 export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipeId?: string; initial?: RecipeInput }) {
@@ -73,6 +76,21 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 			<input id="name" value={recipe.name} onChange={(event) => setRecipe({ ...recipe, name: event.target.value })} required />
 			<label htmlFor="description">Beschreibung</label>
 			<textarea id="description" rows={3} value={recipe.description} onChange={(event) => setRecipe({ ...recipe, description: event.target.value })} />
+			<label htmlFor="minutes">Dauer (Minuten)</label>
+			<input
+				id="minutes"
+				type="number"
+				inputMode="numeric"
+				min={1}
+				max={1440}
+				placeholder="z.B. 30"
+				value={recipe.minutes ?? ""}
+				onChange={(event) => setRecipe({ ...recipe, minutes: event.target.value ? Number(event.target.value) : null })}
+			/>
+			<div>
+				<span className="block text-sm font-medium">Bewertung (nur intern)</span>
+				<StarRating value={recipe.rating} onChange={(rating) => setRecipe((current) => ({ ...current, rating }))} />
+			</div>
 			<ImageField value={recipe.imageUrl} onChange={(imageUrl) => setRecipe((current) => ({ ...current, imageUrl }))} />
 
 			<fieldset className="space-y-2">
