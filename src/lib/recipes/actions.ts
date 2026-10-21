@@ -109,6 +109,15 @@ export const updateRecipe = async (recipeId: string, input: RecipeInput) => {
 	redirect(`/recipes/${recipeId}`)
 }
 
+// Bewertung direkt auf der Rezeptseite ändern (nur der Besitzer), ohne das Rezept neu zu speichern
+export const setRecipeRating = async (recipeId: string, rating: number | null) => {
+	const user = await requireSessionUser()
+	const recipe = await prisma.recipe.findUnique({ where: { id: recipeId }, select: { userId: true } })
+	if (!recipe || recipe.userId !== user.id) return { error: "Nur eigene Rezepte können bewertet werden" }
+	await prisma.recipe.update({ where: { id: recipeId }, data: { rating: wholeNumber(rating, 1, 5) } })
+	return { ok: true as const }
+}
+
 export const deleteRecipe = async (recipeId: string) => {
 	const user = await requireSessionUser()
 	const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } })
