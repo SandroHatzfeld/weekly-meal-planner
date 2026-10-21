@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { coMemberIds } from "@/lib/recipes/access"
+import RecipeFilters from "@/components/recipes/RecipeFilters"
 import StarRating from "@/components/recipes/StarRating"
 import Icon from "@/components/ui/Icon"
 import { formatMinutes } from "@/lib/recipes/format"
@@ -36,38 +37,13 @@ export default async function RecipesPage({ searchParams }: PageProps<"/recipes"
 
 	return (
 		<div className="space-y-4">
-			<div className="flex flex-wrap items-center gap-2">
+			<div className="flex items-center gap-2">
 				<h2 className="text-xl font-semibold">Rezepte</h2>
-				<form className="ml-auto flex flex-wrap gap-2">
-					<input name="q" defaultValue={query} placeholder="Suchen…" className="input min-w-0 basis-full sm:basis-auto sm:flex-1" />
-					<select name="maxMin" defaultValue={maxMinutes ? String(maxMinutes) : ""} className="input w-auto" aria-label="Höchstdauer">
-						<option value="">Jede Dauer</option>
-						<option value="15">bis 15 Min.</option>
-						<option value="30">bis 30 Min.</option>
-						<option value="60">bis 60 Min.</option>
-					</select>
-					<select name="minRating" defaultValue={minStars ? String(minStars) : ""} className="input w-auto" aria-label="Mindestbewertung">
-						<option value="">Jede Bewertung</option>
-						<option value="3">ab 3 Sterne</option>
-						<option value="4">ab 4 Sterne</option>
-						<option value="5">5 Sterne</option>
-					</select>
-					<select name="sort" defaultValue={sortBy} className="input w-auto" aria-label="Sortierung">
-						<option value="name">Nach Name</option>
-						<option value="minutes">Kürzeste zuerst</option>
-						<option value="rating">Beste zuerst</option>
-					</select>
-					<label className="flex items-center gap-1 text-sm whitespace-nowrap">
-						<input type="checkbox" name="mine" value="1" defaultChecked={mine === "1"} /> nur meine
-					</label>
-					<button type="submit" className="btn-secondary">
-						Filtern
-					</button>
-				</form>
-				<Link href="/recipes/new" className="btn">
+				<Link href="/recipes/new" className="btn ml-auto">
 					+ Neues Rezept
 				</Link>
 			</div>
+			<RecipeFilters initial={{ q: query, maxMin: maxMinutes ? String(maxMinutes) : "", minRating: minStars ? String(minStars) : "", sort: sortBy, mine: mine === "1" }} />
 			<ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
 				{recipes.map((recipe) => (
 					<li key={recipe.id}>
