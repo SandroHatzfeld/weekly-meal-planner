@@ -62,6 +62,7 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 
 	return (
 		<form
+			id="recipe-form"
 			className="form max-w-none"
 			onSubmit={async (event) => {
 				event.preventDefault()
@@ -88,7 +89,7 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 				onChange={(event) => setRecipe({ ...recipe, minutes: event.target.value ? Number(event.target.value) : null })}
 			/>
 			<div>
-				<span className="block text-sm font-medium">Bewertung (nur intern)</span>
+				<span className="block text-sm font-medium">Bewertung</span>
 				<StarRating value={recipe.rating} onChange={(rating) => setRecipe((current) => ({ ...current, rating }))} />
 			</div>
 			<ImageField value={recipe.imageUrl} onChange={(imageUrl) => setRecipe((current) => ({ ...current, imageUrl }))} />
