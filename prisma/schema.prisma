@@ -108,6 +108,8 @@ model Recipe {
   imageUrl    String?
   steps       String[]
   sourceUrl   String? // Link, von dem das Rezept importiert wurde
+  minutes     Int? // Dauer der Zubereitung in Minuten
+  rating      Int? // interne Bewertung 1–5 Sterne (gilt für alle, die das Rezept sehen)
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
   user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -13,7 +13,13 @@ export default async function EditRecipePage({ params }: PageProps<"/recipes/[id
 
 	return (
 		<div className="space-y-4">
-			<h2 className="text-xl font-semibold">Rezept bearbeiten</h2>
+			<div className="flex items-center gap-2">
+				<h2 className="text-xl font-semibold">Rezept bearbeiten</h2>
+				{/* löst das Formular weiter unten aus */}
+				<button type="submit" form="recipe-form" className="btn ml-auto">
+					Speichern
+				</button>
+			</div>
 			<RecipeWithImport
 				importEnabled={!!llmConfig()}
 				recipeId={recipe.id}
@@ -23,6 +29,8 @@ export default async function EditRecipePage({ params }: PageProps<"/recipes/[id
 					imageUrl: recipe.imageUrl ?? "",
 					steps: recipe.steps,
 					sourceUrl: recipe.sourceUrl ?? "",
+					minutes: recipe.minutes,
+					rating: recipe.rating,
 					ingredients: recipe.ingredients.map((ingredient) => ({
 						name: ingredient.name,
 						details: ingredient.details ?? "",

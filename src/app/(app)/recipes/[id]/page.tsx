@@ -6,7 +6,9 @@ import { todayKey } from "@/lib/dates"
 import { prisma } from "@/lib/prisma"
 import { resolveDefaultListId } from "@/lib/grocery/queries"
 import { canViewRecipe } from "@/lib/recipes/access"
-import { ingredientLabel } from "@/lib/recipes/format"
+import RecipeRatingControl from "@/components/recipes/RecipeRatingControl"
+import StarRating from "@/components/recipes/StarRating"
+import { formatMinutes, ingredientLabel } from "@/lib/recipes/format"
 import { toTagDTO } from "@/lib/tags/icons"
 import { requireActivePlan } from "@/lib/session"
 import Link from "next/link"
@@ -92,6 +94,17 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 			{recipe.imageUrl && (
 				// eslint-disable-next-line @next/next/no-img-element
 				<img src={recipe.imageUrl} alt={recipe.name} className="max-h-72 w-full rounded object-cover" />
+			)}
+			{(!!recipe.minutes || !!recipe.rating || isOwner) && (
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+					{!!recipe.minutes && (
+						<span className="inline-flex items-center gap-1">
+							<Icon name="clock" className="size-4" />
+							{formatMinutes(recipe.minutes)}
+						</span>
+					)}
+					{isOwner ? <RecipeRatingControl recipeId={recipe.id} initial={recipe.rating} /> : !!recipe.rating && <StarRating value={recipe.rating} className="size-4" />}
+				</div>
 			)}
 			{recipe.description && <p className="whitespace-pre-line">{recipe.description}</p>}
 			{/* reine Übersicht – Auswahl und Anpassung passieren im Planen-Popup */}

@@ -44,7 +44,13 @@ export default function RecipeWithImport({ importEnabled, recipeId, initial }: {
 			const result = await finishRecipeImport(url)
 			if ("error" in result) return setStatus({ step: "error", text: result.error })
 			// bestehendes Bild behalten (ein importiertes würde das eigene beim Speichern ersetzen)
-			const recipe = initial?.imageUrl ? { ...result.recipe, imageUrl: initial.imageUrl } : result.recipe
+			// Bild, Dauer (falls der Import keine liefert) und Bewertung des bestehenden Rezepts bleiben erhalten
+			const recipe = {
+				...result.recipe,
+				imageUrl: initial?.imageUrl || result.recipe.imageUrl,
+				minutes: result.recipe.minutes ?? initial?.minutes ?? null,
+				rating: initial?.rating ?? null,
+			}
 			setImported((current) => ({ recipe, version: (current?.version ?? 0) + 1 }))
 			setStatus({ step: "done", cached: result.cached })
 		} finally {

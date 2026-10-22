@@ -23,6 +23,8 @@ export type RecipeInput = {
 	steps: string[]
 	ingredients: IngredientInput[]
 	sourceUrl?: string
+	minutes: number | null
+	rating: number | null
 }
 
 const requireSessionUser = async () => {
@@ -31,10 +33,15 @@ const requireSessionUser = async () => {
 	return session.user
 }
 
+const wholeNumber = (value: unknown, min: number, max: number) =>
+	typeof value === "number" && Number.isInteger(value) && value >= min && value <= max ? value : null
+
 const normalize = (input: RecipeInput) => ({
 	name: input.name.trim(),
 	description: input.description.trim() || null,
 	steps: input.steps.map((step) => step.trim()).filter(Boolean),
+	minutes: wholeNumber(input.minutes, 1, 1440),
+	rating: wholeNumber(input.rating, 1, 5),
 	sourceUrl: /^https?:\/\//i.test(input.sourceUrl ?? "") ? input.sourceUrl!.slice(0, 2000) : null,
 	ingredients: input.ingredients
 		.filter((ingredient) => ingredient?.name?.trim())
@@ -66,7 +73,7 @@ export const prepareRecipeImport = async (url: string, refresh = false) =>
 export const finishRecipeImport = async (url: string): Promise<{ recipe: RecipeInput; cached: boolean } | { error: string }> =>
 	importResult(async () => {
 		const { recipe, sourceUrl, cached } = await finishImport((await importUser()).id, url)
-		return { recipe: { ...recipe, sourceUrl }, cached }
+		return { recipe: { ...recipe, sourceUrl, rating: null }, cached }
 	})
 
 export const createRecipe = async (input: RecipeInput) => {
@@ -100,6 +107,15 @@ export const updateRecipe = async (recipeId: string, input: RecipeInput) => {
 	])
 	if (recipe.imageUrl !== image.imageUrl) await deleteImageIfUnused(recipe.imageUrl)
 	redirect(`/recipes/${recipeId}`)
+}
+
+// Bewertung direkt auf der Rezeptseite ändern (nur der Besitzer), ohne das Rezept neu zu speichern
+export const setRecipeRating = async (recipeId: string, rating: number | null) => {
+	const user = await requireSessionUser()
+	const recipe = await prisma.recipe.findUnique({ where: { id: recipeId }, select: { userId: true } })
+	if (!recipe || recipe.userId !== user.id) return { error: "Nur eigene Rezepte können bewertet werden" }
+	await prisma.recipe.update({ where: { id: recipeId }, data: { rating: wholeNumber(rating, 1, 5) } })
+	return { ok: true as const }
 }
 
 export const deleteRecipe = async (recipeId: string) => {
@@ -203,6 +219,8 @@ export type RecipeSuggestion = {
 	id: string
 	name: string
 	ownerName: string | null // null = eigenes Rezept
+	minutes?: number | null
+	rating?: number | null
 	ingredients: PlanIngredient[]
 }
 
@@ -222,6 +240,8 @@ export const searchRecipes = async (planId: string, query: string): Promise<Reci
 		id: recipe.id,
 		name: recipe.name,
 		ownerName: recipe.userId === user.id ? null : recipe.user.name,
+		minutes: recipe.minutes,
+		rating: recipe.rating,
 		ingredients: recipe.ingredients.map((ingredient) => ({ id: ingredient.id, name: ingredient.name, details: ingredient.details })),
 	}))
 }
