@@ -12,9 +12,9 @@ type TopBarProps = {
 
 export default function TopBar({ plans, activePlanId, userName }: TopBarProps) {
 	const topBarTabs: Tabs[] = [
+		{ tabName: "Einkaufsliste", tabTarget: "/shop" },
 		{ tabName: "Woche", tabTarget: "/week" },
 		{ tabName: "Monat", tabTarget: "/month" },
-		{ tabName: "Einkaufen", tabTarget: "/shop" },
 		{ tabName: "Rezepte", tabTarget: "/recipes" },
 	]
 

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { useEffect } from "react"
 
 // Seiten, die nach dem Start im Hintergrund für die Offline-Nutzung geholt werden
-const WARM_PAGES = ["/week", "/month", "/shop", "/recipes"]
+const WARM_PAGES = ["/shop", "/week", "/month", "/recipes"]
 const WARM_KEY = "wmp-warmed-at"
 const WARM_INTERVAL_MS = 10 * 60 * 1000
 

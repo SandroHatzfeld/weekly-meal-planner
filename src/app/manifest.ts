@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
 		short_name: "Mealplanner",
 		description: "Gerichte planen und Einkaufen",
 		lang: "de",
-		start_url: "/week",
+		start_url: "/shop",
 		scope: "/",
 		display: "standalone",
 		background_color: "#0a0a0a",
