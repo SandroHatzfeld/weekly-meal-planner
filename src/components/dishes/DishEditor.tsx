@@ -7,7 +7,8 @@ import StepsField from "@/components/forms/StepsField"
 import { usePlanEvent, useSocket } from "@/components/realtime/SocketProvider"
 import { deleteDish, updateDish, type DishInput } from "@/lib/dishes/actions"
 import type { DishDTO, GroceryItemDTO } from "@/lib/dto"
-import { addGroceryItem, deleteGroceryItem, toggleGroceryItem } from "@/lib/grocery/actions"
+import { addGroceryItem, deleteGroceryItem } from "@/lib/grocery/actions"
+import { sendToggle } from "@/lib/offline/toggles"
 import { applyItemChanges } from "@/lib/grocery/client"
 import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
@@ -240,7 +241,7 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 										hint="Tippen zum Abhaken · gedrückt halten oder Rechtsklick zum Bearbeiten"
 										onToggle={async () => {
 											replaceItem({ ...item, checked: !item.checked })
-											await toggleGroceryItem(item.id, !item.checked)
+											await sendToggle(item.id, !item.checked)
 										}}
 										onEdit={() => setEditingItem(item)}
 									/>

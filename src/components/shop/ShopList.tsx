@@ -9,7 +9,6 @@ import {
 	addGroceryItem,
 	clearCheckedItems,
 	deleteGroceryItem,
-	toggleGroceryItem,
 } from "@/lib/grocery/actions"
 import ItemEditDialog from "@/components/items/ItemEditDialog"
 import ItemTile from "@/components/items/ItemTile"
@@ -21,8 +20,8 @@ import TagPicker from "@/components/tags/TagPicker"
 import ProductInput from "./ProductInput"
 import { useProductMemory } from "./useProductMemory"
 import { useStoredView, type ShopView } from "./useStoredView"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { pendingToggles, sendToggle, useOnline } from "@/lib/offline/toggles"
+import { useEffect, useState } from "react"
 
 type ShopListProps = {
 	lists: { id: string; name: string }[]
@@ -92,7 +91,7 @@ const upsert = (items: GroceryItemDTO[], item: GroceryItemDTO) => {
 }
 
 export default function ShopList({ lists, tags, categories, categoryOrder, hiddenCategories, productMemory, initialListId, initialItems }: ShopListProps) {
-	const router = useRouter()
+	const online = useOnline()
 	const [items, setItems] = useState(initialItems)
 	const [listId, setListId] = useState(initialListId)
 	const [name, setName] = useState("")
@@ -122,9 +121,18 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 		),
 	)
 
+	// noch nicht gesendete Haken (offline gesetzt) über den Stand der Seite legen, der ggf. aus dem Offline-Cache stammt
+	useEffect(() => {
+		const pending = pendingToggles()
+		// einmalig beim Laden aus dem Gerätespeicher (kann beim Server-Rendern nicht gelesen werden)
+		// eslint-disable-next-line react-hooks/set-state-in-effect
+		if (Object.keys(pending).length) setItems((current) => current.map((item) => (item.id in pending ? { ...item, checked: pending[item.id] } : item)))
+	}, [])
+
 	const selectList = (id: string) => {
 		setListId(id)
-		router.replace(`/shop?list=${id}`, { scroll: false })
+		// nur die Adresse anpassen (kein Server-Aufruf, geht auch offline)
+		window.history.replaceState(null, "", `/shop?list=${id}`)
 	}
 
 	const visible = items.filter((item) => item.listId === listId)
@@ -138,7 +146,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 
 	const toggle = async (item: GroceryItemDTO) => {
 		setItems((current) => upsert(current, { ...item, checked: !item.checked }))
-		await toggleGroceryItem(item.id, !item.checked)
+		await sendToggle(item.id, !item.checked)
 	}
 
 	const currentList = lists.find((list) => list.id === listId)
@@ -205,7 +213,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						/>
 						<input className="input min-w-0 flex-1 sm:w-36 sm:flex-none" placeholder="Details (z.B. 500 g)" value={details} onChange={(event) => setDetails(event.target.value)} />
 						<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} />
-						<button type="submit" className="btn">
+						<button type="submit" className="btn" disabled={!online} title={online ? undefined : "Offline nicht möglich"}>
 							Hinzufügen
 						</button>
 					</form>
@@ -240,7 +248,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 												pressed={item.checked}
 												hint="Tippen zum Abhaken · gedrückt halten oder Rechtsklick zum Bearbeiten"
 												onToggle={() => toggle(item)}
-												onEdit={() => setEditing(item)}
+												onEdit={() => online && setEditing(item)}
 											/>
 										</li>
 									))}
@@ -252,6 +260,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						<button
 							type="button"
 							className="btn-link"
+							disabled={!online}
 							onClick={async () => {
 								setItems((current) => current.filter((item) => !(item.listId === currentList.id && item.checked)))
 								await clearCheckedItems(currentList.id)

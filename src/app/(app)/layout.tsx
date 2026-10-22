@@ -1,3 +1,4 @@
+import OfflineBanner from "@/components/pwa/OfflineBanner"
 import TopBar from "@/components/main/TopBar"
 import SocketProvider from "@/components/realtime/SocketProvider"
 import { prisma } from "@/lib/prisma"
@@ -16,7 +17,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 	return (
 		<SocketProvider key={planId} planId={planId}>
 			<TopBar plans={plans} activePlanId={planId} userName={user.name ?? ""} />
-			<main className="mx-auto w-full max-w-5xl flex-1 p-4">{children}</main>
+			<main className="mx-auto w-full max-w-5xl flex-1 p-4">
+				<OfflineBanner />
+				{children}
+			</main>
 		</SocketProvider>
 	)
 }
