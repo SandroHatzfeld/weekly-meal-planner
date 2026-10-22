@@ -11,7 +11,7 @@ export default function OfflineBanner() {
 		<div role="status" className="notice mb-4 text-sm">
 			{online
 				? `${pending} ${pending === 1 ? "Änderung wird" : "Änderungen werden"} synchronisiert …`
-				: `Offline – du siehst den zuletzt gespeicherten Stand. Abhaken geht weiter und wird später synchronisiert${pending ? ` (${pending} offen)` : ""}.`}
+				: "Du bist gerade offline"}
 		</div>
 	)
 }
