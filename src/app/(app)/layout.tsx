@@ -19,10 +19,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 		<SocketProvider key={planId} planId={planId}>
 			<TopBar plans={plans} activePlanId={planId} userName={user.name ?? ""} />
 			<main className="mx-auto w-full max-w-5xl flex-1 p-4">
-				<SwipeTabs>
-					<OfflineBanner />
-					{children}
-				</SwipeTabs>
+				<OfflineBanner />
+				<SwipeTabs>{children}</SwipeTabs>
 			</main>
 		</SocketProvider>
 	)
