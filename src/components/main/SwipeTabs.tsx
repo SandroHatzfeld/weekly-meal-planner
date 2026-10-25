@@ -33,6 +33,14 @@ export default function SwipeTabs({ children }: { children: ReactNode }) {
 	// Richtung der letzten Wischgeste (-1: Inhalt ging nach links hinaus), damit die neue Seite von der Gegenseite hereinkommt
 	const entering = useRef(0)
 
+	// aus dem Client-Cache gezeigte Seite im Hintergrund auf den neuesten Stand bringen (nicht beim ersten Laden)
+	const firstPath = useRef(pathname)
+	useEffect(() => {
+		if (firstPath.current === pathname) return
+		firstPath.current = pathname
+		if (TAB_ROUTES.includes(pathname) && navigator.onLine) router.refresh()
+	}, [pathname, router])
+
 	// neue Seite gleitet herein
 	useLayoutEffect(() => {
 		const element = content.current

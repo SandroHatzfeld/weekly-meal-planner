@@ -28,6 +28,12 @@ const upsert = (dishes: DishDTO[], dish: DishDTO) => [...dishes.filter((existing
 
 export default function DishBoard({ planId, days, initialDishes, lists = [], defaultListId = "", tags = [], categories = [], productMemory = [], mode, monthKey, today }: DishBoardProps) {
 	const [dishes, setDishes] = useState(initialDishes)
+	// neue Daten vom Server (z.B. Auffrischen nach dem Tab-Wechsel) übernehmen
+	const [seenDishes, setSeenDishes] = useState(initialDishes)
+	if (initialDishes !== seenDishes) {
+		setSeenDishes(initialDishes)
+		setDishes(initialDishes)
+	}
 	const [dragId, setDragId] = useState<string | null>(null)
 	// Tag, für den das Planen-Popup offen ist
 	const [planningDay, setPlanningDay] = useState<string | null>(null)

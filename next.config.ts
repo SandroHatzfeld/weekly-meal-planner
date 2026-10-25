@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Haupt-Tabs bleiben im Client-Cache: Wechseln (auch Zurückwischen) zeigt sofort die Seite, die Daten werden danach im Hintergrund aufgefrischt
+    staleTimes: { dynamic: 300, static: 300 },
+  },
   async headers() {
     return [
       {
