@@ -29,9 +29,13 @@ const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)"
 export default function SwipeTabs({ children }: { children: ReactNode }) {
 	const router = useRouter()
 	const pathname = usePathname()
+	const frame = useRef<HTMLDivElement>(null)
 	const content = useRef<HTMLDivElement>(null)
 	// Richtung der letzten Wischgeste (-1: Inhalt ging nach links hinaus), damit die neue Seite von der Gegenseite hereinkommt
 	const entering = useRef(0)
+	// Position des Inhalts beim Loslassen: die neue Seite startet genau eine Breite daneben
+	const releasedAt = useRef(0)
+	const released = useRef<{ at: number; outgoing: HTMLElement | null }>({ at: 0, outgoing: null })
 
 	// aus dem Client-Cache gezeigte Seite im Hintergrund auf den neuesten Stand bringen (nicht beim ersten Laden)
 	const firstPath = useRef(pathname)
@@ -47,16 +51,25 @@ export default function SwipeTabs({ children }: { children: ReactNode }) {
 		const direction = entering.current
 		entering.current = 0
 		if (!element || !direction) return
+		// genau eine Breite neben dem hinausgleitenden Abbild starten und gleichzeitig mit ihm ankommen
+		const { at, outgoing } = released.current
+		let startX = -direction * window.innerWidth + releasedAt.current
+		let duration = MS
+		if (outgoing?.isConnected) {
+			startX = new DOMMatrix(getComputedStyle(outgoing).transform).m41 - direction * window.innerWidth
+			duration = Math.max(80, MS - (performance.now() - at))
+		}
+		element.style.visibility = ""
 		element.style.transition = "none"
-		element.style.transform = `translateX(${-direction * 100}%)`
+		element.style.transform = `translateX(${startX}px)`
 		element.getBoundingClientRect() // Startposition festschreiben
-		element.style.transition = `transform ${MS}ms ease-out`
+		element.style.transition = `transform ${duration}ms ease-out`
 		element.style.transform = "translateX(0)"
 		const done = setTimeout(() => {
 			// kein Transform im Ruhezustand, sonst bricht er sticky/fixed-Elemente der Seiten
 			element.style.transition = ""
 			element.style.transform = ""
-		}, MS)
+		}, duration)
 		return () => clearTimeout(done)
 	}, [pathname])
 
@@ -111,14 +124,28 @@ export default function SwipeTabs({ children }: { children: ReactNode }) {
 				place(0, false)
 				return router.push(next)
 			}
-			// hinausgleiten, dann wechseln; die neue Seite gleitet in einem Layout-Effekt herein
+			// Die alte Seite bleibt als Abbild stehen und gleitet hinaus, während sofort gewechselt wird: die neue Seite
+			// gleitet gleichzeitig daneben herein (im Layout-Effekt), so entsteht keine Lücke.
 			entering.current = direction
-			place(direction * window.innerWidth, true)
-			setTimeout(() => router.push(next), MS)
+			releasedAt.current = distance
+			const outgoing = element.cloneNode(true) as HTMLElement
+			outgoing.inert = true
+			outgoing.setAttribute("aria-hidden", "true")
+			Object.assign(outgoing.style, { position: "absolute", top: "0", left: "0", width: "100%", pointerEvents: "none", transition: "none", transform: `translateX(${distance}px)` })
+			frame.current?.appendChild(outgoing)
+			element.style.visibility = "hidden"
+			outgoing.getBoundingClientRect()
+			outgoing.style.transition = `transform ${MS}ms ease-out`
+			outgoing.style.transform = `translateX(${direction * window.innerWidth}px)`
+			released.current = { at: performance.now(), outgoing }
+			setTimeout(() => outgoing.remove(), MS + 60)
+			router.push(next)
 			// kommt die neue Seite nicht (Fehler), den Inhalt wieder zurückholen
 			setTimeout(() => {
+				outgoing.remove()
 				if (entering.current === 0) return
 				entering.current = 0
+				element.style.visibility = ""
 				place(0, true)
 			}, 4000)
 		}
@@ -136,7 +163,7 @@ export default function SwipeTabs({ children }: { children: ReactNode }) {
 	}, [pathname, router])
 
 	return (
-		<div className="overflow-x-clip">
+		<div ref={frame} className="relative overflow-x-clip">
 			<div ref={content}>{children}</div>
 		</div>
 	)
