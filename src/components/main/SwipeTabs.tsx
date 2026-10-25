@@ -13,6 +13,7 @@ const COMMIT_RATIO = 0.25 // Anteil der Breite, ab dem losgelassen gewechselt wi
 const FLICK_PX_PER_MS = 0.5 // schnelles Wischen reicht auch bei kurzer Strecke
 const EDGE_RESISTANCE = 0.3 // am ersten/letzten Tab lässt sich der Inhalt nur zäh ziehen
 const DURATION = 0.25
+const REFRESH_DELAY_MS = 600
 
 // nicht wischen, wenn der Finger in etwas startet, das selbst horizontal reagiert oder Eingaben braucht
 const blocksSwipe = (target: EventTarget | null) => {
@@ -81,7 +82,10 @@ export default function SwipeTabs({ children }: { children: ReactNode }) {
 		pathRef.current = pathname
 		if (firstPath.current === pathname) return
 		firstPath.current = pathname
-		if (TAB_ROUTES.includes(pathname) && navigator.onLine) router.refresh()
+		if (!TAB_ROUTES.includes(pathname) || !navigator.onLine) return
+		// erst nach der Animation: das Neu-Rendern schwerer Seiten (Monat) würde sie sonst ruckeln lassen
+		const refresh = setTimeout(() => router.refresh(), REFRESH_DELAY_MS)
+		return () => clearTimeout(refresh)
 	}, [pathname, router])
 
 	useEffect(() => {

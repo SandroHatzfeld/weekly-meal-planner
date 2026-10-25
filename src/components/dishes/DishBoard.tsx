@@ -139,7 +139,7 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 						{cover && (
 							<>
 								{/* eslint-disable-next-line @next/next/no-img-element */}
-								<img src={cover} alt="" aria-hidden="true" className="absolute inset-0 -z-10 size-full object-cover" />
+								<img src={cover} alt="" aria-hidden="true" decoding="async" className="absolute inset-0 -z-10 size-full object-cover" />
 								<span className="absolute inset-0 -z-10 bg-black/50" aria-hidden="true" />
 							</>
 						)}
