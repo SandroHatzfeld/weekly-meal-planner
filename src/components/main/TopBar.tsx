@@ -3,6 +3,7 @@ import Link from "next/link"
 import HeaderHeight from "./HeaderHeight"
 import PlanSwitcher from "./PlanSwitcher"
 import TabBar from "./TabBar"
+import OfflineBanner from "@/components/pwa/OfflineBanner"
 
 type TopBarProps = {
 	plans: { id: string; name: string }[]
@@ -12,9 +13,9 @@ type TopBarProps = {
 
 export default function TopBar({ plans, activePlanId, userName }: TopBarProps) {
 	const topBarTabs: Tabs[] = [
+		{ tabName: "Einkaufsliste", tabTarget: "/shop" },
 		{ tabName: "Woche", tabTarget: "/week" },
 		{ tabName: "Monat", tabTarget: "/month" },
-		{ tabName: "Einkaufen", tabTarget: "/shop" },
 		{ tabName: "Rezepte", tabTarget: "/recipes" },
 	]
 
@@ -45,6 +46,9 @@ export default function TopBar({ plans, activePlanId, userName }: TopBarProps) {
 				</div>
 			</div>
 			<TabBar tabs={topBarTabs} />
+			<div className="mx-auto max-w-5xl px-4 empty:hidden">
+				<OfflineBanner />
+			</div>
 			<HeaderHeight />
 		</header>
 	)

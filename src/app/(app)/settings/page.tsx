@@ -4,6 +4,7 @@ import ListSettings from "@/components/settings/ListSettings"
 import ProductCsv from "@/components/settings/ProductCsv"
 import ProductMemorySettings from "@/components/settings/ProductMemorySettings"
 import TagSettings from "@/components/tags/TagSettings"
+import InstallButton from "@/components/pwa/InstallButton"
 import { signOut } from "@/lib/auth/auth"
 import { listsWithDefault } from "@/lib/grocery/queries"
 import { categoriesOfPlan, categoryOrderOfPlan, hiddenCategoriesOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
@@ -135,6 +136,7 @@ export default async function SettingsPage() {
 				/>
 			</section>
 
+			<InstallButton />
 			<form
 				action={async () => {
 					"use server"
