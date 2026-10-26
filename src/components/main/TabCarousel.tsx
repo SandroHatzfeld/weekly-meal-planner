@@ -8,7 +8,7 @@ const LOCK_PX = 8 // ab hier steht fest, ob die Geste waagerecht oder senkrecht 
 const COMMIT_RATIO = 0.3 // Anteil der Breite, ab dem losgelassen gewechselt wird
 const FLICK_PX_PER_MS = 0.4 // schnelles Wischen reicht auch bei kurzer Strecke
 const EDGE_RESISTANCE = 0.25 // am ersten/letzten Tab lässt sich nur zäh ziehen
-const SNAP = "transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1)"
+const SNAP = "transform 150ms ease-out"
 
 // nicht wischen, wenn der Finger in etwas startet, das selbst Eingaben oder waagerechtes Scrollen braucht
 const blocksSwipe = (target: EventTarget | null) => {
@@ -47,9 +47,10 @@ export default function TabCarousel({ panels }: { panels: ReactNode[] }) {
 
 	// Tab-Klick, Zurück-Taste oder Wischen: zum Tab der Adresse gleiten
 	useEffect(() => {
-		const animate = shown.current !== active
+		// nach dem Wischen ist die Animation schon unterwegs: nicht noch einmal (ohne Übergang) setzen
+		if (shown.current === active) return
 		shown.current = active
-		place(active, 0, animate)
+		place(active, 0, true)
 	}, [active])
 
 	useEffect(() => {
@@ -128,7 +129,7 @@ export default function TabCarousel({ panels }: { panels: ReactNode[] }) {
 	return (
 		// volle Höhe unter der Kopfzeile; die Ränder von <main> werden hier aufgehoben, jeder Tab hat seinen eigenen
 		<div ref={viewport} className="-m-4 h-[calc(100dvh-var(--app-header-h,0px))] touch-pan-y overflow-hidden overscroll-x-none">
-			<div ref={strip} className="flex h-full will-change-transform" style={{ transform: `translate3d(${-active * 100}%, 0, 0)` }}>
+			<div ref={strip} className="flex h-full will-change-transform" style={{ transform: `translate3d(calc(${-active * 100}% + 0px), 0, 0)` }}>
 				{panels.map((panel, index) => (
 					<section
 						key={TAB_PATHS[index]}
