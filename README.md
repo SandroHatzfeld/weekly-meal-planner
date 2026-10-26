@@ -49,7 +49,9 @@ API-Token unter *Einstellungen → API-Tokens* erstellen, dann mit `Authorizatio
 | GET | `/api/external/plans/:planId/lists` | |
 | GET | `/api/external/lists/:listId/grocery-items` | |
 | POST | `/api/external/lists/:listId/grocery-items` | `{ "name": "Milch", "details": "2 L" }` |
-| PATCH | `/api/external/lists/:listId/grocery-items/:itemId` | `{ "checked": true }` |
+| PATCH | `/api/external/lists/:listId/grocery-items/:itemId` | `{ "checked": true }` und/oder `{ "name": "Hafermilch", "details": "2 L" }` |
+| DELETE | `/api/external/lists/:listId/grocery-items/:itemId` | |
+| GET | `/api/external/plans/:planId/dishes?from=YYYY-MM-DD&to=YYYY-MM-DD` | (Standard: heute bis +30 Tage, max. 366 Tage) |
 
 ## Deployment
 
