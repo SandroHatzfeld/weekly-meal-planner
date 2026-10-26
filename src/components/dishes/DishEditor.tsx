@@ -291,16 +291,20 @@ function AddDishItem({
 	const [pickedCategory, setPickedCategory] = useState<string | null>(null)
 	const [newTagIds, setNewTagIds] = useState<string[]>([])
 
+	const add = async (itemName: string, categoryId: string | null) => {
+		await addGroceryItem(listId, itemName, details, dishId, categoryId, newTagIds)
+		setName("")
+		setDetails("")
+		setPickedCategory(null)
+		setNewTagIds([])
+	}
+
 	return (
 		<form
 			className="flex flex-wrap gap-2"
 			onSubmit={async (event) => {
 				event.preventDefault()
-				await addGroceryItem(listId, name, details, dishId, pickedCategory, newTagIds)
-				setName("")
-				setDetails("")
-				setPickedCategory(null)
-				setNewTagIds([])
+				await add(name, pickedCategory)
 			}}
 		>
 			<ProductInput
@@ -311,12 +315,11 @@ function AddDishItem({
 					setName(value)
 					setPickedCategory(null)
 				}}
-				onPick={(suggestion) => {
-					setName(suggestion.displayName)
-					setPickedCategory(suggestion.categoryId)
-				}}
+				// Vorschlag gewählt: direkt hinzufügen
+				onPick={(suggestion) => void add(suggestion.displayName, suggestion.categoryId)}
 				memory={memory}
 				categories={categories}
+				dropUp
 			/>
 			<input className="input min-w-0 flex-1 sm:w-32 sm:flex-none" placeholder="Details (z.B. 500 g)" value={details} onChange={(event) => setDetails(event.target.value)} />
 			<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} />

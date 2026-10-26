@@ -31,6 +31,9 @@ export const useCombobox = <T>(items: T[], onPick: (item: T) => void) => {
 			"aria-expanded": visible.length > 0,
 			"aria-controls": listboxId,
 			"aria-activedescendant": active >= 0 ? `${listboxId}-${active}` : undefined,
+			// Feld verlassen schließt die Vorschläge (Antippen eines Vorschlags hält den Fokus, siehe onMouseDown)
+			onBlur: () => setDismissed(true),
+			onFocus: () => setDismissed(false),
 			onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
 				if (event.key === "ArrowDown" && visible.length) {
 					event.preventDefault()
