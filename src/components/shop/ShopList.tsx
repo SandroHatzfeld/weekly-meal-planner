@@ -93,6 +93,13 @@ const upsert = (items: GroceryItemDTO[], item: GroceryItemDTO) => {
 export default function ShopList({ lists, tags, categories, categoryOrder, hiddenCategories, productMemory, initialListId, initialItems }: ShopListProps) {
 	const online = useOnline()
 	const [items, setItems] = useState(initialItems)
+	// neue Daten vom Server (z.B. nach dem Zurückkehren in die App): übernehmen, offline gesetzte Haken bleiben darüber liegen
+	const [seenItems, setSeenItems] = useState(initialItems)
+	if (initialItems !== seenItems) {
+		setSeenItems(initialItems)
+		const pending = pendingToggles()
+		setItems(initialItems.map((item) => (item.id in pending ? { ...item, checked: pending[item.id] } : item)))
+	}
 	const [listId, setListId] = useState(initialListId)
 	const [name, setName] = useState("")
 	const [details, setDetails] = useState("")
@@ -151,6 +158,18 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 
 	const currentList = lists.find((list) => list.id === listId)
 
+	const add = async (targetListId: string, itemName: string, categoryId: string | null) => {
+		const item = await addGroceryItem(targetListId, itemName, details, undefined, categoryId, newTagIds)
+		if (item) {
+			setItems((current) => upsert(current, item))
+			learn(item)
+		}
+		setName("")
+		setDetails("")
+		setPickedCategory(null)
+		setNewTagIds([])
+	}
+
 	return (
 		<div className="space-y-4">
 			<div className="flex flex-wrap items-center gap-2">
@@ -185,15 +204,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						className="flex flex-wrap gap-2"
 						onSubmit={async (event) => {
 							event.preventDefault()
-							const item = await addGroceryItem(currentList.id, name, details, undefined, pickedCategory, newTagIds)
-							if (item) {
-								setItems((current) => upsert(current, item))
-								learn(item)
-							}
-							setName("")
-							setDetails("")
-							setPickedCategory(null)
-							setNewTagIds([])
+							await add(currentList.id, name, pickedCategory)
 						}}
 					>
 						<ProductInput
@@ -204,12 +215,15 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 								setName(value)
 								setPickedCategory(null)
 							}}
+							// Vorschlag gewählt: direkt hinzufügen (mit eventuell schon eingetragenen Details und Tags)
 							onPick={(suggestion) => {
+								if (online) return void add(currentList.id, suggestion.displayName, suggestion.categoryId)
 								setName(suggestion.displayName)
 								setPickedCategory(suggestion.categoryId)
 							}}
 							memory={memory}
 							categories={categories}
+							dropUp
 						/>
 						<input className="input min-w-0 flex-1 sm:w-36 sm:flex-none" placeholder="Details (z.B. 500 g)" value={details} onChange={(event) => setDetails(event.target.value)} />
 						<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} />

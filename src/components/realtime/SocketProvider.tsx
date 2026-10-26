@@ -55,7 +55,33 @@ export default function SocketProvider({ planId, children }: { planId: string; c
 
 		// erst nach erfolgreichem Handshake bereitstellen
 		connection.once("connect", () => setSocket(connection))
+
+		// Verpasste Änderungen nachholen: Ist das Gerät gesperrt oder die App im Hintergrund, pausiert der Browser die Seite
+		// und die Verbindung bricht ab – Ereignisse aus dieser Zeit kommen nie an. Danach die Daten neu laden.
+		let connectedBefore = false
+		connection.on("connect", () => {
+			if (connectedBefore) router.refresh()
+			connectedBefore = true
+		})
+		let hiddenAt = 0
+		const onVisibility = () => {
+			if (document.hidden) {
+				hiddenAt = Date.now()
+				return
+			}
+			if (!hiddenAt || Date.now() - hiddenAt < 2000) return
+			hiddenAt = 0
+			router.refresh()
+			// hängt die Verbindung noch (wird nicht immer sofort bemerkt), gleich neu verbinden
+			if (!connection.connected) connection.connect()
+		}
+		// aus dem Zurück-Cache des Browsers wiederhergestellt
+		const onPageShow = (event: PageTransitionEvent) => event.persisted && router.refresh()
+		document.addEventListener("visibilitychange", onVisibility)
+		window.addEventListener("pageshow", onPageShow)
 		return () => {
+			document.removeEventListener("visibilitychange", onVisibility)
+			window.removeEventListener("pageshow", onPageShow)
 			connection.disconnect()
 			setSocket(null)
 		}
