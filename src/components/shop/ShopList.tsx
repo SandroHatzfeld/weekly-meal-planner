@@ -93,13 +93,6 @@ const upsert = (items: GroceryItemDTO[], item: GroceryItemDTO) => {
 export default function ShopList({ lists, tags, categories, categoryOrder, hiddenCategories, productMemory, initialListId, initialItems }: ShopListProps) {
 	const online = useOnline()
 	const [items, setItems] = useState(initialItems)
-	// neue Daten vom Server (z.B. Auffrischen nach dem Tab-Wechsel): übernehmen, offline gesetzte Haken bleiben darüber liegen
-	const [seenItems, setSeenItems] = useState(initialItems)
-	if (initialItems !== seenItems) {
-		setSeenItems(initialItems)
-		const pending = pendingToggles()
-		setItems(initialItems.map((item) => (item.id in pending ? { ...item, checked: pending[item.id] } : item)))
-	}
 	const [listId, setListId] = useState(initialListId)
 	const [name, setName] = useState("")
 	const [details, setDetails] = useState("")

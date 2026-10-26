@@ -28,12 +28,6 @@ const upsert = (dishes: DishDTO[], dish: DishDTO) => [...dishes.filter((existing
 
 export default function DishBoard({ planId, days, initialDishes, lists = [], defaultListId = "", tags = [], categories = [], productMemory = [], mode, monthKey, today }: DishBoardProps) {
 	const [dishes, setDishes] = useState(initialDishes)
-	// neue Daten vom Server (z.B. Auffrischen nach dem Tab-Wechsel) übernehmen
-	const [seenDishes, setSeenDishes] = useState(initialDishes)
-	if (initialDishes !== seenDishes) {
-		setSeenDishes(initialDishes)
-		setDishes(initialDishes)
-	}
 	const [dragId, setDragId] = useState<string | null>(null)
 	// Tag, für den das Planen-Popup offen ist
 	const [planningDay, setPlanningDay] = useState<string | null>(null)
@@ -139,7 +133,7 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 						{cover && (
 							<>
 								{/* eslint-disable-next-line @next/next/no-img-element */}
-								<img src={cover} alt="" aria-hidden="true" decoding="async" className="absolute inset-0 -z-10 size-full object-cover" />
+								<img src={cover} alt="" aria-hidden="true" className="absolute inset-0 -z-10 size-full object-cover" />
 								<span className="absolute inset-0 -z-10 bg-black/50" aria-hidden="true" />
 							</>
 						)}

@@ -57,7 +57,6 @@ export default async function RecipesPage({ searchParams }: PageProps<"/recipes"
 									src={recipe.imageUrl}
 									alt=""
 									loading="lazy"
-									decoding="async"
 									className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-105"
 								/>
 							) : (

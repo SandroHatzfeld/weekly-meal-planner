@@ -1,4 +1,3 @@
-import SwipeTabs from "@/components/main/SwipeTabs"
 import OfflineBanner from "@/components/pwa/OfflineBanner"
 import TopBar from "@/components/main/TopBar"
 import SocketProvider from "@/components/realtime/SocketProvider"
@@ -20,7 +19,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 			<TopBar plans={plans} activePlanId={planId} userName={user.name ?? ""} />
 			<main className="mx-auto w-full max-w-5xl flex-1 p-4">
 				<OfflineBanner />
-				<SwipeTabs>{children}</SwipeTabs>
+				{children}
 			</main>
 		</SocketProvider>
 	)
