@@ -1,5 +1,6 @@
 "use client"
 
+import { useFeedback } from "@/components/ui/Feedback"
 import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import { forgetProduct, setProductAliases, setProductCategories } from "@/lib/grocery/actions"
 import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
@@ -162,6 +163,7 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 
 // Alternative Namen eines Produkts ("Hühnchen" für "Hähnchen"): gleiche Kategorien, der Eintrag behält den eingegebenen Namen
 function AliasRow({ planId, product }: { planId: string; product: ProductMemoryDTO }) {
+	const { confirm } = useFeedback()
 	const router = useRouter()
 	const [value, setValue] = useState("")
 	const [error, setError] = useState<string | null>(null)
@@ -176,7 +178,13 @@ function AliasRow({ planId, product }: { planId: string; product: ProductMemoryD
 			} else if (result.conflicts && !mergeExisting) {
 				// vorhandene eigene Produkte lassen sich als alternative Namen zusammenführen
 				const list = result.conflicts.map((name) => `"${name}"`).join(", ")
-				if (confirm(`${list} gibt es schon als eigenes Produkt. Als alternativen Namen von "${product.displayName}" zusammenführen? Das eigene Produkt wird dabei gelöscht.`)) {
+				if (
+					await confirm({
+						title: "Produkte zusammenführen?",
+						message: `${list} gibt es schon als eigenes Produkt. Als alternativen Namen von „${product.displayName}“ übernehmen? Das eigene Produkt wird dabei gelöscht.`,
+						confirmLabel: "Zusammenführen",
+					})
+				) {
 					return save(aliases, true)
 				}
 			} else {

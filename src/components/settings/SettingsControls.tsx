@@ -1,5 +1,6 @@
 "use client"
 
+import { useFeedback } from "@/components/ui/Feedback"
 import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import {
 	invitePerson,
@@ -23,7 +24,7 @@ export function PlanNameForm({ planId, name }: { planId: string; name: string })
 				startTransition(() => renamePlan(planId, value))
 			}}
 		>
-			<input className="input flex-1" value={value} onChange={(event) => setValue(event.target.value)} required />
+			<input className="input flex-1" aria-label="Name des Plans" value={value} onChange={(event) => setValue(event.target.value)} required />
 			<button type="submit" className="btn" disabled={pending || value === name}>
 				Umbenennen
 			</button>
@@ -33,6 +34,7 @@ export function PlanNameForm({ planId, name }: { planId: string; name: string })
 
 export function RemoveMemberButton({ planId, userId, name }: { planId: string; userId: string; name: string }) {
 	const [pending, startTransition] = useTransition()
+	const { confirm } = useFeedback()
 	return (
 		<button
 			type="button"
@@ -40,8 +42,8 @@ export function RemoveMemberButton({ planId, userId, name }: { planId: string; u
 			aria-label={`${name} aus dem Plan entfernen`}
 			title="Aus dem Plan entfernen"
 			disabled={pending}
-			onClick={() => {
-				if (confirm(`${name} aus dem Plan entfernen?`)) startTransition(() => removeMember(planId, userId))
+			onClick={async () => {
+				if (await confirm({ title: `${name} aus dem Plan entfernen?`, confirmLabel: "Entfernen", danger: true })) startTransition(() => removeMember(planId, userId))
 			}}
 		>
 			<Icon name="trash" />
@@ -51,16 +53,20 @@ export function RemoveMemberButton({ planId, userId, name }: { planId: string; u
 
 export function LeavePlanButton({ planId, isLastMember }: { planId: string; isLastMember: boolean }) {
 	const [pending, startTransition] = useTransition()
+	const { confirm } = useFeedback()
 	return (
 		<button
 			type="button"
 			className="btn-danger"
 			disabled={pending}
-			onClick={() => {
-				const warning = isLastMember
-					? "Du bist das letzte Mitglied – der Plan wird mit allen Gerichten und Listen gelöscht. Fortfahren?"
-					: "Plan wirklich verlassen?"
-				if (confirm(warning)) startTransition(() => leavePlan(planId))
+			onClick={async () => {
+				const confirmed = await confirm({
+					title: "Plan verlassen?",
+					message: isLastMember ? "Du bist das letzte Mitglied – der Plan wird mit allen Gerichten und Listen gelöscht." : undefined,
+					confirmLabel: isLastMember ? "Verlassen und löschen" : "Verlassen",
+					danger: true,
+				})
+				if (confirmed) startTransition(() => leavePlan(planId))
 			}}
 		>
 			Plan verlassen
@@ -94,6 +100,7 @@ export function RevokeInviteButton({ planId, inviteId }: { planId: string; invit
 }
 
 export function GenericInvite({ planId, link, expiresAt }: { planId: string; link: string | null; expiresAt: string | null }) {
+	const { confirm } = useFeedback()
 	const [pending, startTransition] = useTransition()
 	return (
 		<div className="space-y-1 text-sm">
@@ -101,7 +108,7 @@ export function GenericInvite({ planId, link, expiresAt }: { planId: string; lin
 			{link ? (
 				<>
 					<div className="flex gap-2">
-						<input readOnly className="input flex-1 font-mono text-xs" value={link} onFocus={(event) => event.target.select()} />
+						<input readOnly aria-label="Einladungslink" className="input flex-1 font-mono text-xs" value={link} onFocus={(event) => event.target.select()} />
 						<button type="button" className="btn-secondary" onClick={() => navigator.clipboard.writeText(link)}>
 							Kopieren
 						</button>
@@ -115,8 +122,9 @@ export function GenericInvite({ planId, link, expiresAt }: { planId: string; lin
 				type="button"
 				className="btn-secondary"
 				disabled={pending}
-				onClick={() => {
-					if (!link || confirm("Der alte Link wird dabei ungültig. Fortfahren?")) startTransition(() => regenerateGenericInvite(planId))
+				onClick={async () => {
+					if (!link || (await confirm({ title: "Neuen Link erstellen?", message: "Der alte Link wird dabei ungültig.", confirmLabel: "Neu generieren" })))
+						startTransition(() => regenerateGenericInvite(planId))
 				}}
 			>
 				{link ? "Neu generieren" : "Link erstellen"}
@@ -128,6 +136,7 @@ export function GenericInvite({ planId, link, expiresAt }: { planId: string; lin
 type TokenRow = { id: string; name: string; createdAt: string; lastUsedAt: string | null }
 
 export function ApiTokens({ tokens }: { tokens: TokenRow[] }) {
+	const { confirm } = useFeedback()
 	const [name, setName] = useState("")
 	const [created, setCreated] = useState<string | null>(null)
 	const [pending, startTransition] = useTransition()
@@ -137,7 +146,7 @@ export function ApiTokens({ tokens }: { tokens: TokenRow[] }) {
 			{created && (
 				<div className="notice text-sm">
 					Dein neuer Token – er wird nur dieses eine Mal angezeigt:
-					<input readOnly className="input mt-1 font-mono text-xs" value={created} onFocus={(event) => event.target.select()} />
+					<input readOnly aria-label="Neues API-Token" className="input mt-1 font-mono text-xs" value={created} onFocus={(event) => event.target.select()} />
 				</div>
 			)}
 			<form
@@ -172,8 +181,9 @@ export function ApiTokens({ tokens }: { tokens: TokenRow[] }) {
 							className={`${iconButtonClass} text-red-600`}
 							aria-label={`Token ${token.name} widerrufen`}
 							title="Widerrufen"
-							onClick={() => {
-								if (confirm(`Token "${token.name}" widerrufen?`)) startTransition(() => deleteApiToken(token.id))
+							onClick={async () => {
+								if (await confirm({ title: `Token „${token.name}“ widerrufen?`, message: "Geräte und Dienste mit diesem Token (z.B. Home Assistant) verlieren den Zugriff.", confirmLabel: "Widerrufen", danger: true }))
+									startTransition(() => deleteApiToken(token.id))
 							}}
 						>
 							<Icon name="trash" />

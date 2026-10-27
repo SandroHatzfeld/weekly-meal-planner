@@ -1,5 +1,6 @@
 "use client"
 
+import { useFeedback } from "@/components/ui/Feedback"
 import { importProductsCsv } from "@/lib/grocery/actions"
 import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import { productsToCsv } from "@/lib/grocery/csv"
@@ -22,6 +23,7 @@ const describe = (summary: ImportSummary) =>
 
 // Produkte samt Kategorien als CSV herunterladen und bearbeitet wieder hochladen (ersetzt die Produktliste)
 export default function ProductCsv({ planId, categories, products }: { planId: string; categories: CategoryDTO[]; products: ProductMemoryDTO[] }) {
+	const { confirm } = useFeedback()
 	const router = useRouter()
 	const fileInput = useRef<HTMLInputElement>(null)
 	const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null)
@@ -50,7 +52,7 @@ export default function ProductCsv({ planId, categories, products }: { planId: s
 			const csv = await file.text()
 			const preview = await importProductsCsv(planId, csv, false)
 			if (preview.error || !preview.summary) return setMessage({ text: preview.error ?? "Import fehlgeschlagen", error: true })
-			if (!confirm(`${describe(preview.summary)}\n\nImport übernehmen?`)) return
+			if (!(await confirm({ title: "Import übernehmen?", message: describe(preview.summary), confirmLabel: "Importieren" }))) return
 			const result = await importProductsCsv(planId, csv, true)
 			if (result.error || !result.summary) return setMessage({ text: result.error ?? "Import fehlgeschlagen", error: true })
 			setMessage({ text: `Importiert: ${describe(result.summary).replaceAll("\n", " · ").replace("werden gelöscht", "gelöscht")}` })

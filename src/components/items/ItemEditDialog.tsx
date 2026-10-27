@@ -131,7 +131,7 @@ function EditForm<T extends EditableItem>({
 		>
 			<div className="flex items-start justify-between gap-2">
 				<h2 id="item-edit-title" className="text-lg font-semibold">Eintrag bearbeiten</h2>
-				<button type="button" className="btn-link -mt-1 -mr-2 flex size-9 shrink-0 items-center justify-center" aria-label="Schließen" onClick={close}>
+				<button type="button" className="btn-link -mt-2 -mr-3 flex size-11 shrink-0 items-center justify-center" aria-label="Schließen" onClick={close}>
 					✕
 				</button>
 			</div>

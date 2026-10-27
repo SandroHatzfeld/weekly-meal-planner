@@ -1,5 +1,6 @@
 "use client"
 
+import { useFeedback } from "@/components/ui/Feedback"
 import Icon, { handleButtonClass, iconButtonClass } from "@/components/ui/Icon"
 import { useSortable } from "@/components/ui/useSortable"
 import { createGroceryList, deleteGroceryList, renameGroceryList, reorderGroceryLists, setDefaultGroceryList } from "@/lib/grocery/actions"
@@ -28,6 +29,7 @@ function ListRow({
 	hiddenIds: string[]
 	sortable: ReturnType<typeof useSortable>
 }) {
+	const { confirm } = useFeedback()
 	const router = useRouter()
 	const [name, setName] = useState(list.name)
 	const [error, setError] = useState<string | null>(null)
@@ -79,8 +81,8 @@ function ListRow({
 						aria-label={`${list.name} löschen`}
 						title="Löschen"
 						disabled={pending}
-						onClick={() => {
-							if (!confirm(`Liste "${list.name}" mit allen Einträgen löschen?`)) return
+						onClick={async () => {
+							if (!(await confirm({ title: `Liste „${list.name}“ löschen?`, message: "Alle Einträge der Liste werden mitgelöscht.", confirmLabel: "Löschen", danger: true }))) return
 							run(async () => {
 								const result = await deleteGroceryList(list.id)
 								if (result?.error) setError(result.error)
@@ -92,7 +94,7 @@ function ListRow({
 				)}
 			</div>
 			{error && <p className="error">{error}</p>}
-			<button type="button" className="btn-link block text-sm" aria-expanded={showCategories} onClick={() => setShowCategories(!showCategories)}>
+			<button type="button" className="btn-link text-sm" aria-expanded={showCategories} onClick={() => setShowCategories(!showCategories)}>
 				{showCategories ? "▾" : "▸"} Kategorien im Laden – Reihenfolge, ausblenden
 			</button>
 			{showCategories && (

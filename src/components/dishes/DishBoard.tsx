@@ -3,6 +3,7 @@
 import { usePlanEvent } from "@/components/realtime/SocketProvider"
 import { formatDay } from "@/lib/dates"
 import { moveDish } from "@/lib/dishes/actions"
+import { useFeedback } from "@/components/ui/Feedback"
 import type { DishDTO } from "@/lib/dto"
 import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
@@ -28,6 +29,7 @@ const upsert = (dishes: DishDTO[], dish: DishDTO) => [...dishes.filter((existing
 
 export default function DishBoard({ planId, days, initialDishes, lists = [], defaultListId = "", tags = [], categories = [], productMemory = [], mode, monthKey, today }: DishBoardProps) {
 	const [dishes, setDishes] = useState(initialDishes)
+	const { attempt } = useFeedback()
 	// neue Daten vom Server (z.B. nach dem Zurückkehren in die App) übernehmen
 	const [seenDishes, setSeenDishes] = useState(initialDishes)
 	if (initialDishes !== seenDishes) {
@@ -57,8 +59,9 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 		setDragId(null)
 		if (!dish || dish.date === day || isPast(day)) return
 		setDishes((current) => upsert(current, { ...dish, date: day }))
-		const updated = await moveDish(dish.id, day)
-		if (updated) setDishes((current) => upsert(current, updated))
+		const updated = await attempt(() => moveDish(dish.id, day), "Verschieben hat nicht geklappt")
+		// bei einem Fehler zurück auf den alten Tag
+		setDishes((current) => upsert(current, updated ?? dish))
 	}
 
 	const dishChips = (day: string) =>
@@ -134,7 +137,7 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 						onClick={() => setSelectedDay(day)}
 						onDragOver={(event) => !isPast(day) && event.preventDefault()}
 						onDrop={() => handleDrop(day)}
-						className={`card relative isolate flex min-h-14 cursor-pointer flex-col gap-1 overflow-hidden p-1 text-xs ${day === today ? "ring-2 ring-emerald-600" : ""} ${day === selectedDay ? "bg-emerald-50 dark:bg-emerald-950" : ""} sm:min-h-24 ${monthKey && !day.startsWith(monthKey) ? "opacity-40" : isPast(day) ? "opacity-60" : ""}`}
+						className={`card relative isolate flex min-h-14 cursor-pointer flex-col gap-1 overflow-hidden p-1 text-xs ${day === today ? "ring-2 ring-emerald-600" : ""} ${day === selectedDay ? "bg-emerald-50 dark:bg-emerald-950" : ""} sm:min-h-24 ${monthKey && !day.startsWith(monthKey) ? "opacity-60" : isPast(day) ? "opacity-60" : ""}`}
 					>
 						{cover && (
 							<>

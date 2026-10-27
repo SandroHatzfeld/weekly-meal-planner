@@ -61,7 +61,7 @@ export default function StepsField({ initial, onChange }: { initial: string[]; o
 						/>
 						<button
 							type="button"
-							className="btn-link mt-1"
+							className="btn-link size-11 shrink-0 justify-center"
 							aria-label={`Schritt ${index + 1} entfernen`}
 							onClick={() => update(steps.filter((current) => current.id !== step.id))}
 						>

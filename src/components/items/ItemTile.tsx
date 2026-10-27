@@ -80,7 +80,7 @@ export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, 
 			title={hint}
 			className={`flex min-h-14 w-full touch-manipulation flex-row items-start gap-2 rounded-lg border px-3 py-2 text-left transition select-none [-webkit-touch-callout:none] ${
 				dimmed
-					? "border-transparent bg-black/5 text-(--foreground)/40 grayscale dark:bg-white/5"
+					? "border-transparent bg-black/5 text-(--foreground)/65 grayscale dark:bg-white/5"
 					: "border-emerald-200 bg-emerald-50 text-emerald-950 shadow-sm active:scale-95 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-50"
 			}`}
 			onPointerDown={(event) => {
@@ -116,7 +116,7 @@ export default function ItemTile({ item, tags, dimmed, pressed, hint, onToggle, 
 				>
 					{item.name}
 				</span>
-				{item.details && <span className="line-clamp-1 text-xs opacity-70">{item.details}</span>}
+				{item.details && <span className={`line-clamp-1 text-xs ${dimmed ? "" : "opacity-70"}`}>{item.details}</span>}
 			</span>
 			{tagIcons}
 		</button>

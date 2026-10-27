@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import PwaSetup from "@/components/pwa/PwaSetup";
+import FeedbackProvider from "@/components/ui/Feedback";
 import "./globals.css";
 
 
@@ -21,7 +22,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
+        <FeedbackProvider>{children}</FeedbackProvider>
         <PwaSetup />
       </body>
     </html>

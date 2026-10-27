@@ -7,7 +7,6 @@ import { applyItemChanges } from "@/lib/grocery/client"
 import type { TagDTO } from "@/lib/tags/icons"
 import {
 	addGroceryItem,
-	clearCheckedItems,
 	deleteGroceryItem,
 } from "@/lib/grocery/actions"
 import ItemEditDialog from "@/components/items/ItemEditDialog"
@@ -21,6 +20,8 @@ import ProductInput from "./ProductInput"
 import { useProductMemory } from "./useProductMemory"
 import { useStoredView, type ShopView } from "./useStoredView"
 import { pendingToggles, sendToggle, useOnline } from "@/lib/offline/toggles"
+import { useFeedback } from "@/components/ui/Feedback"
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 type ShopListProps = {
@@ -110,6 +111,8 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 	const [editing, setEditing] = useState<GroceryItemDTO | null>(null)
 	const [view, setView] = useStoredView()
 	const { memory, learn } = useProductMemory(productMemory)
+	const { attempt, undoable, notify } = useFeedback()
+	const router = useRouter()
 
 	// Clients filtern anhand der listId im Payload selbst
 	usePlanEvent("grocery-item-created", (item) => setItems((current) => upsert(current, item)))
@@ -153,17 +156,19 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 
 	const toggle = async (item: GroceryItemDTO) => {
 		setItems((current) => upsert(current, { ...item, checked: !item.checked }))
-		await sendToggle(item.id, !item.checked)
+		// ohne Verbindung wird der Haken gemerkt; andere Fehler: zurücksetzen und melden
+		const sent = await attempt(() => sendToggle(item.id, !item.checked), "Abhaken hat nicht geklappt")
+		if (sent === undefined) setItems((current) => current.map((existing) => (existing.id === item.id ? { ...existing, checked: item.checked } : existing)))
 	}
 
 	const currentList = lists.find((list) => list.id === listId)
 
 	const add = async (targetListId: string, itemName: string, categoryId: string | null) => {
-		const item = await addGroceryItem(targetListId, itemName, details, undefined, categoryId, newTagIds)
-		if (item) {
-			setItems((current) => upsert(current, item))
-			learn(item)
-		}
+		const item = await attempt(() => addGroceryItem(targetListId, itemName, details, undefined, categoryId, newTagIds), "Konnte nicht hinzugefügt werden")
+		// bei einem Fehler bleibt die Eingabe stehen, damit man es erneut versuchen kann
+		if (!item) return
+		setItems((current) => upsert(current, item))
+		learn(item)
 		setName("")
 		setDetails("")
 		setPickedCategory(null)
@@ -235,7 +240,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 					{groups.length === 0 && <p className="opacity-60">Die Liste ist leer.</p>}
 					{groups.map((group) => (
 						<section key={group.key} className="card">
-							<h3 className="mb-2 flex items-baseline gap-2 font-semibold">
+							<h2 className="mb-2 flex items-baseline gap-2 font-semibold">
 								{group.href ? (
 									<Link href={group.href} className="inline-flex min-w-0 items-center gap-1 py-1">
 										<span className="truncate">{group.title}</span> <span aria-hidden="true">›</span>
@@ -248,7 +253,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 										{formatDay(group.date, { weekday: "short", day: "2-digit", month: "2-digit" })}
 									</time>
 								)}
-							</h3>
+							</h2>
 							<ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
 								{/* abgehakte ans Ende, sonst Reihenfolge der Ansicht (stabil) */}
 								{[...group.items]
@@ -275,9 +280,19 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 							type="button"
 							className="btn-link"
 							disabled={!online}
-							onClick={async () => {
-								setItems((current) => current.filter((item) => !(item.listId === currentList.id && item.checked)))
-								await clearCheckedItems(currentList.id)
+							onClick={() => {
+								// erst nach kurzer Zeit wirklich löschen, bis dahin rückgängig machbar
+								const removed = items.filter((item) => item.listId === currentList.id && item.checked)
+								if (removed.length === 0) return notify("Keine abgehakten Einträge")
+								const ids = new Set(removed.map((item) => item.id))
+								setItems((current) => current.filter((item) => !ids.has(item.id)))
+								undoable({
+									message: removed.length === 1 ? "1 abgehakter Eintrag entfernt" : `${removed.length} abgehakte Einträge entfernt`,
+									run: () => Promise.all(removed.map((item) => deleteGroceryItem(item.id))),
+									beacon: { url: "/api/grocery-items/delete", data: { ids: [...ids] } },
+									onUndo: () => setItems((current) => [...current, ...removed.filter((item) => !current.some((existing) => existing.id === item.id))]),
+									errorMessage: "Entfernen hat nicht geklappt",
+								})
 							}}
 						>
 							Abgehakte entfernen
@@ -294,12 +309,20 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 				hiddenCategories={hiddenCategories}
 				onClose={() => setEditing(null)}
 				onSave={async (item, changes) => {
-					const updated = await applyItemChanges(item, changes)
-					setItems((current) => upsert(current, updated))
+					const updated = await attempt(() => applyItemChanges(item, changes), "Änderung konnte nicht gespeichert werden")
+					if (updated) setItems((current) => upsert(current, updated))
+					// Stand vom Server holen, damit die Anzeige nicht von der Datenbank abweicht
+					else router.refresh()
 				}}
 				onDelete={async (item) => {
 					setItems((current) => current.filter((existing) => existing.id !== item.id))
-					await deleteGroceryItem(item.id)
+					undoable({
+						message: `„${item.name}“ gelöscht`,
+						run: () => deleteGroceryItem(item.id),
+					beacon: { url: "/api/grocery-items/delete", data: { ids: [item.id] } },
+						onUndo: () => setItems((current) => upsert(current, item)),
+						errorMessage: "Löschen hat nicht geklappt",
+					})
 				}}
 			/>
 		</div>

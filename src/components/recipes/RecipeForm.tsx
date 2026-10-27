@@ -1,5 +1,6 @@
 "use client"
 
+import { useFeedback } from "@/components/ui/Feedback"
 import { createRecipe, deleteRecipe, updateRecipe, type RecipeInput } from "@/lib/recipes/actions"
 import ImageField from "@/components/forms/ImageField"
 import StepsField from "@/components/forms/StepsField"
@@ -128,7 +129,7 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 								value={ingredient.name}
 								onChange={(event) => setIngredient(index, { name: event.target.value })}
 							/>
-							<button type="button" className="btn-link" aria-label="Zutat entfernen" onClick={() => removeIngredient(index)}>
+							<button type="button" className="btn-link size-11 shrink-0 justify-center" aria-label="Zutat entfernen" onClick={() => removeIngredient(index)}>
 								✕
 							</button>
 						</div>
@@ -149,15 +150,17 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 }
 
 export function DeleteRecipeButton({ recipeId }: { recipeId: string }) {
+	const { confirm } = useFeedback()
 	return (
 		<button
 			type="button"
-			className={`${iconButtonClass} text-red-600`}
+			className={`${iconButtonClass} text-red-700 dark:text-red-400`}
 			aria-label="Rezept löschen"
 			title="Löschen"
 			onClick={async () => {
 				// bereits geplante Dishes bleiben erhalten (Snapshot), nur sourceRecipeId wird NULL
-				if (confirm("Rezept löschen? Bereits geplante Gerichte bleiben erhalten.")) await deleteRecipe(recipeId)
+				if (await confirm({ title: "Rezept löschen?", message: "Bereits geplante Gerichte bleiben erhalten.", confirmLabel: "Löschen", danger: true }))
+					await deleteRecipe(recipeId)
 			}}
 		>
 			<Icon name="trash" />

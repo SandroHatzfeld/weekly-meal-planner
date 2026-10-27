@@ -1,5 +1,6 @@
 "use client"
 
+import { useFeedback } from "@/components/ui/Feedback"
 import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import { createTag, deleteTag, updateTag } from "@/lib/tags/actions"
 import { TAG_ICONS, type TagDTO, type TagIconKey } from "@/lib/tags/icons"
@@ -28,6 +29,7 @@ function IconPicker({ value, onChange }: { value: TagIconKey; onChange: (icon: T
 }
 
 function TagRow({ tag }: { tag: TagDTO }) {
+	const { confirm } = useFeedback()
 	const [name, setName] = useState(tag.name)
 	const [icon, setIcon] = useState(tag.icon)
 	const [picking, setPicking] = useState(false)
@@ -68,8 +70,9 @@ function TagRow({ tag }: { tag: TagDTO }) {
 					title="Löschen"
 					aria-label={`${tag.name} löschen`}
 					disabled={pending}
-					onClick={() => {
-						if (confirm(`Tag "${tag.name}" löschen? Er wird auch von allen Einträgen entfernt.`)) startTransition(() => deleteTag(tag.id))
+					onClick={async () => {
+						if (await confirm({ title: `Tag „${tag.name}“ löschen?`, message: "Er wird auch von allen Einträgen entfernt.", confirmLabel: "Löschen", danger: true }))
+							startTransition(() => deleteTag(tag.id))
 					}}
 				>
 					<Icon name="trash" />

@@ -3,7 +3,7 @@
 // - Seiten (Navigation): Netz zuerst, bei Ausfall oder Funkloch die zuletzt gesehene Fassung
 // - Bilder: aus dem Cache, im Hintergrund aktualisiert
 // Alles andere (Server Actions, API, Socket.io) geht direkt ans Netz.
-const VERSION = "v1"
+const VERSION = "v2"
 const STATIC = `wmp-static-${VERSION}`
 const PAGES = `wmp-pages-${VERSION}`
 const IMAGES = `wmp-images-${VERSION}`
@@ -14,6 +14,11 @@ const NETWORK_TIMEOUT_MS = 4000
 const UNCACHED_PAGES = ["/login", "/register", "/verify", "/invite", "/onboarding"]
 
 self.addEventListener("install", (event) => {
+	// Löschen beim Verlassen der Seite (sendBeacon) direkt ans Netz, nicht über diesen Worker:
+	// sonst verwirft Chrome die Nachricht, wenn die Seite geschlossen wird
+	if (event.addRoutes) {
+		event.addRoutes([{ condition: { urlPattern: new URLPattern({ pathname: "/api/grocery-items/*" }) }, source: "network" }]).catch(() => {})
+	}
 	event.waitUntil(caches.open(STATIC).then((cache) => cache.addAll([OFFLINE_URL, "/icons/icon-192.png"])).then(() => self.skipWaiting()))
 })
 

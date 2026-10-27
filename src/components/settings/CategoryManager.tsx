@@ -1,5 +1,6 @@
 "use client"
 
+import { useFeedback } from "@/components/ui/Feedback"
 import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import { createCategory, deleteCategory, renameCategory } from "@/lib/grocery/actions"
 import type { CategoryDTO } from "@/lib/grocery/categories"
@@ -8,6 +9,7 @@ import { useState, useTransition } from "react"
 
 // Kategorien des Plans: anlegen, umbenennen, löschen (die Reihenfolge stellt jede Liste selbst ein)
 export default function CategoryManager({ planId, categories }: { planId: string; categories: CategoryDTO[] }) {
+	const { confirm } = useFeedback()
 	const router = useRouter()
 	const [newName, setNewName] = useState("")
 	const [error, setError] = useState<string | null>(null)
@@ -40,8 +42,8 @@ export default function CategoryManager({ planId, categories }: { planId: string
 							title="Löschen"
 							aria-label={`${category.name} löschen`}
 							disabled={pending}
-							onClick={() => {
-								if (confirm(`Kategorie "${category.name}" löschen? Einträge landen dann unter "Sonstiges".`))
+							onClick={async () => {
+								if (await confirm({ title: `Kategorie „${category.name}“ löschen?`, message: "Einträge dieser Kategorie landen dann unter „Sonstiges“.", confirmLabel: "Löschen", danger: true }))
 									run(
 										() => deleteCategory(category.id),
 										() => setRemoved((current) => [...current, category.id]),

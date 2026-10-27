@@ -1,5 +1,6 @@
 "use client"
 
+import { useFeedback } from "@/components/ui/Feedback"
 import ImageField from "@/components/forms/ImageField"
 import ItemEditDialog from "@/components/items/ItemEditDialog"
 import ItemTile from "@/components/items/ItemTile"
@@ -71,6 +72,7 @@ const usePresence = (dishId: string) => {
 
 export default function DishEditor({ initialDish, initialItems, lists, defaultListId, tags, categories, productMemory, sourceRecipe, currentUserId, today }: DishEditorProps) {
 	const router = useRouter()
+	const { confirm, attempt, undoable } = useFeedback()
 	const [dish, setDish] = useState(initialDish)
 	const [form, setForm] = useState(toInput(initialDish))
 	const [dirty, setDirty] = useState(false)
@@ -124,8 +126,9 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 		event.preventDefault()
 		setSaving(true)
 		setMessage(null)
-		const result = await updateDish(dish.id, form, dish.updatedAt)
+		const result = await attempt(() => updateDish(dish.id, form, dish.updatedAt), "Speichern hat nicht geklappt")
 		setSaving(false)
+		if (!result) return
 		if (result.ok) {
 			reload(result.dish)
 			setMessage("Gespeichert")
@@ -208,7 +211,7 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 						type="button"
 						className="btn-danger"
 						onClick={async () => {
-							if (!confirm("Gericht wirklich löschen?")) return
+							if (!(await confirm({ title: "Gericht löschen?", message: "Die zugehörigen Einträge auf der Einkaufsliste bleiben erhalten.", confirmLabel: "Löschen", danger: true }))) return
 							await deleteDish(dish.id)
 							router.push(`/week?start=${dish.date}`)
 						}}
@@ -225,7 +228,7 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 			)}
 
 			<section className="card space-y-2">
-				<h3 className="font-semibold">Zutaten auf der Einkaufsliste</h3>
+				<h2 className="font-semibold">Zutaten auf der Einkaufsliste</h2>
 				{items.length > 0 ? (
 					// gleiche Kacheln wie in der Einkaufsliste
 					<ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
@@ -241,7 +244,8 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 										hint="Tippen zum Abhaken · gedrückt halten oder Rechtsklick zum Bearbeiten"
 										onToggle={async () => {
 											replaceItem({ ...item, checked: !item.checked })
-											await sendToggle(item.id, !item.checked)
+											const sent = await attempt(() => sendToggle(item.id, !item.checked), "Abhaken hat nicht geklappt")
+											if (sent === undefined) replaceItem(item)
 										}}
 										onEdit={() => setEditingItem(item)}
 									/>
@@ -258,10 +262,20 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 					tags={tags}
 					categories={categories}
 					onClose={() => setEditingItem(null)}
-					onSave={async (item, changes) => replaceItem(await applyItemChanges(item, changes))}
+					onSave={async (item, changes) => {
+						const updated = await attempt(() => applyItemChanges(item, changes), "Änderung konnte nicht gespeichert werden")
+						if (updated) replaceItem(updated)
+						else router.refresh()
+					}}
 					onDelete={async (item) => {
 						setItems((current) => current.filter((existing) => existing.id !== item.id))
-						await deleteGroceryItem(item.id)
+						undoable({
+							message: `„${item.name}“ gelöscht`,
+							run: () => deleteGroceryItem(item.id),
+					beacon: { url: "/api/grocery-items/delete", data: { ids: [item.id] } },
+							onUndo: () => setItems((current) => (current.some((existing) => existing.id === item.id) ? current : [...current, item])),
+							errorMessage: "Löschen hat nicht geklappt",
+						})
 					}}
 				/>
 			</section>
@@ -290,9 +304,11 @@ function AddDishItem({
 	// Kategorie aus einem gewählten Vorschlag; weitertippen setzt sie zurück
 	const [pickedCategory, setPickedCategory] = useState<string | null>(null)
 	const [newTagIds, setNewTagIds] = useState<string[]>([])
+	const { attempt } = useFeedback()
 
 	const add = async (itemName: string, categoryId: string | null) => {
-		await addGroceryItem(listId, itemName, details, dishId, categoryId, newTagIds)
+		const item = await attempt(() => addGroceryItem(listId, itemName, details, dishId, categoryId, newTagIds), "Konnte nicht hinzugefügt werden")
+		if (!item) return
 		setName("")
 		setDetails("")
 		setPickedCategory(null)
@@ -325,6 +341,7 @@ function AddDishItem({
 			<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} />
 			{lists.length > 1 && (
 				<select
+					aria-label="Liste"
 					className="input w-auto"
 					value={listId}
 					onChange={(event) => {

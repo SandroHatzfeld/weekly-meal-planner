@@ -134,7 +134,7 @@ function ImportStatus({ status, seconds, replaces }: { status: Status; seconds: 
 		<p
 			role={status.step === "error" ? "alert" : "status"}
 			aria-live="polite"
-			className={`flex min-w-0 items-center gap-2 text-sm ${status.step === "error" ? "text-red-600" : status.step === "done" ? "text-emerald-600" : "opacity-80"}`}
+			className={`flex min-w-0 items-center gap-2 text-sm ${status.step === "error" ? "text-red-700 dark:text-red-400" : status.step === "done" ? "text-emerald-600" : "opacity-80"}`}
 		>
 			{(status.step === "loading" || status.step === "structuring") && (
 				<span className="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
