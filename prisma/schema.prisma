@@ -30,6 +30,7 @@ model User {
   recipes            Recipe[]
   apiTokens          ApiToken[]
   activePlan         Plan?                    @relation(fields: [activePlanId], references: [id], onDelete: SetNull)
+  dismissedHints     String[]                 @default([]) // weggeklickte Einmal-Hinweise, in den Einstellungen zurücksetzbar
 }
 
 model Plan {

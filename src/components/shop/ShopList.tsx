@@ -22,7 +22,9 @@ import { useStoredView, type ShopView } from "./useStoredView"
 import { pendingToggles, sendToggle, useOnline } from "@/lib/offline/toggles"
 import { useFeedback } from "@/components/ui/Feedback"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import Hint from "@/components/hints/Hints"
+import Icon from "@/components/ui/Icon"
+import { useEffect, useRef, useState } from "react"
 
 type ShopListProps = {
 	lists: { id: string; name: string }[]
@@ -109,6 +111,12 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 	// Tags für den nächsten Eintrag (Dropdown neben dem Hinzufügen-Button)
 	const [newTagIds, setNewTagIds] = useState<string[]>([])
 	const [editing, setEditing] = useState<GroceryItemDTO | null>(null)
+	// Hinzufügen-Formular: Details/Tags erst beim Tippen einblenden; ist es weggescrollt, erscheint ein „+“-Button
+	const formRef = useRef<HTMLFormElement>(null)
+	const listBar = useRef<HTMLDivElement>(null)
+	const [formFocused, setFormFocused] = useState(false)
+	const [formVisible, setFormVisible] = useState(true)
+	const expanded = formFocused || !!name || !!details || newTagIds.length > 0
 	const [view, setView] = useStoredView()
 	const { memory, learn } = useProductMemory(productMemory)
 	const { attempt, undoable, notify } = useFeedback()
@@ -138,6 +146,29 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 		// eslint-disable-next-line react-hooks/set-state-in-effect
 		if (Object.keys(pending).length) setItems((current) => current.map((item) => (item.id in pending ? { ...item, checked: pending[item.id] } : item)))
 	}, [])
+
+	useEffect(() => {
+		const form = formRef.current
+		if (!form) return
+		const observer = new IntersectionObserver(([entry]) => setFormVisible(entry.isIntersecting))
+		observer.observe(form)
+		return () => observer.disconnect()
+	}, [])
+
+	// gewählte Liste in der Leiste sichtbar halten (von Hand: scrollIntoView würde auch das Karussell verschieben)
+	useEffect(() => {
+		const bar = listBar.current
+		const chip = bar?.querySelector<HTMLElement>("[aria-pressed=true]")
+		if (!bar || !chip) return
+		if (chip.offsetLeft < bar.scrollLeft) bar.scrollLeft = chip.offsetLeft - 8
+		else if (chip.offsetLeft + chip.offsetWidth > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = chip.offsetLeft + chip.offsetWidth - bar.clientWidth + 8
+	}, [listId])
+
+	const showForm = () => {
+		const form = formRef.current
+		form?.closest("[data-tab-panel]")?.scrollTo({ top: 0, behavior: "smooth" })
+		form?.querySelector("input")?.focus({ preventScroll: true })
+	}
 
 	const selectList = (id: string) => {
 		setListId(id)
@@ -177,24 +208,27 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 
 	return (
 		<div className="space-y-4">
-			<div className="flex flex-wrap items-center gap-2">
-				{lists.map((list) => (
-					<button
-						key={list.id}
-						type="button"
-						onClick={() => selectList(list.id)}
-						className={list.id === listId ? "btn border border-transparent" : "btn-secondary"}
-					>
-						{list.name} ({items.filter((item) => item.listId === list.id && !item.checked).length})
-					</button>
-				))}
-				{/* Ansicht: am Ende der Reiter-Zeile, bricht bei vielen Listen mit um */}
-				<select
-					aria-label="Ansicht"
-					className="input ml-auto w-auto py-[6.5px]"
-					value={view}
-					onChange={(event) => setView(event.target.value as ShopView)}
-				>
+			{/* Listen als seitlich scrollbare Leiste (Pillen, damit sie sich von den Tabs oben abheben), Ansicht daneben */}
+			<div className="flex items-center gap-2">
+				<div ref={listBar} className="-my-1 flex min-w-0 flex-1 gap-2 overflow-x-auto py-1 [scrollbar-width:none]" aria-label="Einkaufslisten">
+					{lists.map((list) => {
+						const active = list.id === listId
+						const open = items.filter((item) => item.listId === list.id && !item.checked).length
+						return (
+							<button
+								key={list.id}
+								type="button"
+								aria-pressed={active}
+								onClick={() => selectList(list.id)}
+								className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm whitespace-nowrap ${active ? "border-emerald-700 bg-emerald-700 text-white" : "border-(--border) bg-(--surface)"}`}
+							>
+								{list.name}
+								<span className={`min-w-5 rounded-full px-1.5 text-center text-xs ${active ? "bg-white/20" : "bg-black/5 dark:bg-white/10"}`}>{open}</span>
+							</button>
+						)
+					})}
+				</div>
+				<select aria-label="Ansicht" className="input min-h-11 w-auto shrink-0" value={view} onChange={(event) => setView(event.target.value as ShopView)}>
 					{VIEWS.map((option) => (
 						<option key={option.value} value={option.value}>
 							{option.label}
@@ -206,36 +240,68 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 			{currentList && (
 				<>
 					<form
-						className="flex flex-wrap gap-2"
+						ref={formRef}
+						className="space-y-2"
+						onFocus={() => setFormFocused(true)}
+						onBlur={(event) => {
+							if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+							// erst nach dem Antippen einklappen: sonst rutscht die Liste mitten im Tippen weg und der Tipp landet daneben
+							let done = false
+							const collapse = () => {
+								if (done) return
+								done = true
+								window.removeEventListener("click", collapse, true)
+								setTimeout(() => setFormFocused(false), 0)
+							}
+							window.addEventListener("click", collapse, true)
+							setTimeout(collapse, 700)
+						}}
 						onSubmit={async (event) => {
 							event.preventDefault()
 							await add(currentList.id, name, pickedCategory)
 						}}
 					>
-						<ProductInput
-							className="basis-full sm:basis-0 sm:flex-1"
-							placeholder="Was wird gebraucht?"
-							value={name}
-							onChange={(value) => {
-								setName(value)
-								setPickedCategory(null)
-							}}
-							// Vorschlag gewählt: direkt hinzufügen (mit eventuell schon eingetragenen Details und Tags)
-							onPick={(suggestion) => {
-								if (online) return void add(currentList.id, suggestion.displayName, suggestion.categoryId)
-								setName(suggestion.displayName)
-								setPickedCategory(suggestion.categoryId)
-							}}
-							memory={memory}
-							categories={categories}
-							dropUp
-						/>
-						<input className="input min-w-0 flex-1 sm:w-36 sm:flex-none" placeholder="Details (z.B. 500 g)" value={details} onChange={(event) => setDetails(event.target.value)} />
-						<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} />
-						<button type="submit" className="btn" disabled={!online} title={online ? undefined : "Offline nicht möglich"}>
-							Hinzufügen
-						</button>
+						<div className="flex gap-2">
+							<ProductInput
+								className="min-w-0 flex-1"
+								inputClassName="min-h-11"
+								placeholder="Was wird gebraucht?"
+								value={name}
+								onChange={(value) => {
+									setName(value)
+									setPickedCategory(null)
+								}}
+								// Vorschlag gewählt: direkt hinzufügen (mit eventuell schon eingetragenen Details und Tags)
+								onPick={(suggestion) => {
+									if (online) return void add(currentList.id, suggestion.displayName, suggestion.categoryId)
+									setName(suggestion.displayName)
+									setPickedCategory(suggestion.categoryId)
+								}}
+								memory={memory}
+								categories={categories}
+								dropUp
+							/>
+							<button type="submit" className="btn inline-flex min-h-11 shrink-0 items-center gap-1" disabled={!online} title={online ? "Hinzufügen" : "Offline nicht möglich"}>
+								<Icon name="plus" />
+								<span className="max-sm:sr-only">Hinzufügen</span>
+							</button>
+						</div>
+						{/* Details und Tags erst beim Eingeben, damit oben mehr Platz für die Liste bleibt */}
+						{expanded && (
+							<div className="flex gap-2">
+								<input className="input min-h-11 min-w-0 flex-1" placeholder="Details (z.B. 500 g)" aria-label="Details" value={details} onChange={(event) => setDetails(event.target.value)} />
+								<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} />
+							</div>
+						)}
 					</form>
+
+					<Hint id="shop-basics" title="So funktioniert die Einkaufsliste">
+						<ul className="list-disc space-y-0.5 pl-4">
+							<li>Tippen hakt einen Eintrag ab, nochmal tippen holt ihn zurück.</li>
+							<li>Gedrückt halten (am Computer: Rechtsklick) öffnet die Bearbeitung.</li>
+							<li>Nach links oder rechts wischen wechselt zwischen Einkaufsliste, Woche, Monat und Rezepten.</li>
+						</ul>
+					</Hint>
 
 					{groups.length === 0 && <p className="opacity-60">Die Liste ist leer.</p>}
 					{groups.map((group) => (
@@ -299,6 +365,20 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						</button>
 					</div>
 				</>
+			)}
+
+			{/* Formular weggescrollt: schwebender Button holt es zurück */}
+			{currentList && !formVisible && (
+				<div className="pointer-events-none sticky bottom-4 flex justify-end">
+					<button
+						type="button"
+						className="pointer-events-auto flex size-14 items-center justify-center rounded-full bg-emerald-700 text-white shadow-lg hover:bg-emerald-800"
+						aria-label="Eintrag hinzufügen"
+						onClick={showForm}
+					>
+						<Icon name="plus" className="size-7" />
+					</button>
+				</div>
 			)}
 
 			<ItemEditDialog

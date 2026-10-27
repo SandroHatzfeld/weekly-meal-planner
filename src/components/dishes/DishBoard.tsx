@@ -4,6 +4,7 @@ import { usePlanEvent } from "@/components/realtime/SocketProvider"
 import { formatDay } from "@/lib/dates"
 import { moveDish } from "@/lib/dishes/actions"
 import { useFeedback } from "@/components/ui/Feedback"
+import Hint from "@/components/hints/Hints"
 import type { DishDTO } from "@/lib/dto"
 import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
@@ -122,6 +123,9 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 
 	return (
 		<div className="space-y-4">
+			<Hint id="month-days" title="Monatsübersicht">
+				<p>Tippe auf einen Tag, um seine Gerichte zu sehen und etwas zu planen. Punkte zeigen, wie viele Gerichte geplant sind.</p>
+			</Hint>
 			<div className="grid grid-cols-7 gap-1">
 				{["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((weekday) => (
 					<div key={weekday} className="text-center text-xs font-semibold opacity-60">

@@ -5,6 +5,7 @@ import ProductCsv from "@/components/settings/ProductCsv"
 import ProductMemorySettings from "@/components/settings/ProductMemorySettings"
 import TagSettings from "@/components/tags/TagSettings"
 import InstallButton from "@/components/pwa/InstallButton"
+import ResetHintsButton from "@/components/hints/ResetHintsButton"
 import { signOut } from "@/lib/auth/auth"
 import { listsWithDefault } from "@/lib/grocery/queries"
 import { categoriesOfPlan, categoryOrderOfPlan, hiddenCategoriesOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
@@ -17,6 +18,7 @@ const formatDate = (date: Date) => new Intl.DateTimeFormat("de-DE", { dateStyle:
 
 export default async function SettingsPage() {
 	const { user, planId } = await requireActivePlan()
+	const { dismissedHints } = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { dismissedHints: true } })
 
 	const plan = await prisma.plan.findUniqueOrThrow({
 		where: { id: planId },
@@ -134,6 +136,12 @@ export default async function SettingsPage() {
 						lastUsedAt: token.lastUsedAt ? formatDate(token.lastUsedAt) : null,
 					}))}
 				/>
+			</section>
+
+			<section className="card space-y-3">
+				<h2 className="text-lg font-semibold">Hinweise</h2>
+				<p className="text-sm opacity-70">Kurze Erklärungen zur Bedienung, die nach „Verstanden“ nicht mehr erscheinen. Gilt für dein Konto auf allen Geräten.</p>
+				<ResetHintsButton dismissedCount={dismissedHints.length} />
 			</section>
 
 			<InstallButton />

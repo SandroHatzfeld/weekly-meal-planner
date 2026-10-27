@@ -14,6 +14,7 @@ type ProductInputProps = {
 	categories: CategoryDTO[]
 	placeholder: string
 	className?: string
+	inputClassName?: string
 	// false: Feld darf leer bleiben (z.B. innerhalb eines anderen Formulars)
 	required?: boolean
 	// Vorschläge im Fluss statt schwebend (in Popups, damit nichts abgeschnitten wird)
@@ -23,7 +24,7 @@ type ProductInputProps = {
 }
 
 // Eingabe für Produkte mit Vorschlägen aus bekannten Produkten des Plans (auch bei Vertippern)
-export default function ProductInput({ value, onChange, onPick, memory, categories, placeholder, className = "", required = true, inlineSuggestions = false, dropUp = false }: ProductInputProps) {
+export default function ProductInput({ value, onChange, onPick, memory, categories, placeholder, className = "", inputClassName = "", required = true, inlineSuggestions = false, dropUp = false }: ProductInputProps) {
 	const suggestions = suggestProducts(value, memory)
 		// exakt das Getippte vorzuschlagen bringt nichts
 		.filter((suggestion) => suggestion.displayName !== value.trim() || suggestion.categoryId !== null)
@@ -50,7 +51,7 @@ export default function ProductInput({ value, onChange, onPick, memory, categori
 	return (
 		<div className={`relative ${className}`}>
 			<input
-				className="input w-full"
+				className={`input w-full ${inputClassName}`}
 				placeholder={placeholder}
 				value={value}
 				required={required}
