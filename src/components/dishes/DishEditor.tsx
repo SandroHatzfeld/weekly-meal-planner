@@ -161,7 +161,7 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 	}
 
 	const remove = async () => {
-		if (!(await confirm({ title: "Gericht löschen?", message: "Die zugehörigen Einträge auf der Einkaufsliste bleiben erhalten.", confirmLabel: "Löschen", danger: true }))) return
+		if (!(await confirm({ title: "Gericht löschen?", message: "Seine Zutaten werden auch von der Einkaufsliste entfernt.", confirmLabel: "Löschen", danger: true }))) return
 		if ((await attempt(() => deleteDish(dish.id).then(() => true), "Löschen hat nicht geklappt")) === undefined) return
 		router.push(`/week?start=${dish.date}`)
 	}
@@ -301,7 +301,7 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 				}}
 			/>
 
-			<Modal open={!!editing} onClose={closeEdit} labelledBy="dish-edit-title" widthClass="w-[min(32rem,calc(100%-2rem))]">
+			<Modal open={!!editing} onClose={closeEdit} labelledBy="dish-edit-title" focusDialog widthClass="w-[min(32rem,calc(100%-2rem))]">
 				<form onSubmit={save} className="form max-w-none gap-3 p-4">
 					<h2 id="dish-edit-title" className="text-lg font-semibold">
 						{editing === "date" ? "Datum ändern" : "Gericht bearbeiten"}

@@ -41,7 +41,7 @@ type PlanDishDialogProps = {
 // Genutzt in Woche, Monat und auf der Rezeptseite.
 export default function PlanDishDialog({ open, onClose, ...props }: PlanDishDialogProps) {
 	return (
-		<Modal open={open} onClose={onClose} labelledBy="plan-dish-title" widthClass="w-[min(36rem,calc(100%-2rem))]">
+		<Modal open={open} onClose={onClose} labelledBy="plan-dish-title" focusDialog widthClass="w-[min(36rem,calc(100%-2rem))]">
 			{/* nur im geöffneten Zustand gerendert -> jedes Öffnen startet mit frischem Formular */}
 			<PlanDishForm {...props} onClose={onClose} />
 		</Modal>
@@ -110,9 +110,13 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 				submit()
 			}}
 		>
+			{/* Rezept steht schon fest (Rezeptseite): Name als Überschrift statt Eingabefeld */}
 			<h2 id="plan-dish-title" className="text-lg font-semibold">
-				Gericht planen
+				{initialRecipe ? `${initialRecipe.name} planen` : "Gericht planen"}
 			</h2>
+
+			<label htmlFor="plan-dish-date">Datum</label>
+			<input id="plan-dish-date" type="date" value={date} min={today} onChange={(event) => setDate(event.target.value)} required />
 
 			{/* Plan-Auswahl nur, wenn es mehrere Pläne gibt (Rezeptseite) */}
 			{plans.length > 1 && (
@@ -137,42 +141,42 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 				</>
 			)}
 
-			<label htmlFor="plan-dish-name">Gericht</label>
-			<div>
-				<input
-					id="plan-dish-name"
-					autoFocus={!initialRecipe}
-					value={name}
-					placeholder="Name oder Rezept suchen"
-					{...combobox.inputProps}
-					required
-					onChange={(event) => {
-						// weitertippen hebt eine gewählte Rezept-Vorlage auf (ihre Zutaten gehen mit, eigene Produkte bleiben)
-						if (recipe) {
-							setRecipe(null)
-							setEntries(withManual([]))
-						}
-						setName(event.target.value)
-						combobox.reset()
-					}}
-				/>
-				{visible.length > 0 && (
-					// im Popup im Fluss statt schwebend, damit nichts am Rand abgeschnitten wird
-					<ul {...combobox.listboxProps} className="suggestions static! sm:w-full">
-						{visible.map((suggestion, index) => (
-							<li key={suggestion.id} {...combobox.optionProps(index)}>
-								<span>{suggestion.name}</span>
-								<span className="text-xs opacity-60">
-									{[suggestion.minutes ? formatMinutes(suggestion.minutes) : null, suggestion.rating ? `${suggestion.rating}★` : null, suggestion.ownerName ? `von ${suggestion.ownerName}` : "Mein Rezept"].filter(Boolean).join(" · ")}
-								</span>
-							</li>
-						))}
-					</ul>
-				)}
-			</div>
-
-			<label htmlFor="plan-dish-date">Datum</label>
-			<input id="plan-dish-date" type="date" value={date} min={today} onChange={(event) => setDate(event.target.value)} required />
+			{!initialRecipe && (
+				<>
+					<label htmlFor="plan-dish-name">Gericht</label>
+					<div>
+						<input
+							id="plan-dish-name"
+							value={name}
+							placeholder="Name oder Rezept suchen"
+							{...combobox.inputProps}
+							required
+							onChange={(event) => {
+								// weitertippen hebt eine gewählte Rezept-Vorlage auf (ihre Zutaten gehen mit, eigene Produkte bleiben)
+								if (recipe) {
+									setRecipe(null)
+									setEntries(withManual([]))
+								}
+								setName(event.target.value)
+								combobox.reset()
+							}}
+						/>
+						{visible.length > 0 && (
+							// im Popup im Fluss statt schwebend, damit nichts am Rand abgeschnitten wird
+							<ul {...combobox.listboxProps} className="suggestions static! sm:w-full">
+								{visible.map((suggestion, index) => (
+									<li key={suggestion.id} {...combobox.optionProps(index)}>
+										<span>{suggestion.name}</span>
+										<span className="text-xs opacity-60">
+											{[suggestion.minutes ? formatMinutes(suggestion.minutes) : null, suggestion.rating ? `${suggestion.rating}★` : null, suggestion.ownerName ? `von ${suggestion.ownerName}` : "Mein Rezept"].filter(Boolean).join(" · ")}
+										</span>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+				</>
+			)}
 
 			{(recipe || entries.length > 0) && (
 				<IngredientPicker

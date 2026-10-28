@@ -77,7 +77,10 @@ export const moveDish = async (dishId: string, dateKey: string) => {
 
 export const deleteDish = async (dishId: string) => {
 	const existing = await memberOfDish(dishId)
-	await prisma.dish.delete({ where: { id: dishId } })
+	// die für das Gericht geplanten Einkäufe gehen mit
+	const items = await prisma.groceryItem.findMany({ where: { dishId }, select: { id: true, listId: true } })
+	await prisma.$transaction([prisma.groceryItem.deleteMany({ where: { dishId } }), prisma.dish.delete({ where: { id: dishId } })])
 	await deleteImageIfUnused(existing.imageUrl)
+	for (const item of items) emitToPlan(existing.planId, "grocery-item-deleted", { listId: item.listId, id: item.id })
 	emitToPlan(existing.planId, "dish-deleted", { id: dishId })
 }
