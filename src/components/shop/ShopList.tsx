@@ -24,6 +24,7 @@ import { useFeedback } from "@/components/ui/Feedback"
 import { useRouter } from "next/navigation"
 import Hint from "@/components/hints/Hints"
 import Icon from "@/components/ui/Icon"
+import Dropdown from "@/components/ui/Dropdown"
 import { useEffect, useRef, useState } from "react"
 
 type ShopListProps = {
@@ -228,13 +229,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						)
 					})}
 				</div>
-				<select aria-label="Ansicht" className="input min-h-10 w-auto shrink-0" value={view} onChange={(event) => setView(event.target.value as ShopView)}>
-					{VIEWS.map((option) => (
-						<option key={option.value} value={option.value}>
-							{option.label}
-						</option>
-					))}
-				</select>
+				<Dropdown label="Ansicht" value={view} options={VIEWS} onChange={setView} className="w-28 shrink-0" />
 			</div>
 
 			{currentList && (
@@ -281,9 +276,14 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 								categories={categories}
 								dropUp
 							/>
-							<button type="submit" className="btn inline-flex min-h-10 shrink-0 items-center gap-1" disabled={!online} title={online ? "Hinzufügen" : "Offline nicht möglich"}>
+							<button
+								type="submit"
+								className="btn flex size-10 shrink-0 items-center justify-center px-0"
+								aria-label="Hinzufügen"
+								disabled={!online}
+								title={online ? "Hinzufügen" : "Offline nicht möglich"}
+							>
 								<Icon name="plus" />
-								<span className="max-sm:sr-only">Hinzufügen</span>
 							</button>
 						</div>
 						{/* Details und Tags erst beim Eingeben, damit oben mehr Platz für die Liste bleibt */}
