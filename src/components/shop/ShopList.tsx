@@ -42,7 +42,7 @@ type Group = { key: string; title: string; href?: string; date?: string | null; 
 const VIEWS: { value: ShopView; label: string }[] = [
 	{ value: "planning", label: "Planung" },
 	{ value: "store", label: "Laden" },
-	{ value: "alpha", label: "Alphabetisch" },
+	{ value: "alpha", label: "A–Z" },
 ]
 
 // Planung: nach Gericht ("Unkategorisiert" zuerst, dann nach Datum)
@@ -220,7 +220,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 								type="button"
 								aria-pressed={active}
 								onClick={() => selectList(list.id)}
-								className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm whitespace-nowrap ${active ? "border-emerald-700 bg-emerald-700 text-white" : "border-(--border) bg-(--surface)"}`}
+								className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm whitespace-nowrap ${active ? "border-emerald-700 bg-emerald-700 text-white" : "border-(--border) bg-(--surface)"}`}
 							>
 								{list.name}
 								<span className={`min-w-5 rounded-full px-1.5 text-center text-xs ${active ? "bg-white/20" : "bg-black/5 dark:bg-white/10"}`}>{open}</span>
@@ -228,7 +228,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						)
 					})}
 				</div>
-				<select aria-label="Ansicht" className="input min-h-11 w-auto shrink-0" value={view} onChange={(event) => setView(event.target.value as ShopView)}>
+				<select aria-label="Ansicht" className="input min-h-10 w-auto shrink-0" value={view} onChange={(event) => setView(event.target.value as ShopView)}>
 					{VIEWS.map((option) => (
 						<option key={option.value} value={option.value}>
 							{option.label}
@@ -264,7 +264,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						<div className="flex gap-2">
 							<ProductInput
 								className="min-w-0 flex-1"
-								inputClassName="min-h-11"
+								inputClassName="min-h-10"
 								placeholder="Was wird gebraucht?"
 								value={name}
 								onChange={(value) => {
@@ -281,7 +281,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 								categories={categories}
 								dropUp
 							/>
-							<button type="submit" className="btn inline-flex min-h-11 shrink-0 items-center gap-1" disabled={!online} title={online ? "Hinzufügen" : "Offline nicht möglich"}>
+							<button type="submit" className="btn inline-flex min-h-10 shrink-0 items-center gap-1" disabled={!online} title={online ? "Hinzufügen" : "Offline nicht möglich"}>
 								<Icon name="plus" />
 								<span className="max-sm:sr-only">Hinzufügen</span>
 							</button>
@@ -289,8 +289,8 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						{/* Details und Tags erst beim Eingeben, damit oben mehr Platz für die Liste bleibt */}
 						{expanded && (
 							<div className="flex gap-2">
-								<input className="input min-h-11 min-w-0 flex-1" placeholder="Details (z.B. 500 g)" aria-label="Details" value={details} onChange={(event) => setDetails(event.target.value)} />
-								<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} />
+								<input className="input min-h-10 min-w-0 flex-1" placeholder="Details (z.B. 500 g)" aria-label="Details" value={details} onChange={(event) => setDetails(event.target.value)} />
+								<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} sizeClass="size-10" />
 							</div>
 						)}
 					</form>

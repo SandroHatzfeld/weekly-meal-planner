@@ -5,7 +5,8 @@ import type { TagDTO } from "@/lib/tags/icons"
 import { useEffect, useId, useRef, useState } from "react"
 
 // Quadratischer Button mit Aufklapp-Auswahl der Plan-Tags (Mehrfachauswahl) für Formulare, z.B. beim Hinzufügen eines Produkts
-export default function TagPicker({ tags, value, onChange }: { tags: TagDTO[]; value: string[]; onChange: (tagIds: string[]) => void }) {
+// sizeClass: Größe des quadratischen Buttons, passend zur Höhe der Eingabefelder daneben
+export default function TagPicker({ tags, value, onChange, sizeClass = "size-[34px]" }: { tags: TagDTO[]; value: string[]; onChange: (tagIds: string[]) => void; sizeClass?: string }) {
 	const [open, setOpen] = useState(false)
 	const root = useRef<HTMLDivElement>(null)
 	const listId = useId()
@@ -45,7 +46,7 @@ export default function TagPicker({ tags, value, onChange }: { tags: TagDTO[]; v
 				aria-label={selected.length ? `Tags (${selected.map((tag) => tag.name).join(", ")})` : "Tags"}
 				title="Tags"
 				onClick={() => setOpen(!open)}
-				className={`relative flex size-[34px] items-center justify-center rounded border ${selected.length ? "border-emerald-600 bg-emerald-700 text-white" : "border-(--border) bg-(--surface)"}`}
+				className={`relative flex ${sizeClass} items-center justify-center rounded border ${selected.length ? "border-emerald-600 bg-emerald-700 text-white" : "border-(--border) bg-(--surface)"}`}
 			>
 				{selected.length === 1 ? <TagIcon icon={selected[0].icon} className="size-5" /> : <TagIcon icon="tag" className="size-5" />}
 				{selected.length > 1 && (
