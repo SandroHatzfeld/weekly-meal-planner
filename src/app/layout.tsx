@@ -13,6 +13,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#047857",
+  // Tastatur verkleinert die Seite (Android): Popups bleiben mittig über der Tastatur, Inhalt wird nicht verdeckt
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

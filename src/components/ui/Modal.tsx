@@ -15,7 +15,7 @@ type ModalProps = {
 }
 
 // Gemeinsamer Popup-Rahmen: natives <dialog> (Escape, Fokus), Portal an <body>,
-// mobil oben angedockt, Hintergrund-Tipp schließt.
+// mittig, Hintergrund-Tipp schließt.
 export default function Modal({ open, onClose, children, widthClass = "w-[min(26rem,calc(100%-2rem))]", labelledBy, focusDialog = false }: ModalProps) {
 	const dialog = useRef<HTMLDialogElement>(null)
 	const pressedOnBackdrop = useRef(false)
@@ -55,8 +55,8 @@ export default function Modal({ open, onClose, children, widthClass = "w-[min(26
 				if (event.target === dialog.current && pressedOnBackdrop.current) dialog.current.close()
 				pressedOnBackdrop.current = false
 			}}
-			// mobil oben andocken (Tastatur verdeckt sonst die Hälfte), ab sm mittig
-			className={`mx-auto mt-3 mb-auto outline-none max-h-[calc(100dvh-1.5rem)] ${widthClass} overflow-y-auto rounded-xl border border-(--border) bg-(--surface) p-0 text-(--foreground) shadow-xl backdrop:bg-black/40 sm:my-auto`}
+			// mittig; mit offener Tastatur mittig im verbleibenden Bereich (interactiveWidget im Root-Layout)
+			className={`m-auto outline-none max-h-[calc(100dvh-1.5rem)] ${widthClass} overflow-y-auto rounded-xl border border-(--border) bg-(--surface) p-0 text-(--foreground) shadow-xl backdrop:bg-black/40`}
 		>
 			{open && children}
 		</dialog>,
