@@ -1,4 +1,3 @@
-import { todayKey } from "@/lib/dates"
 import DishEditor from "@/components/dishes/DishEditor"
 import { toDishDTO, groceryItemInclude, toGroceryItemDTO } from "@/lib/dto"
 import { prisma } from "@/lib/prisma"
@@ -40,7 +39,6 @@ export default async function DishPage({ params }: PageProps<"/dishes/[id]">) {
 			productMemory={productMemory}
 			sourceRecipe={dish.sourceRecipe}
 			currentUserId={user.id}
-			today={todayKey()}
 		/>
 	)
 }
