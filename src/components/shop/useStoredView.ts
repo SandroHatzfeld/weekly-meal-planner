@@ -38,3 +38,27 @@ export const useStoredView = () => {
 	}
 	return [view, setView] as const
 }
+
+const SHOW_CHECKED_KEY = "wmp.showChecked"
+
+const readShowChecked = () => {
+	try {
+		return localStorage.getItem(SHOW_CHECKED_KEY) === "1"
+	} catch {
+		return false
+	}
+}
+
+// abgehakte Einträge einblenden (pro Gerät gemerkt); Server rendert sie ausgeblendet
+export const useShowChecked = () => {
+	const show = useSyncExternalStore(subscribe, readShowChecked, () => false)
+	const setShow = (next: boolean) => {
+		try {
+			localStorage.setItem(SHOW_CHECKED_KEY, next ? "1" : "0")
+		} catch {
+			// Speicher gesperrt: gilt nur bis zum Neuladen nicht
+		}
+		window.dispatchEvent(new Event(EVENT))
+	}
+	return [show, setShow] as const
+}

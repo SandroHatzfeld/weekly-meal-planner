@@ -1,3 +1,4 @@
+import { parseDateKey, todayKey } from "../dates"
 import { groceryItemInclude, toGroceryItemDTO } from "../dto"
 import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
@@ -13,9 +14,22 @@ export const findListWithPlan = (listId: string) =>
 export const findItemWithPlan = (itemId: string) =>
 	prisma.groceryItem.findUnique({ where: { id: itemId }, include: { list: { select: { planId: true } } } })
 
+// Zutaten von Gerichten vor heute gehören nicht mehr auf die Einkaufsliste (bleiben auf der Gericht-Seite)
+export const notFromPastDishes = (today = todayKey()) => ({ OR: [{ dishId: null }, { dish: { date: { gte: parseDateKey(today)! } } }] })
+
+const PRUNE_AFTER_MS = 7 * 24 * 60 * 60 * 1000
+
+// Abgehakte ohne Gericht nach einer Woche aufräumen; Abgehakte von Gerichten bleiben für die Gericht-Seite
+export const pruneCheckedItems = async (planId: string) => {
+	const before = new Date(Date.now() - PRUNE_AFTER_MS)
+	await prisma.groceryItem.deleteMany({
+		where: { list: { planId }, dishId: null, checked: true, OR: [{ checkedAt: null }, { checkedAt: { lt: before } }] },
+	})
+}
+
 export const listItems = async (listId: string) => {
 	const items = await prisma.groceryItem.findMany({
-		where: { listId },
+		where: { listId, ...notFromPastDishes() },
 		include: groceryItemInclude,
 		orderBy: { createdAt: "asc" },
 	})

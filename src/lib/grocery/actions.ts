@@ -66,13 +66,6 @@ export const deleteGroceryItem = async (itemId: string) => {
 	await service.deleteItem(item.planId, itemId)
 }
 
-export const clearCheckedItems = async (listId: string) => {
-	const list = await memberOfList(listId)
-	const checked = await prisma.groceryItem.findMany({ where: { listId, checked: true }, select: { id: true } })
-	await prisma.groceryItem.deleteMany({ where: { listId, checked: true } })
-	for (const item of checked) emitToPlan(list.planId, "grocery-item-deleted", { listId, id: item.id })
-}
-
 export const createGroceryList = async (planId: string, name: string) => {
 	await requireMember(planId)
 	if (!name.trim()) return null

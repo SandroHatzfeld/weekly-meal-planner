@@ -5,15 +5,20 @@ import { requireActivePlan } from "@/lib/session"
 import { tagsOfPlan } from "@/lib/tags/queries"
 import { categoriesOfPlan, categoryOrderOfPlan, hiddenCategoriesOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
 import { listsWithDefault } from "@/lib/grocery/queries"
+import { notFromPastDishes, pruneCheckedItems } from "@/lib/grocery/service"
+import { todayKey } from "@/lib/dates"
 
 export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
 	const { planId } = await requireActivePlan()
 	const { list } = await searchParams
 
 	const { lists, defaultListId } = await listsWithDefault(planId)
-	// alle Items des Plans laden – Wechsel und Verschieben zwischen Listen funktionieren dann ohne Refetch
+	const today = todayKey()
+	await pruneCheckedItems(planId)
+	// alle Items des Plans laden – Wechsel und Verschieben zwischen Listen funktionieren dann ohne Refetch.
+	// Zutaten vergangener Gerichte gehören nicht mehr auf die Einkaufsliste.
 	const items = await prisma.groceryItem.findMany({
-		where: { list: { planId } },
+		where: { list: { planId }, ...notFromPastDishes(today) },
 		include: groceryItemInclude,
 		orderBy: { createdAt: "asc" },
 	})
@@ -38,6 +43,7 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
 			productMemory={productMemory}
 			initialListId={selectedListId}
 			initialItems={items.map(toGroceryItemDTO)}
+			today={today}
 		/>
 	)
 }

@@ -47,7 +47,7 @@ API-Token unter *Einstellungen → API-Tokens* erstellen, dann mit `Authorizatio
 |---|---|---|
 | GET | `/api/external/plans` | |
 | GET | `/api/external/plans/:planId/lists` | |
-| GET | `/api/external/lists/:listId/grocery-items` | |
+| GET | `/api/external/lists/:listId/grocery-items` | ohne Zutaten von Gerichten vor heute |
 | POST | `/api/external/lists/:listId/grocery-items` | `{ "name": "Milch", "details": "2 L" }` |
 | PATCH | `/api/external/lists/:listId/grocery-items/:itemId` | `{ "checked": true }` und/oder `{ "name": "Hafermilch", "details": "2 L" }` |
 | DELETE | `/api/external/lists/:listId/grocery-items/:itemId` | |

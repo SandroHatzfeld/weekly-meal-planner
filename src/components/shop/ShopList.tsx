@@ -17,7 +17,7 @@ import { normalizeItemName } from "@/lib/grocery/normalize"
 import { orderCategories } from "@/lib/grocery/order"
 import Link from "next/link"
 import { useProductMemory } from "./useProductMemory"
-import { useStoredView, type ShopView } from "./useStoredView"
+import { useShowChecked, useStoredView, type ShopView } from "./useStoredView"
 import { pendingToggles, sendToggle, useOnline } from "@/lib/offline/toggles"
 import { useFeedback } from "@/components/ui/Feedback"
 import { useRouter } from "next/navigation"
@@ -35,6 +35,8 @@ type ShopListProps = {
 	productMemory: ProductMemoryDTO[]
 	initialListId: string | undefined
 	initialItems: GroceryItemDTO[]
+	// Zutaten von Gerichten vor heute gehören nicht mehr auf die Einkaufsliste
+	today: string
 }
 
 type Group = { key: string; title: string; href?: string; date?: string | null; items: GroceryItemDTO[] }
@@ -93,7 +95,7 @@ const upsert = (items: GroceryItemDTO[], item: GroceryItemDTO) => {
 	return exists ? items.map((existing) => (existing.id === item.id ? item : existing)) : [...items, item]
 }
 
-export default function ShopList({ lists, tags, categories, categoryOrder, hiddenCategories, productMemory, initialListId, initialItems }: ShopListProps) {
+export default function ShopList({ lists, tags, categories, categoryOrder, hiddenCategories, productMemory, initialListId, initialItems, today }: ShopListProps) {
 	const online = useOnline()
 	const [items, setItems] = useState(initialItems)
 	// neue Daten vom Server (z.B. nach dem Zurückkehren in die App): übernehmen, offline gesetzte Haken bleiben darüber liegen
@@ -110,8 +112,11 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 	const listBar = useRef<HTMLDivElement>(null)
 	const [formVisible, setFormVisible] = useState(true)
 	const [view, setView] = useStoredView()
+	const [showChecked, setShowChecked] = useShowChecked()
+	// in dieser Sitzung abgehakt: bleiben stehen, damit ein Fehltipp sichtbar bleibt und rückgängig gemacht werden kann
+	const [justChecked, setJustChecked] = useState<Set<string>>(() => new Set())
 	const { memory, learn } = useProductMemory(productMemory)
-	const { attempt, undoable, notify } = useFeedback()
+	const { attempt, undoable } = useFeedback()
 	const router = useRouter()
 
 	// Clients filtern anhand der listId im Payload selbst
@@ -168,7 +173,11 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 		window.history.replaceState(null, "", `/shop?list=${id}`)
 	}
 
-	const visible = items.filter((item) => item.listId === listId)
+	// Einträge vergangener Gerichte bleiben nur auf der Gericht-Seite sichtbar
+	const current = items.filter((item) => !item.dishDate || item.dishDate >= today)
+	const inList = current.filter((item) => item.listId === listId)
+	const hiddenChecked = inList.filter((item) => item.checked && !justChecked.has(item.id)).length
+	const visible = showChecked ? inList : inList.filter((item) => !item.checked || justChecked.has(item.id))
 	// ausgeblendete Kategorien gibt es in diesem Laden nicht: ihre Einträge landen unter "Sonstiges"
 	const hidden = (listId && hiddenCategories[listId]) || []
 	const listCategories = orderCategories(categories, listId ? categoryOrder[listId] : []).filter((category) => !hidden.includes(category.id))
@@ -178,6 +187,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 			 : view === "alpha" ? sortAlphabetically(visible) : groupByDish(visible)
 
 	const toggle = async (item: GroceryItemDTO) => {
+		if (!item.checked) setJustChecked((ids) => new Set(ids).add(item.id))
 		setItems((current) => upsert(current, { ...item, checked: !item.checked }))
 		// ohne Verbindung wird der Haken gemerkt; andere Fehler: zurücksetzen und melden
 		const sent = await attempt(() => sendToggle(item.id, !item.checked), "Abhaken hat nicht geklappt")
@@ -202,7 +212,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 				<div ref={listBar} className="-my-1 flex min-w-0 flex-1 gap-2 overflow-x-auto py-1 [scrollbar-width:none]" aria-label="Einkaufslisten">
 					{lists.map((list) => {
 						const active = list.id === listId
-						const open = items.filter((item) => item.listId === list.id && !item.checked).length
+						const open = current.filter((item) => item.listId === list.id && !item.checked).length
 						return (
 							<button
 								key={list.id}
@@ -241,7 +251,7 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						</ul>
 					</Hint>
 
-					{groups.length === 0 && <p className="opacity-60">Die Liste ist leer.</p>}
+					{groups.length === 0 && <p className="opacity-60">{hiddenChecked > 0 ? "Alles eingekauft." : "Die Liste ist leer."}</p>}
 					{groups.map((group) => (
 						<section key={group.key} className="card">
 							<h2 className="mb-2 flex items-baseline gap-2 font-semibold">
@@ -279,29 +289,13 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 						</section>
 					))}
 
-					<div className="flex flex-wrap gap-3 text-sm">
-						<button
-							type="button"
-							className="btn-link"
-							disabled={!online}
-							onClick={() => {
-								// erst nach kurzer Zeit wirklich löschen, bis dahin rückgängig machbar
-								const removed = items.filter((item) => item.listId === currentList.id && item.checked)
-								if (removed.length === 0) return notify("Keine abgehakten Einträge")
-								const ids = new Set(removed.map((item) => item.id))
-								setItems((current) => current.filter((item) => !ids.has(item.id)))
-								undoable({
-									message: removed.length === 1 ? "1 abgehakter Eintrag entfernt" : `${removed.length} abgehakte Einträge entfernt`,
-									run: () => Promise.all(removed.map((item) => deleteGroceryItem(item.id))),
-									beacon: { url: "/api/grocery-items/delete", data: { ids: [...ids] } },
-									onUndo: () => setItems((current) => [...current, ...removed.filter((item) => !current.some((existing) => existing.id === item.id))]),
-									errorMessage: "Entfernen hat nicht geklappt",
-								})
-							}}
-						>
-							Abgehakte entfernen
-						</button>
-					</div>
+					{(showChecked || hiddenChecked > 0) && (
+						<div className="flex flex-wrap gap-3 text-sm">
+							<button type="button" className="btn-link" aria-pressed={showChecked} onClick={() => setShowChecked(!showChecked)}>
+								{showChecked ? "Abgehakte ausblenden" : `Abgehakte einblenden (${hiddenChecked})`}
+							</button>
+						</div>
+					)}
 				</>
 			)}
 
