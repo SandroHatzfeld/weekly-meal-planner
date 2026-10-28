@@ -2,10 +2,15 @@
 
 import { useFeedback } from "@/components/ui/Feedback"
 import ImageField from "@/components/forms/ImageField"
+import AddItemForm, { type NewItem } from "@/components/items/AddItemForm"
 import ItemEditDialog from "@/components/items/ItemEditDialog"
 import ItemTile from "@/components/items/ItemTile"
-import StepsField from "@/components/forms/StepsField"
+import RecipeRatingControl from "@/components/recipes/RecipeRatingControl"
+import StarRating from "@/components/recipes/StarRating"
 import { usePlanEvent, useSocket } from "@/components/realtime/SocketProvider"
+import Dropdown from "@/components/ui/Dropdown"
+import Icon, { iconButtonClass } from "@/components/ui/Icon"
+import Modal from "@/components/ui/Modal"
 import { deleteDish, updateDish, type DishInput } from "@/lib/dishes/actions"
 import type { DishDTO, GroceryItemDTO } from "@/lib/dto"
 import { addGroceryItem, deleteGroceryItem } from "@/lib/grocery/actions"
@@ -13,13 +18,14 @@ import { sendToggle } from "@/lib/offline/toggles"
 import { applyItemChanges } from "@/lib/grocery/client"
 import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
-import ProductInput from "@/components/shop/ProductInput"
-import TagPicker from "@/components/tags/TagPicker"
 import { useProductMemory } from "@/components/shop/useProductMemory"
-import { PAST_DAY_MESSAGE } from "@/lib/dates"
+import { formatDay, PAST_DAY_MESSAGE } from "@/lib/dates"
+import { formatMinutes } from "@/lib/recipes/format"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+
+type SourceRecipe = { id: string; name: string; minutes: number | null; rating: number | null; userId: string }
 
 type DishEditorProps = {
 	initialDish: DishDTO
@@ -29,7 +35,7 @@ type DishEditorProps = {
 	tags: TagDTO[]
 	categories: CategoryDTO[]
 	productMemory: ProductMemoryDTO[]
-	sourceRecipe: { id: string; name: string } | null
+	sourceRecipe: SourceRecipe | null
 	currentUserId: string
 	today: string
 }
@@ -70,17 +76,21 @@ const usePresence = (dishId: string) => {
 	return users
 }
 
+// Gericht ansehen (wie die Rezeptseite): Kopf mit Rezept/Bearbeiten/Löschen, Bild, Datum, Zeit und Bewertung,
+// darunter die Zutaten auf der Einkaufsliste. Name, Datum, Beschreibung und Bild werden im Popup bearbeitet.
 export default function DishEditor({ initialDish, initialItems, lists, defaultListId, tags, categories, productMemory, sourceRecipe, currentUserId, today }: DishEditorProps) {
 	const router = useRouter()
 	const { confirm, attempt, undoable } = useFeedback()
 	const [dish, setDish] = useState(initialDish)
 	const [form, setForm] = useState(toInput(initialDish))
+	const [editing, setEditing] = useState(false)
 	const [dirty, setDirty] = useState(false)
 	const [remoteChange, setRemoteChange] = useState<DishDTO | null>(null)
 	const [conflict, setConflict] = useState<DishDTO | null>(null)
-	const [message, setMessage] = useState<string | null>(null)
+	const [error, setError] = useState<string | null>(null)
 	const [items, setItems] = useState(initialItems)
 	const [editingItem, setEditingItem] = useState<GroceryItemDTO | null>(null)
+	const [listId, setListId] = useState(defaultListId)
 	const { memory } = useProductMemory(productMemory)
 	const [saving, setSaving] = useState(false)
 
@@ -88,7 +98,7 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 
 	usePlanEvent("dish-updated", (updated) => {
 		if (updated.id !== dish.id || updated.updatedAt === dish.updatedAt) return
-		// ohne lokale Änderungen direkt übernehmen, sonst nur Hinweis anzeigen
+		// ohne lokale Änderungen direkt übernehmen, sonst nur Hinweis im Bearbeiten-Popup
 		if (dirty) return setRemoteChange(updated)
 		setDish(updated)
 		setForm(toInput(updated))
@@ -96,8 +106,9 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 	usePlanEvent("dish-deleted", ({ id }) => {
 		if (id === dish.id) router.push("/week")
 	})
+	const upsertItem = (item: GroceryItemDTO) => setItems((current) => [...current.filter((existing) => existing.id !== item.id), item])
 	usePlanEvent("grocery-item-created", (item) => {
-		if (item.dishId === dish.id) setItems((current) => [...current.filter((existing) => existing.id !== item.id), item])
+		if (item.dishId === dish.id) upsertItem(item)
 	})
 	usePlanEvent("grocery-item-checked", ({ id, checked }) =>
 		setItems((current) => current.map((item) => (item.id === id ? { ...item, checked } : item))),
@@ -122,32 +133,54 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 		setRemoteChange(null)
 	}
 
+	const closeEdit = () => {
+		// Abbrechen verwirft ungespeicherte Änderungen
+		reload(dish)
+		setError(null)
+		setEditing(false)
+	}
+
 	const save = async (event: React.FormEvent) => {
 		event.preventDefault()
 		setSaving(true)
-		setMessage(null)
+		setError(null)
 		const result = await attempt(() => updateDish(dish.id, form, dish.updatedAt), "Speichern hat nicht geklappt")
 		setSaving(false)
 		if (!result) return
 		if (result.ok) {
 			reload(result.dish)
-			setMessage("Gespeichert")
+			setEditing(false)
 		} else if ("conflict" in result) {
 			if (!result.current) return router.push("/week")
 			setConflict(result.current)
 		} else {
-			setMessage(result.error)
+			setError(result.error)
 		}
 	}
 
+	const remove = async () => {
+		if (!(await confirm({ title: "Gericht löschen?", message: "Die zugehörigen Einträge auf der Einkaufsliste bleiben erhalten.", confirmLabel: "Löschen", danger: true }))) return
+		if ((await attempt(() => deleteDish(dish.id).then(() => true), "Löschen hat nicht geklappt")) === undefined) return
+		router.push(`/week?start=${dish.date}`)
+	}
+
+	const addItem = async ({ name, details, categoryId, tagIds }: NewItem) => {
+		const item = await attempt(() => addGroceryItem(listId, name, details, dish.id, categoryId, tagIds), "Konnte nicht hinzugefügt werden")
+		if (!item) return false
+		upsertItem(item)
+		return true
+	}
+
 	const others = viewers.filter((viewer) => viewer.userId !== currentUserId).map((viewer) => viewer.name)
+	const ownRecipe = sourceRecipe?.userId === currentUserId
 
 	return (
-		<div className="space-y-4">
-			<div className="flex items-center gap-2">
+		<article className="space-y-4">
+			{/* klebt unter der App-Kopfzeile, wie auf der Rezeptseite */}
+			<div className="sticky top-(--app-header-h) z-10 -mx-4 -mt-4 border-b border-(--border) bg-(--background)/95 px-4 py-2 backdrop-blur-md">
 				<Link
 					href={`/week?start=${dish.date}`}
-					className="btn-link"
+					className="btn-link text-sm"
 					onClick={(event) => {
 						// zurück dorthin, woher man kam (Woche, Monat, Einkaufsliste); ohne Verlauf (direkter Link) zur Woche des Gerichts
 						if (window.history.length > 1) {
@@ -158,76 +191,48 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 				>
 					← Zurück
 				</Link>
-				{others.length > 0 && (
-					<span className="ml-auto rounded bg-amber-100 px-2 py-1 text-xs text-amber-900">
-						Gerade geöffnet von: {others.join(", ")}
-					</span>
-				)}
+				<div className="flex items-center gap-2">
+					<h2 className="min-w-0 flex-1 truncate text-2xl font-semibold" title={dish.name}>
+						{dish.name}
+					</h2>
+					{sourceRecipe && (
+						<Link href={`/recipes/${sourceRecipe.id}`} className={iconButtonClass} aria-label={`Rezept „${sourceRecipe.name}“ öffnen`} title="Rezept öffnen">
+							<Icon name="book" />
+						</Link>
+					)}
+					<button type="button" className={iconButtonClass} aria-label="Gericht bearbeiten" title="Bearbeiten" onClick={() => setEditing(true)}>
+						<Icon name="pencil" />
+					</button>
+					<button type="button" className={`${iconButtonClass} text-red-700 dark:text-red-400`} aria-label="Gericht löschen" title="Löschen" onClick={remove}>
+						<Icon name="trash" />
+					</button>
+				</div>
 			</div>
 
-			{conflict && (
-				<div className="notice">
-					Das Gericht wurde inzwischen von jemand anderem geändert.
-					<button type="button" className="btn ml-2" onClick={() => reload(conflict)}>
-						Neu laden
-					</button>
-					<span className="ml-2 text-xs opacity-70">(deine ungespeicherten Änderungen gehen dabei verloren)</span>
-				</div>
-			)}
-			{remoteChange && !conflict && (
-				<div className="notice">
-					Es gibt eine neuere Version dieses Gerichts.
-					<button type="button" className="btn ml-2" onClick={() => reload(remoteChange)}>
-						Neu laden
-					</button>
-				</div>
-			)}
+			{others.length > 0 && <p className="rounded bg-amber-100 px-2 py-1 text-xs text-amber-900">Gerade geöffnet von: {others.join(", ")}</p>}
 
-			<form onSubmit={save} className="form max-w-none">
-				<label htmlFor="name">Name</label>
-				<input id="name" value={form.name} onChange={(event) => update({ name: event.target.value })} required />
-				<label htmlFor="date">Datum</label>
-				<input
-					id="date"
-					type="date"
-					value={form.date}
-					// ein Gericht an einem vergangenen Tag bleibt bearbeitbar, ein vergangenes Datum lässt sich aber nicht neu wählen
-					min={dish.date < today ? undefined : today}
-					onChange={(event) => update({ date: event.target.value })}
-					ref={(element) => element?.setCustomValidity(form.date < today && form.date !== dish.date ? PAST_DAY_MESSAGE : "")}
-					required
-				/>
-				<label htmlFor="description">Beschreibung</label>
-				<textarea id="description" rows={3} value={form.description} onChange={(event) => update({ description: event.target.value })} />
-				<ImageField value={form.imageUrl} onChange={(imageUrl) => update({ imageUrl })} />
-				{/* key: nach Neu-Laden/Speichern mit dem aktuellen Stand neu initialisieren */}
-				<StepsField key={dish.updatedAt} initial={dish.steps} onChange={(steps) => update({ steps })} />
-				{message && <p className="text-sm">{message}</p>}
-				<div className="flex gap-2">
-					<button type="submit" disabled={saving || !dirty}>
-						Speichern
-					</button>
-					<button
-						type="button"
-						className="btn-danger"
-						onClick={async () => {
-							if (!(await confirm({ title: "Gericht löschen?", message: "Die zugehörigen Einträge auf der Einkaufsliste bleiben erhalten.", confirmLabel: "Löschen", danger: true }))) return
-							await deleteDish(dish.id)
-							router.push(`/week?start=${dish.date}`)
-						}}
-					>
-						Löschen
-					</button>
-				</div>
-			</form>
-
-			{sourceRecipe && (
-				<p className="text-sm">
-					Aus Rezept: <Link href={`/recipes/${sourceRecipe.id}`}>{sourceRecipe.name}</Link>
-				</p>
+			{dish.imageUrl && (
+				// eslint-disable-next-line @next/next/no-img-element
+				<img src={dish.imageUrl} alt={dish.name} className="max-h-72 w-full rounded object-cover" />
 			)}
+			<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+				<span className="inline-flex items-center gap-1">
+					<Icon name="calendar" className="size-4" />
+					{formatDay(dish.date, { weekday: "long", day: "2-digit", month: "2-digit" })}
+				</span>
+				{!!sourceRecipe?.minutes && (
+					<span className="inline-flex items-center gap-1">
+						<Icon name="clock" className="size-4" />
+						{formatMinutes(sourceRecipe.minutes)}
+					</span>
+				)}
+				{/* Bewertung gehört zum Rezept: der Besitzer kann sie hier direkt ändern */}
+				{sourceRecipe && ownRecipe && <RecipeRatingControl recipeId={sourceRecipe.id} initial={sourceRecipe.rating} />}
+				{sourceRecipe && !ownRecipe && !!sourceRecipe.rating && <StarRating value={sourceRecipe.rating} className="size-4" />}
+			</div>
+			{dish.description && <p className="whitespace-pre-line">{dish.description}</p>}
 
-			<section className="card space-y-2">
+			<section className="card space-y-3">
 				<h2 className="font-semibold">Zutaten auf der Einkaufsliste</h2>
 				{items.length > 0 ? (
 					// gleiche Kacheln wie in der Einkaufsliste
@@ -253,111 +258,90 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 							))}
 					</ul>
 				) : (
-					<p className="text-sm opacity-60">Noch keine</p>
+					<p className="text-sm opacity-60">Noch keine Zutaten auf der Liste.</p>
 				)}
-				<AddDishItem dishId={dish.id} lists={lists} defaultListId={defaultListId} categories={categories} tags={tags} memory={memory} />
-				<ItemEditDialog
-					item={editingItem}
-					lists={lists}
-					tags={tags}
+				<AddItemForm
+					memory={memory}
 					categories={categories}
-					onClose={() => setEditingItem(null)}
-					onSave={async (item, changes) => {
-						const updated = await attempt(() => applyItemChanges(item, changes), "Änderung konnte nicht gespeichert werden")
-						if (updated) replaceItem(updated)
-						else router.refresh()
-					}}
-					onDelete={async (item) => {
-						setItems((current) => current.filter((existing) => existing.id !== item.id))
-						undoable({
-							message: `„${item.name}“ gelöscht`,
-							run: () => deleteGroceryItem(item.id),
-					beacon: { url: "/api/grocery-items/delete", data: { ids: [item.id] } },
-							onUndo: () => setItems((current) => (current.some((existing) => existing.id === item.id) ? current : [...current, item])),
-							errorMessage: "Löschen hat nicht geklappt",
-						})
-					}}
+					tags={tags}
+					placeholder="Zutat hinzufügen"
+					onAdd={addItem}
+					extra={lists.length > 1 && <Dropdown label="Liste" value={listId} options={lists.map((list) => ({ value: list.id, label: list.name }))} onChange={setListId} className="w-32 shrink-0" />}
 				/>
 			</section>
-		</div>
-	)
-}
 
-function AddDishItem({
-	dishId,
-	lists,
-	defaultListId,
-	categories,
-	tags,
-	memory,
-}: {
-	dishId: string
-	lists: { id: string; name: string }[]
-	defaultListId: string
-	categories: CategoryDTO[]
-	tags: TagDTO[]
-	memory: ProductMemoryDTO[]
-}) {
-	const [name, setName] = useState("")
-	const [details, setDetails] = useState("")
-	const [listId, setListId] = useState(defaultListId)
-	// Kategorie aus einem gewählten Vorschlag; weitertippen setzt sie zurück
-	const [pickedCategory, setPickedCategory] = useState<string | null>(null)
-	const [newTagIds, setNewTagIds] = useState<string[]>([])
-	const { attempt } = useFeedback()
-
-	const add = async (itemName: string, categoryId: string | null) => {
-		const item = await attempt(() => addGroceryItem(listId, itemName, details, dishId, categoryId, newTagIds), "Konnte nicht hinzugefügt werden")
-		if (!item) return
-		setName("")
-		setDetails("")
-		setPickedCategory(null)
-		setNewTagIds([])
-	}
-
-	return (
-		<form
-			className="flex flex-wrap gap-2"
-			onSubmit={async (event) => {
-				event.preventDefault()
-				await add(name, pickedCategory)
-			}}
-		>
-			<ProductInput
-				className="basis-full sm:basis-0 sm:flex-1"
-				placeholder="Zutat"
-				value={name}
-				onChange={(value) => {
-					setName(value)
-					setPickedCategory(null)
-				}}
-				// Vorschlag gewählt: direkt hinzufügen
-				onPick={(suggestion) => void add(suggestion.displayName, suggestion.categoryId)}
-				memory={memory}
+			<ItemEditDialog
+				item={editingItem}
+				lists={lists}
+				tags={tags}
 				categories={categories}
-				dropUp
+				onClose={() => setEditingItem(null)}
+				onSave={async (item, changes) => {
+					const updated = await attempt(() => applyItemChanges(item, changes), "Änderung konnte nicht gespeichert werden")
+					if (updated) replaceItem(updated)
+					else router.refresh()
+				}}
+				onDelete={async (item) => {
+					setItems((current) => current.filter((existing) => existing.id !== item.id))
+					undoable({
+						message: `„${item.name}“ gelöscht`,
+						run: () => deleteGroceryItem(item.id),
+						beacon: { url: "/api/grocery-items/delete", data: { ids: [item.id] } },
+						onUndo: () => setItems((current) => (current.some((existing) => existing.id === item.id) ? current : [...current, item])),
+						errorMessage: "Löschen hat nicht geklappt",
+					})
+				}}
 			/>
-			<input className="input min-w-0 flex-1 sm:w-32 sm:flex-none" placeholder="Details (z.B. 500 g)" value={details} onChange={(event) => setDetails(event.target.value)} />
-			<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} />
-			{lists.length > 1 && (
-				<select
-					aria-label="Liste"
-					className="input w-auto"
-					value={listId}
-					onChange={(event) => {
-						setListId(event.target.value)
-					}}
-				>
-					{lists.map((list) => (
-						<option key={list.id} value={list.id}>
-							{list.name}
-						</option>
-					))}
-				</select>
-			)}
-			<button type="submit" className="btn">
-				Hinzufügen
-			</button>
-		</form>
+
+			<Modal open={editing} onClose={closeEdit} labelledBy="dish-edit-title" widthClass="w-[min(32rem,calc(100%-2rem))]">
+				<form onSubmit={save} className="form max-w-none gap-3 p-4">
+					<h2 id="dish-edit-title" className="text-lg font-semibold">
+						Gericht bearbeiten
+					</h2>
+					{conflict && (
+						<div className="notice text-sm">
+							Das Gericht wurde inzwischen von jemand anderem geändert.
+							<button type="button" className="btn ml-2" onClick={() => reload(conflict)}>
+								Neu laden
+							</button>
+							<span className="ml-2 text-xs opacity-70">(deine Änderungen gehen dabei verloren)</span>
+						</div>
+					)}
+					{remoteChange && !conflict && (
+						<div className="notice text-sm">
+							Es gibt eine neuere Version dieses Gerichts.
+							<button type="button" className="btn ml-2" onClick={() => reload(remoteChange)}>
+								Neu laden
+							</button>
+						</div>
+					)}
+					<label htmlFor="dish-name">Name</label>
+					<input id="dish-name" value={form.name} onChange={(event) => update({ name: event.target.value })} required />
+					<label htmlFor="dish-date">Datum</label>
+					<input
+						id="dish-date"
+						type="date"
+						value={form.date}
+						// ein Gericht an einem vergangenen Tag bleibt bearbeitbar, ein vergangenes Datum lässt sich aber nicht neu wählen
+						min={dish.date < today ? undefined : today}
+						onChange={(event) => update({ date: event.target.value })}
+						ref={(element) => element?.setCustomValidity(form.date < today && form.date !== dish.date ? PAST_DAY_MESSAGE : "")}
+						required
+					/>
+					<label htmlFor="dish-description">Beschreibung</label>
+					<textarea id="dish-description" rows={3} value={form.description} onChange={(event) => update({ description: event.target.value })} />
+					<ImageField value={form.imageUrl} onChange={(imageUrl) => update({ imageUrl })} />
+					{error && <p className="error">{error}</p>}
+					<div className="flex justify-end gap-2">
+						<button type="button" className="btn-secondary min-h-11" onClick={closeEdit}>
+							Abbrechen
+						</button>
+						<button type="submit" className="min-h-11 self-auto!" disabled={saving || !dirty}>
+							Speichern
+						</button>
+					</div>
+				</form>
+			</Modal>
+		</article>
 	)
 }

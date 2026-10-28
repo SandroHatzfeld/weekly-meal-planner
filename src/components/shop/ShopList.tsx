@@ -10,13 +10,12 @@ import {
 	deleteGroceryItem,
 } from "@/lib/grocery/actions"
 import ItemEditDialog from "@/components/items/ItemEditDialog"
+import AddItemForm, { type NewItem } from "@/components/items/AddItemForm"
 import ItemTile from "@/components/items/ItemTile"
 import type { CategoryDTO, CategoryOrder, ProductMemoryDTO } from "@/lib/grocery/categories"
 import { normalizeItemName } from "@/lib/grocery/normalize"
 import { orderCategories } from "@/lib/grocery/order"
 import Link from "next/link"
-import TagPicker from "@/components/tags/TagPicker"
-import ProductInput from "./ProductInput"
 import { useProductMemory } from "./useProductMemory"
 import { useStoredView, type ShopView } from "./useStoredView"
 import { pendingToggles, sendToggle, useOnline } from "@/lib/offline/toggles"
@@ -105,19 +104,11 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 		setItems(initialItems.map((item) => (item.id in pending ? { ...item, checked: pending[item.id] } : item)))
 	}
 	const [listId, setListId] = useState(initialListId)
-	const [name, setName] = useState("")
-	const [details, setDetails] = useState("")
-	// Kategorie aus einem gewählten Vorschlag; weitertippen setzt sie zurück
-	const [pickedCategory, setPickedCategory] = useState<string | null>(null)
-	// Tags für den nächsten Eintrag (Dropdown neben dem Hinzufügen-Button)
-	const [newTagIds, setNewTagIds] = useState<string[]>([])
 	const [editing, setEditing] = useState<GroceryItemDTO | null>(null)
 	// Hinzufügen-Formular: Details/Tags erst beim Tippen einblenden; ist es weggescrollt, erscheint ein „+“-Button
 	const formRef = useRef<HTMLFormElement>(null)
 	const listBar = useRef<HTMLDivElement>(null)
-	const [formFocused, setFormFocused] = useState(false)
 	const [formVisible, setFormVisible] = useState(true)
-	const expanded = formFocused || !!name || !!details || newTagIds.length > 0
 	const [view, setView] = useStoredView()
 	const { memory, learn } = useProductMemory(productMemory)
 	const { attempt, undoable, notify } = useFeedback()
@@ -195,16 +186,13 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 
 	const currentList = lists.find((list) => list.id === listId)
 
-	const add = async (targetListId: string, itemName: string, categoryId: string | null) => {
-		const item = await attempt(() => addGroceryItem(targetListId, itemName, details, undefined, categoryId, newTagIds), "Konnte nicht hinzugefügt werden")
+	const add = async (targetListId: string, { name, details, categoryId, tagIds }: NewItem) => {
+		const item = await attempt(() => addGroceryItem(targetListId, name, details, undefined, categoryId, tagIds), "Konnte nicht hinzugefügt werden")
 		// bei einem Fehler bleibt die Eingabe stehen, damit man es erneut versuchen kann
-		if (!item) return
+		if (!item) return false
 		setItems((current) => upsert(current, item))
 		learn(item)
-		setName("")
-		setDetails("")
-		setPickedCategory(null)
-		setNewTagIds([])
+		return true
 	}
 
 	return (
@@ -234,66 +222,16 @@ export default function ShopList({ lists, tags, categories, categoryOrder, hidde
 
 			{currentList && (
 				<>
-					<form
-						ref={formRef}
-						className="space-y-2"
-						onFocus={() => setFormFocused(true)}
-						onBlur={(event) => {
-							if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
-							// erst nach dem Antippen einklappen: sonst rutscht die Liste mitten im Tippen weg und der Tipp landet daneben
-							let done = false
-							const collapse = () => {
-								if (done) return
-								done = true
-								window.removeEventListener("click", collapse, true)
-								setTimeout(() => setFormFocused(false), 0)
-							}
-							window.addEventListener("click", collapse, true)
-							setTimeout(collapse, 700)
-						}}
-						onSubmit={async (event) => {
-							event.preventDefault()
-							await add(currentList.id, name, pickedCategory)
-						}}
-					>
-						<div className="flex gap-2">
-							<ProductInput
-								className="min-w-0 flex-1"
-								inputClassName="min-h-10"
-								placeholder="Was wird gebraucht?"
-								value={name}
-								onChange={(value) => {
-									setName(value)
-									setPickedCategory(null)
-								}}
-								// Vorschlag gewählt: direkt hinzufügen (mit eventuell schon eingetragenen Details und Tags)
-								onPick={(suggestion) => {
-									if (online) return void add(currentList.id, suggestion.displayName, suggestion.categoryId)
-									setName(suggestion.displayName)
-									setPickedCategory(suggestion.categoryId)
-								}}
-								memory={memory}
-								categories={categories}
-								dropUp
-							/>
-							<button
-								type="submit"
-								className="btn flex size-10 shrink-0 items-center justify-center px-0"
-								aria-label="Hinzufügen"
-								disabled={!online}
-								title={online ? "Hinzufügen" : "Offline nicht möglich"}
-							>
-								<Icon name="plus" />
-							</button>
-						</div>
-						{/* Details und Tags erst beim Eingeben, damit oben mehr Platz für die Liste bleibt */}
-						{expanded && (
-							<div className="flex gap-2">
-								<input className="input min-h-10 min-w-0 flex-1" placeholder="Details (z.B. 500 g)" aria-label="Details" value={details} onChange={(event) => setDetails(event.target.value)} />
-								<TagPicker tags={tags} value={newTagIds} onChange={setNewTagIds} sizeClass="size-10" />
-							</div>
-						)}
-					</form>
+					<AddItemForm
+						formRef={formRef}
+						memory={memory}
+						categories={categories}
+						tags={tags}
+						placeholder="Was wird gebraucht?"
+						disabled={!online}
+						disabledTitle="Offline nicht möglich"
+						onAdd={(item) => add(currentList.id, item)}
+					/>
 
 					<Hint id="shop-basics" title="So funktioniert die Einkaufsliste">
 						<ul className="list-disc space-y-0.5 pl-4">

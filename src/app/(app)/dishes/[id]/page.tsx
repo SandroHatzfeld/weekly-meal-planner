@@ -16,7 +16,7 @@ export default async function DishPage({ params }: PageProps<"/dishes/[id]">) {
 		where: { id },
 		include: {
 			groceryItems: { include: groceryItemInclude, orderBy: { createdAt: "asc" } },
-			sourceRecipe: { select: { id: true, name: true } },
+			sourceRecipe: { select: { id: true, name: true, minutes: true, rating: true, userId: true } },
 		},
 	})
 	// nur Dishes des aktiven Plans
