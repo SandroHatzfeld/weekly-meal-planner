@@ -1,12 +1,10 @@
-import { ApiTokens, GenericInvite, InviteForm, LeavePlanButton, PlanNameForm, RemoveMemberButton, RevokeInviteButton } from "@/components/settings/SettingsControls"
+import { GenericInvite, InviteForm, LeavePlanButton, PlanNameForm, RemoveMemberButton, RevokeInviteButton } from "@/components/settings/SettingsControls"
 import CategoryManager from "@/components/settings/CategoryManager"
 import ListSettings from "@/components/settings/ListSettings"
 import ProductCsv from "@/components/settings/ProductCsv"
 import ProductMemorySettings from "@/components/settings/ProductMemorySettings"
+import SettingsSection from "@/components/settings/SettingsSection"
 import TagSettings from "@/components/tags/TagSettings"
-import InstallButton from "@/components/pwa/InstallButton"
-import ResetHintsButton from "@/components/hints/ResetHintsButton"
-import { signOut } from "@/lib/auth/auth"
 import { listsWithDefault } from "@/lib/grocery/queries"
 import { categoriesOfPlan, categoryOrderOfPlan, hiddenCategoriesOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
 import { appUrl } from "@/lib/mail"
@@ -16,9 +14,9 @@ import { tagsOfPlan } from "@/lib/tags/queries"
 
 const formatDate = (date: Date) => new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(date)
 
-export default async function SettingsPage() {
+// Einstellungen des aktiven Plans; jeder Abschnitt ist aufklappbar
+export default async function PlanSettingsPage() {
 	const { user, planId } = await requireActivePlan()
-	const { dismissedHints } = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { dismissedHints: true } })
 
 	const plan = await prisma.plan.findUniqueOrThrow({
 		where: { id: planId },
@@ -38,21 +36,12 @@ export default async function SettingsPage() {
 		hiddenCategoriesOfPlan(planId),
 		productMemoryOfPlan(planId),
 	])
-	const apiTokens = await prisma.apiToken.findMany({
-		where: { userId: user.id },
-		select: { id: true, name: true, createdAt: true, lastUsedAt: true },
-		orderBy: { createdAt: "desc" },
-	})
 
 	return (
-		<div className="space-y-6">
-			<section className="card space-y-2">
-				<h2 className="text-lg font-semibold">Plan</h2>
-				{isOwner ? <PlanNameForm planId={plan.id} name={plan.name} /> : <p>{plan.name}</p>}
-			</section>
+		<div className="space-y-4">
+			<SettingsSection title="Plan">{isOwner ? <PlanNameForm planId={plan.id} name={plan.name} /> : <p>{plan.name}</p>}</SettingsSection>
 
-			<section className="card space-y-2">
-				<h2 className="text-lg font-semibold">Mitglieder</h2>
+			<SettingsSection title={`Mitglieder (${plan.members.length})`}>
 				<ul className="divide-y divide-black/5 dark:divide-white/10">
 					{plan.members.map((member) => (
 						<li key={member.userId} className="flex items-center gap-2 py-2">
@@ -66,12 +55,11 @@ export default async function SettingsPage() {
 					))}
 				</ul>
 				<LeavePlanButton planId={plan.id} isLastMember={plan.members.length === 1} />
-			</section>
+			</SettingsSection>
 
 			{/* Einladungen verwaltet nur der Owner */}
 			{isOwner && (
-				<section className="card space-y-3">
-					<h2 className="text-lg font-semibold">Einladungen</h2>
+				<SettingsSection title="Einladungen">
 					<InviteForm planId={plan.id} />
 					{personalInvites.length > 0 && (
 						<ul className="text-sm">
@@ -90,22 +78,20 @@ export default async function SettingsPage() {
 						link={genericInvite ? appUrl(`/invite/${genericInvite.token}`) : null}
 						expiresAt={genericInvite ? formatDate(genericInvite.expiresAt) : null}
 					/>
-				</section>
+				</SettingsSection>
 			)}
 
-			<section className="card space-y-3">
-				<h2 className="text-lg font-semibold">Einkaufslisten</h2>
-				<p className="text-sm opacity-70">
-					Zutaten landen beim Planen auf der Standardliste (Stern), solange du im Popup keine andere wählst. Am Griff links ziehst du die Listen in die Reihenfolge der Reiter.
-				</p>
+			<SettingsSection
+				title="Einkaufslisten"
+				description="Zutaten landen beim Planen auf der Standardliste (Stern), solange du im Popup keine andere wählst. Am Griff links ziehst du die Listen in die Reihenfolge der Reiter."
+			>
 				<ListSettings planId={plan.id} lists={lists} defaultListId={defaultListId} categories={categories} categoryOrder={categoryOrder} hiddenCategories={hiddenCategories} />
-			</section>
+			</SettingsSection>
 
-			<section className="card space-y-3">
-				<h2 className="text-lg font-semibold">Kategorien & Produkte</h2>
-				<p className="text-sm opacity-70">
-					Gelten für alle Listen dieses Plans. Bekannte Produkte landen beim Eintragen automatisch in ihrer Kategorie, die Reihenfolge im Laden stellst du pro Liste ein.
-				</p>
+			<SettingsSection
+				title="Kategorien & Produkte"
+				description="Gelten für alle Listen dieses Plans. Bekannte Produkte landen beim Eintragen automatisch in ihrer Kategorie, die Reihenfolge im Laden stellst du pro Liste ein."
+			>
 				<CategoryManager planId={plan.id} categories={categories} />
 				<ProductCsv planId={plan.id} categories={categories} products={products} />
 				<details className="group">
@@ -114,47 +100,14 @@ export default async function SettingsPage() {
 						<ProductMemorySettings planId={plan.id} categories={categories} products={products} />
 					</div>
 				</details>
-			</section>
+			</SettingsSection>
 
-			<section className="card space-y-3">
-				<h2 className="text-lg font-semibold">Tags für die Einkaufsliste</h2>
-				<p className="text-sm opacity-70">Gelten für alle Mitglieder dieses Plans. Vergeben werden sie in der Einkaufsliste per Gedrückthalten auf einen Eintrag.</p>
-				<TagSettings planId={plan.id} tags={tags} />
-			</section>
-
-			<section className="card space-y-3">
-				<h2 className="text-lg font-semibold">API-Tokens</h2>
-				<p className="text-sm opacity-70">
-					Für Home Assistant, Shortcuts & Co. Ein Token gewährt Zugriff auf die Einkaufslisten aller deiner Pläne (
-					<code>Authorization: Bearer …</code> an <code>/api/external/…</code>).
-				</p>
-				<ApiTokens
-					tokens={apiTokens.map((token) => ({
-						id: token.id,
-						name: token.name,
-						createdAt: formatDate(token.createdAt),
-						lastUsedAt: token.lastUsedAt ? formatDate(token.lastUsedAt) : null,
-					}))}
-				/>
-			</section>
-
-			<section className="card space-y-3">
-				<h2 className="text-lg font-semibold">Hinweise</h2>
-				<p className="text-sm opacity-70">Kurze Erklärungen zur Bedienung, die nach „Verstanden“ nicht mehr erscheinen. Gilt für dein Konto auf allen Geräten.</p>
-				<ResetHintsButton dismissedCount={dismissedHints.length} />
-			</section>
-
-			<InstallButton />
-			<form
-				action={async () => {
-					"use server"
-					await signOut({ redirectTo: "/login" })
-				}}
+			<SettingsSection
+				title="Tags für die Einkaufsliste"
+				description="Gelten für alle Mitglieder dieses Plans. Vergeben werden sie in der Einkaufsliste per Gedrückthalten auf einen Eintrag."
 			>
-				<button type="submit" className="btn-secondary">
-					Abmelden
-				</button>
-			</form>
+				<TagSettings planId={plan.id} tags={tags} />
+			</SettingsSection>
 		</div>
 	)
 }

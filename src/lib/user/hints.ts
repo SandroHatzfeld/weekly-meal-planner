@@ -2,9 +2,9 @@
 
 import { auth } from "../auth/auth"
 import { prisma } from "../prisma"
+import { KNOWN_HINTS } from "./hint-keys"
 
-// Einmal-Hinweise: weggeklickte werden am Nutzer gespeichert (gilt auf allen Geräten), in den Einstellungen zurücksetzbar
-const KNOWN_HINTS = ["shop-basics", "month-days"]
+// Einmal-Hinweise: weggeklickte werden am Nutzer gespeichert (gilt auf allen Geräten), in den Einstellungen ein-/ausschaltbar
 
 const currentUserId = async () => {
 	const session = await auth()
@@ -20,7 +20,8 @@ export const dismissHint = async (key: string) => {
 	await prisma.user.update({ where: { id: userId }, data: { dismissedHints: { push: key } } })
 }
 
-export const resetHints = async () => {
+// eingeschaltet: alle Hinweise wieder anzeigen; ausgeschaltet: alle als gelesen markieren
+export const setHintsEnabled = async (enabled: boolean) => {
 	const userId = await currentUserId()
-	await prisma.user.update({ where: { id: userId }, data: { dismissedHints: [] } })
+	await prisma.user.update({ where: { id: userId }, data: { dismissedHints: enabled ? [] : KNOWN_HINTS } })
 }

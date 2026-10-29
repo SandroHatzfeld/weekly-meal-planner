@@ -11,12 +11,12 @@ export const createApiToken = async (name: string) => {
 	if (!name.trim()) return { error: "Bitte gib einen Namen an" }
 	const token = generateToken("wmp_")
 	await prisma.apiToken.create({ data: { userId: user.id, name: name.trim(), tokenHash: sha256(token) } })
-	revalidatePath("/settings")
+	revalidatePath("/settings", "layout")
 	return { token }
 }
 
 export const deleteApiToken = async (tokenId: string) => {
 	const user = await requireUser()
 	await prisma.apiToken.deleteMany({ where: { id: tokenId, userId: user.id } })
-	revalidatePath("/settings")
+	revalidatePath("/settings", "layout")
 }

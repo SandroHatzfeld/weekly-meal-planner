@@ -18,7 +18,7 @@ const memberOfTag = async (tagId: string) => {
 const changed = (planId: string) => {
 	// Einkaufslisten anderer Mitglieder laden die Tag-Definitionen neu
 	emitToPlan(planId, "plan-changed", { planId })
-	revalidatePath("/settings")
+	revalidatePath("/settings", "layout")
 }
 
 export const createTag = async (planId: string, name: string, icon: string) => {

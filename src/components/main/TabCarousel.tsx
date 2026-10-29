@@ -1,6 +1,6 @@
 "use client"
 
-import { rememberTabUrl, showTab, TAB_PATHS, TABS } from "@/lib/tabs"
+import { rememberTabUrl, showTab, type Tab } from "@/lib/tabs"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useEffect, useRef, type ReactNode } from "react"
 
@@ -21,12 +21,13 @@ const blocksSwipe = (target: EventTarget | null) => {
 	return false
 }
 
-// Karussell der Haupt-Tabs: alle Seiten liegen nebeneinander, der Finger zieht den Streifen 1:1 mit,
-// beim Loslassen rastet er auf einen Tab ein. Jeder Tab scrollt für sich (eigene Scrollposition).
-export default function TabCarousel({ panels }: { panels: ReactNode[] }) {
+// Karussell einer Tab-Gruppe (Haupt-Tabs, Einstellungen): alle Seiten liegen nebeneinander, der Finger zieht den
+// Streifen 1:1 mit, beim Loslassen rastet er auf einen Tab ein. Jeder Tab scrollt für sich (eigene Scrollposition).
+export default function TabCarousel({ tabs, panels }: { tabs: readonly Tab[]; panels: ReactNode[] }) {
 	const pathname = usePathname()
 	const searchParams = useSearchParams()
-	const active = Math.max(0, TAB_PATHS.indexOf(pathname))
+	const paths = tabs.map((tab) => tab.href)
+	const active = Math.max(0, paths.indexOf(pathname))
 	const viewport = useRef<HTMLDivElement>(null)
 	const strip = useRef<HTMLDivElement>(null)
 	// aktuell angezeigter Tab (kann während der Geste vom Pfad abweichen)
@@ -86,7 +87,7 @@ export default function TabCarousel({ panels }: { panels: ReactNode[] }) {
 			if (event.cancelable) event.preventDefault()
 			const raw = touch.clientX - start.x
 			const index = shown.current
-			const outward = (raw > 0 && index === 0) || (raw < 0 && index === TAB_PATHS.length - 1)
+			const outward = (raw > 0 && index === 0) || (raw < 0 && index === paths.length - 1)
 			dx = outward ? raw * EDGE_RESISTANCE : raw
 			// Geschwindigkeit über die letzten ~100 ms
 			const now = performance.now()
@@ -108,10 +109,10 @@ export default function TabCarousel({ panels }: { panels: ReactNode[] }) {
 			let target = index
 			if (dx < -width * COMMIT_RATIO || velocity < -FLICK_PX_PER_MS) target = index + 1
 			if (dx > width * COMMIT_RATIO || velocity > FLICK_PX_PER_MS) target = index - 1
-			target = Math.min(Math.max(target, 0), TAB_PATHS.length - 1)
+			target = Math.min(Math.max(target, 0), paths.length - 1)
 			shown.current = target
 			place(target, 0, true)
-			if (target !== index) showTab(TAB_PATHS[target])
+			if (target !== index) showTab(paths[target])
 		}
 
 		element.addEventListener("touchstart", onStart, { passive: true })
@@ -124,6 +125,7 @@ export default function TabCarousel({ panels }: { panels: ReactNode[] }) {
 			element.removeEventListener("touchend", onEnd)
 			element.removeEventListener("touchcancel", onEnd)
 		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- Pfade einer Gruppe ändern sich nicht
 	}, [])
 
 	return (
@@ -132,11 +134,11 @@ export default function TabCarousel({ panels }: { panels: ReactNode[] }) {
 			<div ref={strip} className="flex h-full will-change-transform" style={{ transform: `translate3d(calc(${-active * 100}% + 0px), 0, 0)` }}>
 				{panels.map((panel, index) => (
 					<section
-						key={TAB_PATHS[index]}
+						key={paths[index]}
 						data-tab-panel
 						// nur der sichtbare Tab ist bedienbar (Tastatur, Screenreader)
 						inert={index !== active}
-						aria-label={TABS[index].name}
+						aria-label={tabs[index].name}
 						className="h-full w-full shrink-0 overflow-y-auto overscroll-y-contain p-4"
 					>
 						{panel}

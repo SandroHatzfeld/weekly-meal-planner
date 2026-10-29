@@ -77,7 +77,7 @@ export const removeMember = async (planId: string, userId: string) => {
 	const { user } = await requireOwner(planId)
 	if (userId === user.id) return
 	await removeMembership(planId, userId, "removed")
-	revalidatePath("/settings")
+	revalidatePath("/settings", "layout")
 }
 
 const sendPersonalInvite = async (
@@ -118,7 +118,7 @@ export const invitePerson = async (planId: string, _prevState: FormState, formDa
 	if (plan.members.some((member) => member.user.email === email)) return { error: "Diese Person ist bereits Mitglied" }
 
 	await sendPersonalInvite(planId, plan.name, email, user.id, user.name ?? "")
-	revalidatePath("/settings")
+	revalidatePath("/settings", "layout")
 	return { success: `Einladung an ${email} verschickt` }
 }
 
@@ -128,7 +128,7 @@ export const revokePersonalInvite = async (planId: string, inviteId: string) => 
 		where: { id: inviteId, planId, type: "PERSONAL", status: "PENDING" },
 		data: { status: "EXPIRED" },
 	})
-	revalidatePath("/settings")
+	revalidatePath("/settings", "layout")
 }
 
 // alter Generic-Link wird REVOKED, neuer PENDING – in einer Transaktion
@@ -155,5 +155,5 @@ export const regenerateGenericInvite = async (planId: string) => {
 		const code = error && typeof error === "object" && "code" in error ? error.code : null
 		if (code !== "P2002" && code !== "23505") throw error
 	}
-	revalidatePath("/settings")
+	revalidatePath("/settings", "layout")
 }

@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    // Einstellungen sind in Tabs aufgeteilt: alte Adresse auf den ersten Tab
+    return [{ source: "/settings", destination: "/settings/plan", permanent: false }];
+  },
   async headers() {
     return [
       {

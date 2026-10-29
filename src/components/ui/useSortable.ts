@@ -87,6 +87,8 @@ export const useSortable = (ids: string[], onPersist: (ids: string[]) => void) =
 		},
 		// auf den Griff legen; nur dort startet das Ziehen, damit die Seite sonst normal scrollt
 		handleProps: (id: string) => ({
+			// Ziehen am Griff wechselt nicht den Tab (Karussell)
+			"data-no-swipe": true,
 			onPointerDown: (event: PointerEvent<HTMLElement>) => {
 				if (event.button !== 0) return
 				startDrag(id, event.pointerId)
