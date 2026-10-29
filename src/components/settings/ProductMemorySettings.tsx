@@ -42,9 +42,9 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 
 	return (
 		<div className="space-y-2">
-			<div className="flex flex-wrap gap-2">
+			<div className="flex gap-2">
 				<input className="input min-w-0 flex-1" placeholder="Produkt suchen" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Produkt suchen" />
-				<select className="input w-auto" value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="Nach Kategorie filtern">
+				<select className="input w-auto max-w-[calc(50%-0.25rem)] shrink-0 truncate" value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="Nach Kategorie filtern">
 					<option value={ALL}>Alle Kategorien</option>
 					<option value={NONE}>Ohne Kategorie</option>
 					{categories.map((category) => (
