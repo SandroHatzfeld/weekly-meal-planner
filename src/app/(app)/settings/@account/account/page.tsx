@@ -1,5 +1,6 @@
 import { ApiTokens } from "@/components/settings/SettingsControls"
 import SettingsSection from "@/components/settings/SettingsSection"
+import SettingsBackLink from "@/components/settings/SettingsBackLink"
 import HintsToggle from "@/components/hints/HintsToggle"
 import InstallButton from "@/components/pwa/InstallButton"
 import { signOut } from "@/lib/auth/auth"
@@ -21,6 +22,7 @@ export default async function AccountSettingsPage() {
 
 	return (
 		<div className="space-y-4">
+			<SettingsBackLink />
 			<section className="card">
 				<HintsToggle enabled={hintsEnabled(dismissedHints)} />
 			</section>

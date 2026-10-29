@@ -4,6 +4,7 @@ import ListSettings from "@/components/settings/ListSettings"
 import ProductCsv from "@/components/settings/ProductCsv"
 import ProductMemorySettings from "@/components/settings/ProductMemorySettings"
 import SettingsSection from "@/components/settings/SettingsSection"
+import SettingsBackLink from "@/components/settings/SettingsBackLink"
 import TagSettings from "@/components/tags/TagSettings"
 import { listsWithDefault } from "@/lib/grocery/queries"
 import { categoriesOfPlan, categoryOrderOfPlan, hiddenCategoriesOfPlan, productMemoryOfPlan } from "@/lib/grocery/categories"
@@ -39,6 +40,7 @@ export default async function PlanSettingsPage() {
 
 	return (
 		<div className="space-y-4">
+			<SettingsBackLink />
 			<SettingsSection title="Plan">{isOwner ? <PlanNameForm planId={plan.id} name={plan.name} /> : <p>{plan.name}</p>}</SettingsSection>
 
 			<SettingsSection title={`Mitglieder (${plan.members.length})`}>

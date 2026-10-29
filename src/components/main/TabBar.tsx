@@ -1,32 +1,17 @@
 "use client"
 
 import Link from "next/link"
-import { mainTabUrl, SETTINGS_TABS, showTab, TABS, tabGroupOf } from "@/lib/tabs"
-import { usePathname, useRouter } from "next/navigation"
+import { SETTINGS_TABS, showTab, TABS, tabGroupOf } from "@/lib/tabs"
+import { usePathname } from "next/navigation"
 
-// Tab-Leiste der Kopfzeile: Haupt-Tabs, in den Einstellungen deren Tabs (Plan, Konto) mit „Zurück“
+// Tab-Leiste der Kopfzeile: Haupt-Tabs, in den Einstellungen deren Tabs (Plan, Konto)
 export default function TabBar() {
 	const pathname = usePathname()
-	const router = useRouter()
-	const inSettings = pathname.startsWith("/settings")
-	const tabs = inSettings ? SETTINGS_TABS : TABS
+	const tabs = pathname.startsWith("/settings") ? SETTINGS_TABS : TABS
 	const group = tabGroupOf(pathname)
 
 	return (
 		<nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4">
-			{inSettings && (
-				<Link
-					href="/shop"
-					className="border-b-2 border-transparent px-2 py-2 text-sm whitespace-nowrap"
-					onClick={(event) => {
-						// zurück zum zuletzt gezeigten Haupt-Tab (mit Liste, Monat, Filter)
-						event.preventDefault()
-						router.push(mainTabUrl())
-					}}
-				>
-					← Zurück
-				</Link>
-			)}
 			{tabs.map((tab) => {
 				const active = pathname.startsWith(tab.href)
 				return (
