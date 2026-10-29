@@ -95,7 +95,7 @@ function ListRow({
 			</div>
 			{error && <p className="error">{error}</p>}
 			<button type="button" className="btn-link text-sm" aria-expanded={showCategories} onClick={() => setShowCategories(!showCategories)}>
-				{showCategories ? "▾" : "▸"} Kategorien im Laden – Reihenfolge, ausblenden
+				{showCategories ? "▾" : "▸"} Reihenfolge in {list.name}
 			</button>
 			{showCategories && (
 				<CategorySettings listId={list.id} categories={categories} hiddenIds={hiddenIds} />
