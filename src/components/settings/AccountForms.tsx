@@ -52,7 +52,8 @@ export function ProfileForm({ name, email, pendingEmail }: { name: string; email
 					Wartet auf Bestätigung: <strong>{pendingEmail}</strong>. Bis du auf den Link in der E-Mail klickst, gilt die bisherige Adresse.{" "}
 					<button
 						type="button"
-						className="btn-link text-sm"
+						// im Fließtext: keine eigene Zeilenhöhe, die Tippfläche wächst nur über das Padding
+						className="btn-link inline! min-h-0! -my-3 py-3 text-sm"
 						onClick={() =>
 							startTransition(async () => {
 								if ((await attempt(() => cancelEmailChange().then(() => true))) !== undefined) router.refresh()
