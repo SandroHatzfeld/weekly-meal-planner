@@ -213,6 +213,7 @@ model EmailVerificationToken {
   id        String   @id @default(cuid())
   userId    String
   tokenHash String   @unique
+  newEmail  String? // gesetzt: Bestätigung einer geänderten Adresse statt der Registrierung
   expiresAt DateTime
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

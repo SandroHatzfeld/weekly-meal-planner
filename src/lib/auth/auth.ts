@@ -65,6 +65,7 @@ export const authOptions: NextAuthConfig = {
 				where: { id: token.id },
 				select: {
 					name: true,
+					email: true,
 					activePlanId: true,
 					memberships: { select: { planId: true }, orderBy: { joinedAt: "asc" } },
 				},
@@ -77,12 +78,15 @@ export const authOptions: NextAuthConfig = {
 			token.activePlanId =
 				dbUser.activePlanId && planIds.includes(dbUser.activePlanId) ? dbUser.activePlanId : (planIds[0] ?? null)
 			token.name = dbUser.name
+			// geänderte E-Mail-Adresse (Einstellungen) gilt sofort, z.B. für persönliche Einladungen
+			token.email = dbUser.email
 			return token
 		},
 		async session({ session, token }) {
 			session.user.id = token.id
 			session.user.activePlanId = token.activePlanId
 			if (token.name) session.user.name = token.name
+			if (token.email) session.user.email = token.email
 			return session
 		},
 	},
