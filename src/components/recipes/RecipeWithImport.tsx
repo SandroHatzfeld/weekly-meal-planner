@@ -1,6 +1,7 @@
 "use client"
 
 import RecipeForm from "@/components/recipes/RecipeForm"
+import type { ProductMemoryDTO } from "@/lib/grocery/categories"
 import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import { finishRecipeImport, prepareRecipeImport, type RecipeInput } from "@/lib/recipes/actions"
 import { useEffect, useRef, useState } from "react"
@@ -14,7 +15,7 @@ type Status =
 
 // Neues oder bestehendes Rezept: optional per Link befüllen. Das Formular zeigt das aufbereitete Rezept zur Kontrolle,
 // gespeichert wird erst dort. Beim Bearbeiten ersetzt der Import die Felder im Formular, gespeichert ist noch nichts.
-export default function RecipeWithImport({ importEnabled, recipeId, initial }: { importEnabled: boolean; recipeId?: string; initial?: RecipeInput }) {
+export default function RecipeWithImport({ importEnabled, recipeId, initial, memory }: { importEnabled: boolean; recipeId?: string; initial?: RecipeInput; memory?: ProductMemoryDTO[] }) {
 	const [url, setUrl] = useState(initial?.sourceUrl ?? "")
 	const [imported, setImported] = useState<{ recipe: RecipeInput; version: number } | null>(null)
 	const [status, setStatus] = useState<Status>({ step: "idle" })
@@ -117,7 +118,7 @@ export default function RecipeWithImport({ importEnabled, recipeId, initial }: {
 				</form>
 			)}
 			{/* key: neuer Import baut das Formular mit den neuen Werten neu auf */}
-			<RecipeForm key={imported?.version ?? 0} recipeId={recipeId} initial={imported?.recipe ?? initial} />
+			<RecipeForm key={imported?.version ?? 0} recipeId={recipeId} initial={imported?.recipe ?? initial} memory={memory} />
 		</div>
 	)
 }

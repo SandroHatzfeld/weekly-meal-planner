@@ -7,6 +7,8 @@ import StepsField from "@/components/forms/StepsField"
 import Icon, { handleButtonClass, iconButtonClass } from "@/components/ui/Icon"
 import StarRating from "@/components/recipes/StarRating"
 import { useSortable } from "@/components/ui/useSortable"
+import ProductInput from "@/components/shop/ProductInput"
+import type { ProductMemoryDTO } from "@/lib/grocery/categories"
 import { useState } from "react"
 
 // stabile Keys für Zutaten-Zeilen (Sortieren per Griff, Fokus bleibt beim Verschieben erhalten)
@@ -23,7 +25,8 @@ const emptyRecipe: RecipeInput = {
 	rating: null,
 }
 
-export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipeId?: string; initial?: RecipeInput }) {
+// memory: bekannte Produkte des aktiven Plans, als Vorschläge für die Zutaten (ohne Kategorien)
+export default function RecipeForm({ recipeId, initial = emptyRecipe, memory = [] }: { recipeId?: string; initial?: RecipeInput; memory?: ProductMemoryDTO[] }) {
 	const [recipe, setRecipe] = useState<RecipeInput>({
 		...initial,
 		ingredients: initial.ingredients.length ? initial.ingredients : [{ name: "", details: "" }],
@@ -123,11 +126,16 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe }: { recipe
 								value={ingredient.details}
 								onChange={(event) => setIngredient(index, { details: event.target.value })}
 							/>
-							<input
-								className="input min-w-0 flex-1"
+							<ProductInput
+								className="min-w-0 flex-1"
 								placeholder="Zutat"
+								ariaLabel="Zutat"
 								value={ingredient.name}
-								onChange={(event) => setIngredient(index, { name: event.target.value })}
+								onChange={(name) => setIngredient(index, { name })}
+								onPick={(suggestion) => setIngredient(index, { name: suggestion.displayName })}
+								memory={memory}
+								categories={[]}
+								required={false}
 							/>
 							<button type="button" className="btn-link size-11 shrink-0 justify-center" aria-label="Zutat entfernen" onClick={() => removeIngredient(index)}>
 								✕

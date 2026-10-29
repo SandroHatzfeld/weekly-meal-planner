@@ -10,8 +10,10 @@ type ProductInputProps = {
 	// Vorschlag gewählt: Schreibweise + Kategorie übernehmen
 	onPick: (suggestion: ProductSuggestion) => void
 	memory: ProductMemoryDTO[]
+	// leer: Vorschläge ohne Kategorie anzeigen (z.B. Zutaten im Rezept)
 	categories: CategoryDTO[]
 	placeholder: string
+	ariaLabel?: string
 	className?: string
 	inputClassName?: string
 	// false: Feld darf leer bleiben (z.B. innerhalb eines anderen Formulars)
@@ -21,10 +23,10 @@ type ProductInputProps = {
 }
 
 // Eingabe für Produkte mit Vorschlägen aus bekannten Produkten des Plans (auch bei Vertippern)
-export default function ProductInput({ value, onChange, onPick, memory, categories, placeholder, className = "", inputClassName = "", required = true, inlineSuggestions = false }: ProductInputProps) {
+export default function ProductInput({ value, onChange, onPick, memory, categories, placeholder, ariaLabel, className = "", inputClassName = "", required = true, inlineSuggestions = false }: ProductInputProps) {
 	const suggestions = suggestProducts(value, memory)
-		// exakt das Getippte vorzuschlagen bringt nichts
-		.filter((suggestion) => suggestion.displayName !== value.trim() || suggestion.categoryId !== null)
+		// exakt das Getippte vorzuschlagen bringt nichts (außer es bringt eine Kategorie mit)
+		.filter((suggestion) => suggestion.displayName !== value.trim() || (categories.length > 0 && suggestion.categoryId !== null))
 	const combobox = useCombobox(suggestions, onPick)
 	const categoryName = (id: string | null) => categories.find((category) => category.id === id)?.name
 	const open = combobox.visible.length > 0
@@ -34,6 +36,7 @@ export default function ProductInput({ value, onChange, onPick, memory, categori
 			<input
 				className={`input w-full ${inputClassName}`}
 				placeholder={placeholder}
+				aria-label={ariaLabel}
 				value={value}
 				required={required}
 				autoComplete="off"

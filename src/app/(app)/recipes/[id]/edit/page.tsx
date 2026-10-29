@@ -1,15 +1,18 @@
 import RecipeWithImport from "@/components/recipes/RecipeWithImport"
 import { llmConfig } from "@/lib/recipes/import/llm"
 import { prisma } from "@/lib/prisma"
-import { requireUser } from "@/lib/session"
+import { requireActivePlan } from "@/lib/session"
+import { productMemoryOfPlan } from "@/lib/grocery/categories"
 import { notFound } from "next/navigation"
 
 export default async function EditRecipePage({ params }: PageProps<"/recipes/[id]/edit">) {
 	const { id } = await params
-	const user = await requireUser()
+	const { user, planId } = await requireActivePlan()
 	const recipe = await prisma.recipe.findUnique({ where: { id }, include: { ingredients: true } })
 	// nur der Owner editiert
 	if (!recipe || recipe.userId !== user.id) notFound()
+	// bekannte Produkte des aktiven Plans als Vorschläge für die Zutaten
+	const memory = await productMemoryOfPlan(planId)
 
 	return (
 		<div className="space-y-4">
@@ -22,6 +25,7 @@ export default async function EditRecipePage({ params }: PageProps<"/recipes/[id
 			</div>
 			<RecipeWithImport
 				importEnabled={!!llmConfig()}
+				memory={memory}
 				recipeId={recipe.id}
 				initial={{
 					name: recipe.name,
