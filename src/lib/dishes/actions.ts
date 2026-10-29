@@ -1,11 +1,15 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { isPastDay, PAST_DAY_MESSAGE, parseDateKey, toDateKey } from "../dates"
 import { toDishDTO, type DishDTO } from "../dto"
 import { deleteImageIfUnused, resolveImage } from "../images"
 import { prisma } from "../prisma"
 import { emitToPlan } from "../realtime"
 import { requireMember } from "../session"
+
+// Woche/Monat/Einkaufsliste im Browser-Cache verwerfen: „Zurück“ von der Gericht-Seite zeigt sonst den alten Stand
+const revalidateDishViews = () => revalidatePath("/", "layout")
 
 const memberOfDish = async (dishId: string) => {
 	const dish = await prisma.dish.findUnique({ where: { id: dishId } })
@@ -20,6 +24,7 @@ export const createDish = async (planId: string, name: string, dateKey: string) 
 	if (!name.trim() || !date || isPastDay(dateKey)) return null
 	const dish = toDishDTO(await prisma.dish.create({ data: { planId, name: name.trim(), date } }))
 	emitToPlan(planId, "dish-created", dish)
+	revalidateDishViews()
 	return dish
 }
 
@@ -63,6 +68,7 @@ export const updateDish = async (dishId: string, input: DishInput, loadedUpdated
 	const dish = toDishDTO(await prisma.dish.findUniqueOrThrow({ where: { id: dishId } }))
 	// an den Plan-Room, damit auch Betrachter ohne offene Bearbeitung die Änderung sehen
 	emitToPlan(existing.planId, "dish-updated", dish)
+	revalidateDishViews()
 	return { ok: true, dish }
 }
 
@@ -72,6 +78,7 @@ export const moveDish = async (dishId: string, dateKey: string) => {
 	if (!date || isPastDay(dateKey)) return null
 	const dish = toDishDTO(await prisma.dish.update({ where: { id: dishId }, data: { date } }))
 	emitToPlan(existing.planId, "dish-updated", dish)
+	revalidateDishViews()
 	return dish
 }
 
@@ -83,4 +90,5 @@ export const deleteDish = async (dishId: string) => {
 	await deleteImageIfUnused(existing.imageUrl)
 	for (const item of items) emitToPlan(existing.planId, "grocery-item-deleted", { listId: item.listId, id: item.id })
 	emitToPlan(existing.planId, "dish-deleted", { id: dishId })
+	revalidateDishViews()
 }

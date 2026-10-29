@@ -23,7 +23,7 @@ import { formatDay, PAST_DAY_MESSAGE } from "@/lib/dates"
 import { formatMinutes } from "@/lib/recipes/format"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 type SourceRecipe = { id: string; name: string; minutes: number | null; rating: number | null; userId: string }
 
@@ -81,7 +81,7 @@ const usePresence = (dishId: string) => {
 // nur bei Gerichten ohne Rezept (sonst wird das Rezept bearbeitet).
 export default function DishEditor({ initialDish, initialItems, lists, defaultListId, tags, categories, productMemory, sourceRecipe, currentUserId, today }: DishEditorProps) {
 	const router = useRouter()
-	const { confirm, attempt, undoable } = useFeedback()
+	const { confirm, attempt, undoable, notify } = useFeedback()
 	const [dish, setDish] = useState(initialDish)
 	const [form, setForm] = useState(toInput(initialDish))
 	// Popup: alles bearbeiten oder nur das Datum
@@ -160,6 +160,30 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 		}
 	}
 
+	// Datum direkt über den Kalender des Systems ändern (ohne eigenes Popup)
+	const datePicker = useRef<HTMLInputElement>(null)
+	const openDatePicker = () => {
+		try {
+			datePicker.current?.showPicker()
+		} catch {
+			// Browser ohne showPicker: Popup mit Datumsfeld
+			setEditing("date")
+		}
+	}
+	const changeDate = async (date: string) => {
+		if (!date || date === dish.date) return
+		if (date < today) return notify(PAST_DAY_MESSAGE, { tone: "error" })
+		const result = await attempt(() => updateDish(dish.id, { ...toInput(dish), date }, dish.updatedAt), "Datum konnte nicht geändert werden")
+		if (!result) return
+		if (result.ok) return reload(result.dish)
+		if ("conflict" in result) {
+			if (!result.current) return router.push("/week")
+			reload(result.current)
+			return notify("Das Gericht wurde inzwischen geändert. Bitte erneut versuchen.", { tone: "error" })
+		}
+		notify(result.error, { tone: "error" })
+	}
+
 	const remove = async () => {
 		if (!(await confirm({ title: "Gericht löschen?", message: "Seine Zutaten werden auch von der Einkaufsliste entfernt.", confirmLabel: "Löschen", danger: true }))) return
 		if ((await attempt(() => deleteDish(dish.id).then(() => true), "Löschen hat nicht geklappt")) === undefined) return
@@ -224,9 +248,23 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 				<span className="inline-flex items-center gap-1">
 					<Icon name="calendar" className="size-4" />
 					{formatDay(dish.date, { weekday: "long", day: "2-digit", month: "2-digit" })}
-					<button type="button" className="btn-link -my-2 -mx-2 size-11 justify-center px-0" aria-label="Datum ändern" title="Datum ändern" onClick={() => setEditing("date")}>
-						<Icon name="pencil" className="size-4" />
-					</button>
+					<span className="relative">
+						<button type="button" className="btn-link -my-2 -mx-2 size-11 justify-center px-0" aria-label="Datum ändern" title="Datum ändern" onClick={openDatePicker}>
+							<Icon name="pencil" className="size-4" />
+						</button>
+						{/* unsichtbares Datumsfeld am Stift: der Kalender des Systems öffnet sich dort */}
+						<input
+							ref={datePicker}
+							data-date-picker
+							type="date"
+							tabIndex={-1}
+							aria-hidden="true"
+							className="pointer-events-none absolute inset-0 size-full opacity-0"
+							value={dish.date}
+							min={dish.date < today ? undefined : today}
+							onChange={(event) => changeDate(event.target.value)}
+						/>
+					</span>
 				</span>
 				{!!sourceRecipe?.minutes && (
 					<span className="inline-flex items-center gap-1">

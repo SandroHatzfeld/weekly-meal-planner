@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { auth } from "../auth/auth"
 import { isPastDay, PAST_DAY_MESSAGE, parseDateKey } from "../dates"
@@ -184,6 +185,8 @@ const createDishWithItems = async (base: DishBase, rawItems: PlannedItem[]) => {
 	await Promise.all(items.map((item, index) => rememberProduct(planId, item.name, categoryIds[index], item.categoryId === categoryIds[index] && !!item.categoryId)))
 	emitToPlan(planId, "dish-created", toDishDTO(dish))
 	for (const item of dish.groceryItems) emitToPlan(planId, "grocery-item-created", toGroceryItemDTO(item))
+	// Woche/Monat/Einkaufsliste im Browser-Cache verwerfen (Planen von der Rezeptseite)
+	revalidatePath("/", "layout")
 
 	return { dishId: dish.id, dish: toDishDTO(dish) }
 }
