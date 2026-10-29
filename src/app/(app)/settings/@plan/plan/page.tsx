@@ -41,7 +41,16 @@ export default async function PlanSettingsPage() {
 	return (
 		<div className="space-y-4">
 			<SettingsBackLink />
-			<SettingsSection title="Plan">{isOwner ? <PlanNameForm planId={plan.id} name={plan.name} /> : <p>{plan.name}</p>}</SettingsSection>
+			<SettingsSection title="Plandetails">
+				{isOwner ? (
+					<PlanNameForm planId={plan.id} name={plan.name} />
+				) : (
+					<p>
+						<span className="block text-sm font-medium">Name</span>
+						{plan.name}
+					</p>
+				)}
+			</SettingsSection>
 
 			<SettingsSection title={`Mitglieder (${plan.members.length})`}>
 				<ul className="divide-y divide-black/5 dark:divide-white/10">
@@ -91,17 +100,18 @@ export default async function PlanSettingsPage() {
 			</SettingsSection>
 
 			<SettingsSection
-				title="Kategorien & Produkte"
-				description="Gelten für alle Listen dieses Plans. Bekannte Produkte landen beim Eintragen automatisch in ihrer Kategorie, die Reihenfolge im Laden stellst du pro Liste ein."
+				title="Kategorien"
+				description="Gelten für alle Listen dieses Plans. Die Reihenfolge im Laden stellst du pro Liste unter „Einkaufslisten“ ein."
 			>
 				<CategoryManager planId={plan.id} categories={categories} />
+			</SettingsSection>
+
+			<SettingsSection
+				title={`Produkte (${products.length})`}
+				description="Bekannte Produkte landen beim Eintragen automatisch in ihrer Kategorie und erscheinen als Vorschläge."
+			>
 				<ProductCsv planId={plan.id} categories={categories} products={products} />
-				<details className="group">
-					<summary className="btn-link cursor-pointer text-sm">Bekannte Produkte ({products.length})</summary>
-					<div className="mt-2">
-						<ProductMemorySettings planId={plan.id} categories={categories} products={products} />
-					</div>
-				</details>
+				<ProductMemorySettings planId={plan.id} categories={categories} products={products} />
 			</SettingsSection>
 
 			<SettingsSection

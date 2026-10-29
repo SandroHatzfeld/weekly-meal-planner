@@ -18,16 +18,21 @@ export function PlanNameForm({ planId, name }: { planId: string; name: string })
 	const [pending, startTransition] = useTransition()
 	return (
 		<form
-			className="flex gap-2"
+			className="space-y-1"
 			onSubmit={(event) => {
 				event.preventDefault()
 				startTransition(() => renamePlan(planId, value))
 			}}
 		>
-			<input className="input flex-1" aria-label="Name des Plans" value={value} onChange={(event) => setValue(event.target.value)} required />
-			<button type="submit" className="btn" disabled={pending || value === name}>
-				Umbenennen
-			</button>
+			<label htmlFor="plan-name" className="block text-sm font-medium">
+				Name
+			</label>
+			<div className="flex gap-2">
+				<input id="plan-name" className="input flex-1" value={value} onChange={(event) => setValue(event.target.value)} required />
+				<button type="submit" className="btn" disabled={pending || value === name}>
+					Umbenennen
+				</button>
+			</div>
 		</form>
 	)
 }
