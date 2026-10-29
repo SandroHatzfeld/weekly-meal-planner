@@ -17,10 +17,10 @@ export default function CategoryManager({ planId, categories }: { planId: string
 	// sofort anzeigen statt auf den Seiten-Refresh zu warten (der lädt alle Produkte mit und kann dauern)
 	const [added, setAdded] = useState<CategoryDTO[]>([])
 	const [removed, setRemoved] = useState<string[]>([])
-	const shown = [
-		...categories.filter((category) => !removed.includes(category.id)),
-		...added.filter((category) => !categories.some((existing) => existing.id === category.id)),
-	].sort((a, b) => a.name.localeCompare(b.name, "de"))
+	const shown = [...categories, ...added.filter((category) => !categories.some((existing) => existing.id === category.id))]
+		// gelöscht: auch eine eben erst angelegte Kategorie (steht noch in added) nicht wieder anzeigen
+		.filter((category) => !removed.includes(category.id))
+		.sort((a, b) => a.name.localeCompare(b.name, "de"))
 
 	const run = <T extends { error?: string } | void>(action: () => Promise<T>, onSuccess?: (result: T) => void) =>
 		startTransition(async () => {
