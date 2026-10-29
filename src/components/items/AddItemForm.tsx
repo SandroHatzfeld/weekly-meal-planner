@@ -83,7 +83,6 @@ export default function AddItemForm({ memory, categories, tags, placeholder, onA
 					}}
 					memory={memory}
 					categories={categories}
-					dropUp
 				/>
 				<button
 					type="submit"
