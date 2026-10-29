@@ -2,6 +2,7 @@
 
 import { registerUser } from "@/lib/register/actions"
 import { useActionState } from "react"
+import PasswordInput from "@/components/forms/PasswordInput"
 
 export default function RegisterForm() {
 	const [state, formAction, pending] = useActionState(registerUser, undefined)
@@ -13,7 +14,7 @@ export default function RegisterForm() {
 			<label htmlFor="email">E-Mail</label>
 			<input type="email" id="email" name="email" required />
 			<label htmlFor="password">Passwort</label>
-			<input type="password" id="password" name="password" minLength={8} required />
+			<PasswordInput id="password" name="password" minLength={8} required />
 			{state?.error && <p className="error">{state.error}</p>}
 			<button type="submit" disabled={pending}>
 				Registrieren

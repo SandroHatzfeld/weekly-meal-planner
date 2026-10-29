@@ -4,6 +4,7 @@ import { useFeedback } from "@/components/ui/Feedback"
 import { cancelEmailChange, changePassword, requestEmailChange, updateName } from "@/lib/user/account"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
+import PasswordInput from "@/components/forms/PasswordInput"
 
 // Name und E-Mail; eine neue Adresse gilt erst nach Klick auf den Bestätigungslink
 export function ProfileForm({ name, email, pendingEmail }: { name: string; email: string; pendingEmail: string | null }) {
@@ -67,7 +68,7 @@ export function ProfileForm({ name, email, pendingEmail }: { name: string; email
 			{emailChanged && (
 				<>
 					<label htmlFor="account-email-password">Aktuelles Passwort (zur Bestätigung)</label>
-					<input id="account-email-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+					<PasswordInput id="account-email-password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
 				</>
 			)}
 			{error && <p className="error">{error}</p>}
@@ -107,12 +108,11 @@ export function PasswordForm() {
 			}}
 		>
 			<label htmlFor="password-old">Altes Passwort</label>
-			<input id="password-old" type="password" autoComplete="current-password" value={oldPassword} onChange={(event) => setOldPassword(event.target.value)} required />
+			<PasswordInput id="password-old" autoComplete="current-password" value={oldPassword} onChange={(event) => setOldPassword(event.target.value)} required />
 			<label htmlFor="password-new">Neues Passwort</label>
-			<input
+			<PasswordInput
 				id="password-new"
-				type="password"
-				autoComplete="new-password"
+								autoComplete="new-password"
 				minLength={8}
 				aria-describedby="password-new-hint"
 				value={newPassword}
@@ -123,10 +123,9 @@ export function PasswordForm() {
 				Mindestens 8 Zeichen
 			</p>
 			<label htmlFor="password-repeat">Neues Passwort wiederholen</label>
-			<input
+			<PasswordInput
 				id="password-repeat"
-				type="password"
-				autoComplete="new-password"
+								autoComplete="new-password"
 				aria-invalid={mismatch}
 				aria-describedby="password-repeat-hint"
 				value={repeat}

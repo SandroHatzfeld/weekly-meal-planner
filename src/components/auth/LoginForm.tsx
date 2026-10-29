@@ -2,6 +2,7 @@
 
 import { loginUser } from "@/lib/login/actions"
 import { useActionState } from "react"
+import PasswordInput from "@/components/forms/PasswordInput"
 
 export default function LoginForm({ callbackUrl }: { callbackUrl: string }) {
 	const [state, formAction, pending] = useActionState(loginUser, undefined)
@@ -12,7 +13,7 @@ export default function LoginForm({ callbackUrl }: { callbackUrl: string }) {
 			<label htmlFor="email">E-Mail</label>
 			<input type="email" id="email" name="email" required />
 			<label htmlFor="password">Passwort</label>
-			<input type="password" id="password" name="password" required />
+			<PasswordInput id="password" name="password" required />
 			{state?.error && <p className="error">{state.error}</p>}
 			<button type="submit" disabled={pending}>
 				Anmelden

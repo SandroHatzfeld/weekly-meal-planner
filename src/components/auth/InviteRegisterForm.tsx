@@ -2,6 +2,7 @@
 
 import { registerViaInvite } from "@/lib/invite/actions"
 import { useActionState } from "react"
+import PasswordInput from "@/components/forms/PasswordInput"
 
 export default function InviteRegisterForm({ token, email }: { token: string; email: string | null }) {
 	const [state, formAction, pending] = useActionState(registerViaInvite.bind(null, token), undefined)
@@ -17,7 +18,7 @@ export default function InviteRegisterForm({ token, email }: { token: string; em
 				<input type="email" id="email" name="email" required />
 			)}
 			<label htmlFor="password">Passwort</label>
-			<input type="password" id="password" name="password" minLength={8} required />
+			<PasswordInput id="password" name="password" minLength={8} required />
 			{state?.error && <p className="error">{state.error}</p>}
 			<button type="submit" disabled={pending}>
 				Account anlegen & beitreten
