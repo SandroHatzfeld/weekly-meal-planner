@@ -1,6 +1,7 @@
 "use client"
 
 import { useFeedback } from "@/components/ui/Feedback"
+import Dropdown from "@/components/ui/Dropdown"
 import Icon, { iconButtonClass } from "@/components/ui/Icon"
 import { forgetProduct, setProductAliases, setProductCategories } from "@/lib/grocery/actions"
 import type { CategoryDTO, ProductMemoryDTO } from "@/lib/grocery/categories"
@@ -44,15 +45,13 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 		<div className="space-y-2">
 			<div className="flex gap-2">
 				<input className="input min-w-0 flex-1" placeholder="Produkt suchen" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Produkt suchen" />
-				<select className="input w-auto max-w-[calc(50%-0.25rem)] shrink-0 truncate" value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="Nach Kategorie filtern">
-					<option value={ALL}>Alle Kategorien</option>
-					<option value={NONE}>Ohne Kategorie</option>
-					{categories.map((category) => (
-						<option key={category.id} value={category.id}>
-							{category.name}
-						</option>
-					))}
-				</select>
+				<Dropdown
+					label="Nach Kategorie filtern"
+					value={filter}
+					options={[{ value: ALL, label: "Alle Kategorien" }, { value: NONE, label: "Ohne Kategorie" }, ...categories.map((category) => ({ value: category.id, label: category.name }))]}
+					onChange={setFilter}
+					className="max-w-[calc(50%-0.25rem)] shrink-0"
+				/>
 			</div>
 
 			<ul className="divide-y divide-black/5 dark:divide-white/10">
@@ -71,9 +70,11 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 								<Icon name="trash" />
 							</button>
 						</div>
+						{/* unter dem Namen die alternativen Namen, mit etwas Abstand die Kategorien */}
+						<AliasRow planId={planId} product={product} />
 						{/* Kategorien in Reihenfolge: die erste ist die Hauptkategorie, die weiteren springen ein,
 						    wenn eine Kategorie in einer Liste ausgeblendet ist */}
-						<div className="flex flex-wrap items-center gap-1" aria-label={`Kategorien von ${product.displayName}`}>
+						<div className="mt-2 flex flex-wrap items-center gap-1" aria-label={`Kategorien von ${product.displayName}`}>
 							{product.categoryIds.map((id, index) => {
 								const category = categories.find((candidate) => candidate.id === id)
 								if (!category) return null
@@ -105,25 +106,17 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 								)
 							})}
 							{categories.some((category) => !product.categoryIds.includes(category.id)) && (
-								<select
-									className="input w-auto py-1 text-sm"
-									aria-label={`Kategorie zu ${product.displayName} hinzufügen`}
+								<Dropdown
+									label={`Kategorie zu ${product.displayName} hinzufügen`}
 									value=""
-									disabled={pending}
-									onChange={(event) => event.target.value && update(product, [...product.categoryIds, event.target.value])}
-								>
-									<option value="">{product.categoryIds.length ? "+ Ausweichkategorie" : "+ Kategorie"}</option>
-									{categories
-										.filter((category) => !product.categoryIds.includes(category.id))
-										.map((category) => (
-											<option key={category.id} value={category.id}>
-												{category.name}
-											</option>
-										))}
-								</select>
+									placeholder={product.categoryIds.length ? "+ Ausweichkategorie" : "+ Kategorie"}
+									options={categories.filter((category) => !product.categoryIds.includes(category.id)).map((category) => ({ value: category.id, label: category.name }))}
+									onChange={(id) => update(product, [...product.categoryIds, id])}
+									buttonClassName="min-h-9 py-1 text-sm"
+									align="left"
+								/>
 							)}
 						</div>
-						<AliasRow planId={planId} product={product} />
 					</li>
 				))}
 				{matching.length === 0 && <li className="py-1 text-sm opacity-60">Keine Produkte gefunden.</li>}
@@ -145,14 +138,13 @@ export default function ProductMemorySettings({ planId, categories, products }: 
 				}}
 			>
 				<input className="input min-w-0 basis-full sm:basis-0 sm:flex-1" placeholder="Neues Produkt" value={newName} onChange={(event) => setNewName(event.target.value)} required />
-				<select className="input min-w-0 flex-1 sm:w-36 sm:flex-none" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} aria-label="Kategorie für neues Produkt">
-					<option value="">Keine</option>
-					{categories.map((category) => (
-						<option key={category.id} value={category.id}>
-							{category.name}
-						</option>
-					))}
-				</select>
+				<Dropdown
+					label="Kategorie für neues Produkt"
+					value={newCategory}
+					options={[{ value: "", label: "Keine Kategorie" }, ...categories.map((category) => ({ value: category.id, label: category.name }))]}
+					onChange={setNewCategory}
+					className="min-w-0 flex-1 sm:w-36 sm:flex-none"
+				/>
 				<button type="submit" className="btn-secondary" disabled={pending}>
 					Hinzufügen
 				</button>

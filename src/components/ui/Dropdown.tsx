@@ -12,19 +12,38 @@ export default function Dropdown<T extends string>({
 	options,
 	onChange,
 	className = "",
+	buttonClassName = "min-h-10",
+	placeholder,
+	align = "right",
 }: {
 	label: string
-	value: T
+	value: T | ""
 	options: Option<T>[]
 	onChange: (value: T) => void
 	className?: string
+	// Größe des Auslösers (Standard: 40 px hoch)
+	buttonClassName?: string
+	// Text ohne Auswahl, z.B. „+ Kategorie“ (Auswahl wirkt dann wie eine Aktion)
+	placeholder?: string
+	// Kante, an der das Menü ausgerichtet wird
+	align?: "left" | "right"
 }) {
 	const [open, setOpen] = useState(false)
 	const [active, setActive] = useState(0)
 	const root = useRef<HTMLDivElement>(null)
 	const button = useRef<HTMLButtonElement>(null)
 	const listId = useId()
-	const current = options.find((option) => option.value === value) ?? options[0]
+	const current = options.find((option) => option.value === value) ?? (placeholder === undefined ? options[0] : undefined)
+	const list = useRef<HTMLUListElement>(null)
+
+	// lange Listen: aktive Option (Tastatur) sichtbar halten; von Hand, scrollIntoView würde auch das Tab-Karussell verschieben
+	useEffect(() => {
+		const menu = list.current
+		const item = menu?.children[active] as HTMLElement | undefined
+		if (!menu || !item) return
+		if (item.offsetTop < menu.scrollTop) menu.scrollTop = item.offsetTop
+		else if (item.offsetTop + item.offsetHeight > menu.scrollTop + menu.clientHeight) menu.scrollTop = item.offsetTop + item.offsetHeight - menu.clientHeight
+	}, [active, open])
 
 	// Außenklick und Escape schließen
 	useEffect(() => {
@@ -43,7 +62,7 @@ export default function Dropdown<T extends string>({
 	}
 
 	const openMenu = () => {
-		setActive(Math.max(0, options.indexOf(current)))
+		setActive(current ? Math.max(0, options.indexOf(current)) : 0)
 		setOpen(true)
 	}
 
@@ -55,8 +74,8 @@ export default function Dropdown<T extends string>({
 				aria-haspopup="listbox"
 				aria-expanded={open}
 				aria-controls={listId}
-				aria-label={`${label}: ${current.label}`}
-				className="input flex h-full min-h-10 w-full items-center justify-between gap-2 text-left"
+				aria-label={current ? `${label}: ${current.label}` : label}
+				className={`input flex h-full w-full items-center justify-between gap-2 text-left ${buttonClassName}`}
 				onClick={() => (open ? setOpen(false) : openMenu())}
 				onKeyDown={(event) => {
 					if (event.key === "Escape" && open) {
@@ -73,17 +92,18 @@ export default function Dropdown<T extends string>({
 					}
 				}}
 			>
-				<span className="truncate">{current.label}</span>
+				<span className="truncate">{current?.label ?? placeholder}</span>
 				<svg viewBox="0 0 24 24" className={`size-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
 					<path d="m6 9 6 6 6-6" />
 				</svg>
 			</button>
 			{open && (
 				<ul
+					ref={list}
 					id={listId}
 					role="listbox"
 					aria-label={label}
-					className="absolute top-full right-0 z-20 mt-1 min-w-full overflow-hidden rounded border border-(--border) bg-(--surface) shadow-lg"
+					className={`absolute top-full z-20 mt-1 max-h-72 min-w-full overflow-y-auto rounded border border-(--border) bg-(--surface) shadow-lg ${align === "left" ? "left-0" : "right-0"}`}
 				>
 					{options.map((option, index) => {
 						const selected = option.value === value
