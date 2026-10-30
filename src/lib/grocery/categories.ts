@@ -152,6 +152,23 @@ export const rememberProduct = async (planId: string, name: string, categoryId: 
 	await replaceProductCategories(planId, key, [categoryId, ...current.filter((id) => id !== categoryId)])
 }
 
+// Zutaten aus Rezepten: nur noch unbekannte Produkte anlegen (ohne Kategorie). Bekannte bleiben unverändert,
+// damit Schreibweise und Reihenfolge der Vorschläge nicht vom Rezept, sondern vom Einkaufen bestimmt werden.
+export const rememberNewProducts = async (planId: string, names: string[]) => {
+	const byKey = new Map<string, string>()
+	for (const name of names) {
+		const key = normalizeItemName(name)
+		if (key && !byKey.has(key)) byKey.set(key, name.trim())
+	}
+	if (byKey.size === 0) return
+	const aliases = await prisma.groceryProductAlias.findMany({ where: { planId, name: { in: [...byKey.keys()] } }, select: { name: true } })
+	for (const alias of aliases) byKey.delete(alias.name)
+	await prisma.groceryProduct.createMany({
+		data: [...byKey].map(([name, displayName]) => ({ planId, name, displayName })),
+		skipDuplicates: true,
+	})
+}
+
 export const isCategoryOfPlan = async (categoryId: string, planId: string) =>
 	!!(await prisma.groceryCategory.findFirst({ where: { id: categoryId, planId }, select: { id: true } }))
 

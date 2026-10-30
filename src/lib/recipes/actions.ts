@@ -10,7 +10,7 @@ import { emitToPlan } from "../realtime"
 import { requireMember } from "../session"
 import { groceryItemInclude, toGroceryItemDTO } from "../dto"
 import { deleteImageIfUnused, resolveImage } from "../images"
-import { recallCategory, rememberProduct } from "../grocery/categories"
+import { recallCategory, rememberNewProducts, rememberProduct } from "../grocery/categories"
 import { canViewRecipe, coMemberIds } from "./access"
 import { finishImport, ImportError, prepareImport } from "./import/service"
 import { llmConfig } from "./import/llm"
@@ -77,6 +77,11 @@ export const finishRecipeImport = async (url: string): Promise<{ recipe: RecipeI
 		return { recipe: { ...recipe, sourceUrl, rating: null }, cached }
 	})
 
+// neue Zutaten als Produkte des aktiven Plans merken (für Vorschläge, ohne Kategorie)
+const rememberIngredients = async (planId: string | null | undefined, ingredients: { name: string }[]) => {
+	if (planId) await rememberNewProducts(planId, ingredients.map((ingredient) => ingredient.name))
+}
+
 export const createRecipe = async (input: RecipeInput) => {
 	const user = await requireSessionUser()
 	const data = normalize(input)
@@ -86,6 +91,7 @@ export const createRecipe = async (input: RecipeInput) => {
 	const recipe = await prisma.recipe.create({
 		data: { ...data, imageUrl: image.imageUrl, userId: user.id, ingredients: { create: data.ingredients } },
 	})
+	await rememberIngredients(user.activePlanId, data.ingredients)
 	redirect(`/recipes/${recipe.id}`)
 }
 
@@ -107,6 +113,7 @@ export const updateRecipe = async (recipeId: string, input: RecipeInput) => {
 		}),
 	])
 	if (recipe.imageUrl !== image.imageUrl) await deleteImageIfUnused(recipe.imageUrl)
+	await rememberIngredients(user.activePlanId, data.ingredients)
 	redirect(`/recipes/${recipeId}`)
 }
 
