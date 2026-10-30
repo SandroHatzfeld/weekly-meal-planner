@@ -1,5 +1,6 @@
 "use client"
 
+import Dropdown from "@/components/ui/Dropdown"
 import { switchPlan } from "@/lib/plan/actions"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
@@ -11,26 +12,20 @@ export default function PlanSwitcher({ plans, activePlanId }: { plans: { id: str
 	const [pending, startTransition] = useTransition()
 
 	return (
-		<select
-			aria-label="Plan wechseln"
-			className="input w-auto min-w-0 max-w-48"
+		<Dropdown
+			label="Plan wechseln"
 			value={activePlanId}
-			disabled={pending}
-			onChange={(event) => {
-				const value = event.target.value
+			options={[...plans.map((plan) => ({ value: plan.id, label: plan.name })), { value: NEW_PLAN, label: "+ Neuer Plan…" }]}
+			className={`max-w-48 min-w-0 ${pending ? "opacity-60" : ""}`}
+			align="left"
+			onChange={(value) => {
 				if (value === NEW_PLAN) return router.push("/onboarding")
+				if (value === activePlanId) return
 				startTransition(async () => {
 					await switchPlan(value)
 					router.refresh()
 				})
 			}}
-		>
-			{plans.map((plan) => (
-				<option key={plan.id} value={plan.id}>
-					{plan.name}
-				</option>
-			))}
-			<option value={NEW_PLAN}>+ Neuer Plan…</option>
-		</select>
+		/>
 	)
 }
