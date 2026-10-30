@@ -207,21 +207,32 @@ function AliasRow({ planId, product }: { planId: string; product: ProductMemoryD
 						</button>
 					</span>
 				))}
-				<input
-					className="input w-40 min-w-0 py-1 text-sm"
-					placeholder="+ Alternativer Name"
-					aria-label={`Alternativen Namen zu ${product.displayName} hinzufügen`}
-					value={value}
-					disabled={pending}
-					onChange={(event) => setValue(event.target.value)}
-					onBlur={add}
-					onKeyDown={(event) => {
-						if (event.key === "Enter" || event.key === ",") {
-							event.preventDefault()
-							add()
-						}
+				{/* eigenes Formular: Enter (auch „Weiter“ der Handy-Tastatur) speichert und bleibt im Feld für weitere Namen */}
+				<form
+					className="contents"
+					onSubmit={(event) => {
+						event.preventDefault()
+						add()
 					}}
-				/>
+				>
+					<input
+						className="input w-40 min-w-0 py-1 text-sm"
+						placeholder="+ Alternativer Name"
+						aria-label={`Alternativen Namen zu ${product.displayName} hinzufügen`}
+						enterKeyHint="enter"
+						value={value}
+						// readOnly statt disabled: ein gesperrtes Feld verliert den Fokus
+						readOnly={pending}
+						onChange={(event) => setValue(event.target.value)}
+						onBlur={add}
+						onKeyDown={(event) => {
+							if (event.key === ",") {
+								event.preventDefault()
+								add()
+							}
+						}}
+					/>
+				</form>
 			</div>
 			{error && <p className="error text-sm">{error}</p>}
 		</div>
