@@ -14,9 +14,10 @@ export const isManualEntry = (entry: IngredientEntry) => entry.id.startsWith(MAN
 
 let counter = 0
 
-// Zeile zum Hinzufügen eines Produkts von Hand (Produkt · Details · Tags · +) innerhalb des Planen-Popups.
+// Zeile zum Hinzufügen eines Produkts von Hand innerhalb des Planen-Popups, wie auf der Einkaufsliste:
+// Produkt + „+“, darunter Details und Tags; Enter oder ein gewählter Vorschlag fügt direkt hinzu.
 // Das Produkt landet als Kachel in der Auswahl und beim Planen auf der Einkaufsliste, verknüpft mit dem Gericht.
-// Kein <form> (liegt selbst in einem Formular): Enter im Feld fügt hinzu.
+// Kein <form> (liegt selbst in einem Formular).
 export default function ManualItemRow({
 	memory,
 	categories,
@@ -33,16 +34,16 @@ export default function ManualItemRow({
 	const [tagIds, setTagIds] = useState<string[]>([])
 	const [pickedCategory, setPickedCategory] = useState<string | null>(null)
 
-	const add = () => {
-		if (!name.trim()) return
+	const add = (itemName = name, categoryId = pickedCategory) => {
+		if (!itemName.trim()) return
 		onAdd({
 			id: `${MANUAL_PREFIX}${counter++}`,
-			name: name.trim(),
+			name: itemName.trim(),
 			details: details.trim() || null,
 			selected: true,
 			listId: null,
 			tagIds,
-			categoryId: pickedCategory,
+			categoryId,
 		})
 		setName("")
 		setDetails("")
@@ -59,8 +60,10 @@ export default function ManualItemRow({
 	return (
 		<fieldset className="space-y-2">
 			<legend className="mb-1 text-sm">Produkt hinzufügen</legend>
-			<div onKeyDown={submitOnEnter}>
+			<div className="flex items-start gap-2" onKeyDown={submitOnEnter}>
 				<ProductInput
+					className="min-w-0 flex-1"
+					inputClassName="min-h-10"
 					placeholder="Was wird gebraucht?"
 					value={name}
 					required={false}
@@ -69,27 +72,25 @@ export default function ManualItemRow({
 						setName(value)
 						setPickedCategory(null)
 					}}
-					onPick={(suggestion) => {
-						setName(suggestion.displayName)
-						setPickedCategory(suggestion.categoryId)
-					}}
+					// Vorschlag gewählt: direkt hinzufügen (mit eventuell schon eingetragenen Details und Tags)
+					onPick={(suggestion) => add(suggestion.displayName, suggestion.categoryId)}
 					memory={memory}
 					categories={categories}
 				/>
-			</div>
-			<div className="flex items-center gap-2" onKeyDown={submitOnEnter}>
-				<input className="input min-w-0 flex-1" placeholder="Details (z.B. 500 g)" aria-label="Details" value={details} onChange={(event) => setDetails(event.target.value)} />
-				<TagPicker tags={tags} value={tagIds} onChange={setTagIds} />
 				<button
 					type="button"
-					className="btn flex size-[34px] shrink-0 items-center justify-center !p-0"
+					className="btn flex size-10 shrink-0 items-center justify-center px-0"
 					aria-label="Produkt hinzufügen"
 					title="Produkt hinzufügen"
 					disabled={!name.trim()}
-					onClick={add}
+					onClick={() => add()}
 				>
-					<Icon name="plus" className="size-5" />
+					<Icon name="plus" />
 				</button>
+			</div>
+			<div className="flex items-center gap-2" onKeyDown={submitOnEnter}>
+				<input className="input min-h-10 min-w-0 flex-1" placeholder="Details (z.B. 500 g)" aria-label="Details" value={details} onChange={(event) => setDetails(event.target.value)} />
+				<TagPicker tags={tags} value={tagIds} onChange={setTagIds} sizeClass="size-10" />
 			</div>
 		</fieldset>
 	)

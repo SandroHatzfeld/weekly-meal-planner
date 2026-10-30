@@ -131,17 +131,6 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 					</ol>
 				</section>
 			)}
-			{/* nach dem Lesen nicht wieder hochscrollen müssen: dieselben Aktionen mit Text */}
-			<div className="mt-8 flex flex-wrap gap-2 border-t border-(--border) pt-4">
-				{isOwner && (
-					<Link href={`/recipes/${recipe.id}/edit`} className="btn-secondary inline-flex min-h-11 items-center gap-2">
-						<Icon name="pencil" className="size-5" />
-						Bearbeiten
-					</Link>
-				)}
-				<PlanRecipeButton {...planProps} withLabel />
-				{isOwner && <DeleteRecipeButton recipeId={recipe.id} withLabel />}
-			</div>
 		</article>
 	)
 }

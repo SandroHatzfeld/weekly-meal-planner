@@ -164,13 +164,13 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe, memory = [
 	)
 }
 
-export function DeleteRecipeButton({ recipeId, withLabel = false }: { recipeId: string; withLabel?: boolean }) {
+export function DeleteRecipeButton({ recipeId }: { recipeId: string }) {
 	const { confirm } = useFeedback()
 	return (
 		<button
 			type="button"
-			className={withLabel ? "btn-danger-solid inline-flex min-h-11 items-center gap-2 rounded px-3" : `${iconButtonClass} text-red-700 dark:text-red-400`}
-			aria-label={withLabel ? undefined : "Rezept löschen"}
+			className={`${iconButtonClass} text-red-700 dark:text-red-400`}
+			aria-label="Rezept löschen"
 			title="Löschen"
 			onClick={async () => {
 				// bereits geplante Dishes bleiben erhalten (Snapshot), nur sourceRecipeId wird NULL
@@ -178,8 +178,7 @@ export function DeleteRecipeButton({ recipeId, withLabel = false }: { recipeId: 
 					await deleteRecipe(recipeId)
 			}}
 		>
-			<Icon name="trash" className={withLabel ? "size-5" : undefined} />
-			{withLabel && "Löschen"}
+			<Icon name="trash" />
 		</button>
 	)
 }
