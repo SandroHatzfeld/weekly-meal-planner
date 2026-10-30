@@ -52,6 +52,18 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 		memory: memories[index],
 	}))
 	const isOwner = recipe.userId === user.id
+	const planProps = {
+		recipe: {
+			id: recipe.id,
+			name: recipe.name,
+			ownerName: isOwner ? null : recipe.user.name,
+			ingredients: recipe.ingredients.map((ingredient) => ({ id: ingredient.id, name: ingredient.name, details: ingredient.details })),
+		},
+		plans,
+		initialPlanId: planId,
+		initialDate: todayKey(),
+		today: todayKey(),
+	}
 
 	return (
 		<article className="space-y-4">
@@ -64,22 +76,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 					<h2 className="min-w-0 flex-1 truncate text-2xl font-semibold" title={recipe.name}>
 						{recipe.name}
 					</h2>
-					<PlanRecipeButton
-						recipe={{
-							id: recipe.id,
-							name: recipe.name,
-							ownerName: isOwner ? null : recipe.user.name,
-							ingredients: recipe.ingredients.map((ingredient) => ({
-								id: ingredient.id,
-								name: ingredient.name,
-								details: ingredient.details,
-							})),
-						}}
-						plans={plans}
-						initialPlanId={planId}
-						initialDate={todayKey()}
-						today={todayKey()}
-					/>
+					<PlanRecipeButton {...planProps} />
 					{isOwner && (
 						<>
 							<Link href={`/recipes/${recipe.id}/edit`} className={iconButtonClass} aria-label="Rezept bearbeiten" title="Bearbeiten">
@@ -134,6 +131,17 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 					</ol>
 				</section>
 			)}
+			{/* nach dem Lesen nicht wieder hochscrollen müssen: dieselben Aktionen mit Text */}
+			<div className="mt-8 flex flex-wrap gap-2 border-t border-(--border) pt-4">
+				{isOwner && (
+					<Link href={`/recipes/${recipe.id}/edit`} className="btn-secondary inline-flex min-h-11 items-center gap-2">
+						<Icon name="pencil" className="size-5" />
+						Bearbeiten
+					</Link>
+				)}
+				<PlanRecipeButton {...planProps} withLabel />
+				{isOwner && <DeleteRecipeButton recipeId={recipe.id} withLabel />}
+			</div>
 		</article>
 	)
 }

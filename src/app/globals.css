@@ -84,7 +84,8 @@ body {
     @apply rounded-lg border border-(--border) bg-(--surface) p-3;
   }
   .dish-chip {
-    @apply block truncate rounded bg-emerald-100 px-2 py-1 text-emerald-950 no-underline hover:no-underline dark:bg-emerald-900 dark:text-emerald-50;
+    /* lange Namen: höchstens zwei Zeilen */
+    @apply line-clamp-2 rounded bg-emerald-100 px-2 py-1 break-words text-emerald-950 no-underline hover:no-underline dark:bg-emerald-900 dark:text-emerald-50;
   }
   .suggestions {
     @apply absolute top-full left-0 z-10 mt-1 w-full overflow-hidden sm:w-72 rounded border border-(--border) bg-(--surface) shadow-lg;

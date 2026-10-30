@@ -4,6 +4,7 @@ import ListSettings from "@/components/settings/ListSettings"
 import ProductCsv from "@/components/settings/ProductCsv"
 import ProductMemorySettings from "@/components/settings/ProductMemorySettings"
 import SettingsSection from "@/components/settings/SettingsSection"
+import Link from "next/link"
 import SettingsBackLink from "@/components/settings/SettingsBackLink"
 import TagSettings from "@/components/tags/TagSettings"
 import { listsWithDefault } from "@/lib/grocery/queries"
@@ -40,7 +41,12 @@ export default async function PlanSettingsPage() {
 
 	return (
 		<div className="space-y-4">
-			<SettingsBackLink />
+			<div className="flex items-center justify-between gap-2">
+				<SettingsBackLink />
+				<Link href="/onboarding" className="btn-link text-sm">
+					+ Neuer Plan
+				</Link>
+			</div>
 			<SettingsSection title="Plandetails">
 				{isOwner ? (
 					<PlanNameForm planId={plan.id} name={plan.name} />

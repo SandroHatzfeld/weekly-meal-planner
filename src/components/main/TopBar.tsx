@@ -16,7 +16,8 @@ export default function TopBar({ plans, activePlanId, userName }: TopBarProps) {
 		<header className="sticky top-0 z-20 border-b border-black/10 bg-white/95 backdrop-blur-md dark:border-white/10 dark:bg-neutral-950/95">
 			<div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
 				<h1 className="text-lg font-semibold">Mealplanner</h1>
-				<PlanSwitcher plans={plans} activePlanId={activePlanId} />
+				{/* nur bei mehreren Plänen; neuer Plan: Einstellungen › Plan */}
+				{plans.length > 1 && <PlanSwitcher plans={plans} activePlanId={activePlanId} />}
 				<div className="ml-auto flex items-center gap-3 text-sm">
 					<span className="hidden opacity-70 sm:inline">{userName}</span>
 					<Link href="/settings/plan" aria-label="Einstellungen" title="Einstellungen" className="-my-2 flex size-11 items-center justify-center text-inherit opacity-70 hover:opacity-100">

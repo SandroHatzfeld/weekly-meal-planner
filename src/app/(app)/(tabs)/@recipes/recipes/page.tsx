@@ -3,7 +3,7 @@ import { coMemberIds } from "@/lib/recipes/access"
 import RecipeFilters from "@/components/recipes/RecipeFilters"
 import StarRating from "@/components/recipes/StarRating"
 import Icon from "@/components/ui/Icon"
-import { formatMinutes } from "@/lib/recipes/format"
+import { formatMinutes, tileColor } from "@/lib/recipes/format"
 import { requireActivePlan } from "@/lib/session"
 import Link from "next/link"
 
@@ -49,7 +49,8 @@ export default async function RecipesPage({ searchParams }: PageProps<"/recipes"
 					<li key={recipe.id}>
 						<Link
 							href={`/recipes/${recipe.id}`}
-							className="group relative block aspect-square overflow-hidden rounded-lg border border-(--border) bg-emerald-100 no-underline hover:no-underline focus-visible:ring-2 focus-visible:ring-emerald-600 dark:bg-emerald-900"
+							className="group relative block aspect-square overflow-hidden rounded-lg border border-(--border) no-underline hover:no-underline focus-visible:ring-2 focus-visible:ring-emerald-600"
+							style={{ backgroundColor: tileColor(recipe.id) }}
 						>
 							{recipe.imageUrl ? (
 								// eslint-disable-next-line @next/next/no-img-element
@@ -60,7 +61,7 @@ export default async function RecipesPage({ searchParams }: PageProps<"/recipes"
 									className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-105"
 								/>
 							) : (
-								<span aria-hidden="true" className="absolute inset-0 flex items-center justify-center pb-10 text-5xl font-semibold text-emerald-700/40 dark:text-emerald-300/40">
+								<span aria-hidden="true" className="absolute inset-0 flex items-center justify-center pb-10 text-5xl font-semibold text-white/50">
 									{recipe.name.charAt(0).toUpperCase()}
 								</span>
 							)}

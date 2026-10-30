@@ -102,7 +102,12 @@ export default function DishBoard({ planId, days, initialDishes, lists = [], def
 							// auf vergangene Tage lässt sich nichts ziehen
 							onDragOver={(event) => !isPast(day) && event.preventDefault()}
 							onDrop={() => handleDrop(day)}
-							className={`card flex flex-col gap-2 sm:flex-row sm:items-center ${day === today ? "ring-2 ring-emerald-600" : ""} ${isPast(day) ? "opacity-60" : ""}`}
+							// Tipp auf den freien Bereich des Tags plant (Gerichte und Knöpfe behalten ihre eigene Aktion)
+							onClick={(event) => {
+								if (isPast(day) || (event.target as Element).closest("a, button")) return
+								setPlanningDay(day)
+							}}
+							className={`card flex flex-col gap-2 sm:flex-row sm:items-center ${isPast(day) ? "" : "cursor-pointer"} ${day === today ? "ring-2 ring-emerald-600" : ""} ${isPast(day) ? "opacity-60" : ""}`}
 						>
 							<div className="font-semibold sm:w-44 sm:shrink-0">
 								{formatDay(day, { weekday: "long", day: "2-digit", month: "2-digit" })}
