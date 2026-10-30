@@ -21,6 +21,7 @@ import type { TagDTO } from "@/lib/tags/icons"
 import { useProductMemory } from "@/components/shop/useProductMemory"
 import { formatDay, PAST_DAY_MESSAGE } from "@/lib/dates"
 import { formatMinutes } from "@/lib/recipes/format"
+import { canGoBackInApp } from "@/lib/navigation"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
@@ -210,7 +211,7 @@ export default function DishEditor({ initialDish, initialItems, lists, defaultLi
 					className="btn-link text-sm"
 					onClick={(event) => {
 						// zurück dorthin, woher man kam (Woche, Monat, Einkaufsliste); ohne Verlauf (direkter Link) zur Woche des Gerichts
-						if (window.history.length > 1) {
+						if (canGoBackInApp()) {
 							event.preventDefault()
 							router.back()
 						}
