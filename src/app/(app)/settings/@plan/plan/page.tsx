@@ -17,7 +17,9 @@ import { tagsOfPlan } from "@/lib/tags/queries"
 const formatDate = (date: Date) => new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(date)
 
 // Einstellungen des aktiven Plans; jeder Abschnitt ist aufklappbar
-export default async function PlanSettingsPage() {
+export default async function PlanSettingsPage({ searchParams }: { searchParams?: Promise<{ inviteFailed?: string }> }) {
+	// nach dem Anlegen eines Plans: Einladungen, deren E-Mail nicht verschickt werden konnte
+	const inviteFailed = (await searchParams)?.inviteFailed?.split(",").filter(Boolean) ?? []
 	const { user, planId } = await requireActivePlan()
 
 	const plan = await prisma.plan.findUniqueOrThrow({
@@ -47,6 +49,12 @@ export default async function PlanSettingsPage() {
 					+ Neuer Plan
 				</Link>
 			</div>
+			{inviteFailed.length > 0 && (
+				<p className="notice text-sm" role="status">
+					Der Plan ist angelegt, aber die Einladung an {inviteFailed.join(", ")} konnte nicht verschickt werden. Unter „Einladungen“ kannst du es erneut versuchen.
+				</p>
+			)}
+
 			<SettingsSection title="Plandetails">
 				{isOwner ? (
 					<PlanNameForm planId={plan.id} name={plan.name} />

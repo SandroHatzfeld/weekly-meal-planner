@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { auth, signIn } from "../auth/auth"
 import { hashPassword } from "../password"
@@ -21,6 +22,8 @@ export const acceptInvite = async (token: string) => {
 
 	await joinPlanViaInvite(invite, session.user.id)
 	emitToPlan(invite.planId, "plan-changed", { planId: invite.planId })
+	// Kopfzeile (Plan-Auswahl mit dem neuen Plan) nicht aus dem Browser-Cache
+	revalidatePath("/", "layout")
 	redirect("/")
 }
 

@@ -39,18 +39,27 @@ export const createPlan = async (_prevState: FormState, formData: FormData): Pro
 	await seedPlanGroceries(newPlan.id)
 	await prisma.user.update({ where: { id: currentSession.user.id }, data: { activePlanId: newPlan.id } })
 
-	// optionale Einladungen aus dem Onboarding (kommagetrennt)
+	// optionale Einladungen aus dem Onboarding (kommagetrennt). Ein fehlgeschlagener Versand bricht das Anlegen nicht ab:
+	// der Plan ist fertig, die Einstellungen zeigen, wer nicht eingeladen werden konnte.
+	const failed: string[] = []
 	if (typeof inviteEmails === "string") {
 		const emails = inviteEmails
 			.split(/[,;\s]+/)
 			.map((email) => email.trim().toLowerCase())
 			.filter((email) => email.includes("@"))
 		for (const email of emails) {
-			await sendPersonalInvite(newPlan.id, newPlan.name, email, currentSession.user.id, currentSession.user.name ?? "")
+			try {
+				await sendPersonalInvite(newPlan.id, newPlan.name, email, currentSession.user.id, currentSession.user.name ?? "")
+			} catch (error) {
+				console.error("[plan] Einladung fehlgeschlagen", email, error)
+				failed.push(email)
+			}
 		}
 	}
 
-	redirect("/")
+	// Kopfzeile (Plan-Auswahl) und Seiten neu laden, nicht aus dem Browser-Cache
+	revalidatePath("/", "layout")
+	redirect(failed.length ? `/settings/plan?inviteFailed=${encodeURIComponent(failed.join(","))}` : "/")
 }
 
 export const switchPlan = async (planId: string) => {
@@ -70,6 +79,7 @@ export const renamePlan = async (planId: string, name: string) => {
 export const leavePlan = async (planId: string) => {
 	const { user } = await requireMember(planId)
 	await removeMembership(planId, user.id, "left")
+	revalidatePath("/", "layout")
 	redirect("/")
 }
 
@@ -98,11 +108,17 @@ const sendPersonalInvite = async (
 		},
 	})
 	const link = appUrl(`/invite/${invite.token}`)
-	await sendMail({
-		to: email,
-		subject: `Einladung zum Plan "${planName}"`,
-		html: `<p>${escapeHtml(inviterName)} hat dich zum Plan <strong>${escapeHtml(planName)}</strong> eingeladen.</p><p><a href="${link}">Einladung annehmen</a></p><p>Der Link ist 7 Tage gültig.</p>`,
-	})
+	try {
+		await sendMail({
+			to: email,
+			subject: `Einladung zum Plan "${planName}"`,
+			html: `<p>${escapeHtml(inviterName)} hat dich zum Plan <strong>${escapeHtml(planName)}</strong> eingeladen.</p><p><a href="${link}">Einladung annehmen</a></p><p>Der Link ist 7 Tage gültig.</p>`,
+		})
+	} catch (error) {
+		// nicht verschickt: keine offene Einladung stehen lassen, die niemand bekommen hat
+		await prisma.planInvite.delete({ where: { id: invite.id } })
+		throw error
+	}
 }
 
 export const invitePerson = async (planId: string, _prevState: FormState, formData: FormData): Promise<FormState> => {
@@ -117,7 +133,12 @@ export const invitePerson = async (planId: string, _prevState: FormState, formDa
 	})
 	if (plan.members.some((member) => member.user.email === email)) return { error: "Diese Person ist bereits Mitglied" }
 
-	await sendPersonalInvite(planId, plan.name, email, user.id, user.name ?? "")
+	try {
+		await sendPersonalInvite(planId, plan.name, email, user.id, user.name ?? "")
+	} catch (error) {
+		console.error("[plan] Einladung fehlgeschlagen", email, error)
+		return { error: "Die Einladung konnte nicht verschickt werden (E-Mail-Versand fehlgeschlagen). Bitte später erneut versuchen." }
+	}
 	revalidatePath("/settings", "layout")
 	return { success: `Einladung an ${email} verschickt` }
 }
