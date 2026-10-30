@@ -67,7 +67,6 @@ export default function ManualItemRow({
 					placeholder="Was wird gebraucht?"
 					value={name}
 					required={false}
-					inlineSuggestions
 					onChange={(value) => {
 						setName(value)
 						setPickedCategory(null)

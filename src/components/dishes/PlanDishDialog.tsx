@@ -144,7 +144,7 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 			{!initialRecipe && (
 				<>
 					<label htmlFor="plan-dish-name">Gericht</label>
-					<div>
+					<div className="relative">
 						<input
 							id="plan-dish-name"
 							value={name}
@@ -162,8 +162,8 @@ function PlanDishForm({ plans, initialPlanId, initialDate, today, initialRecipe,
 							}}
 						/>
 						{visible.length > 0 && (
-							// im Popup im Fluss statt schwebend, damit nichts am Rand abgeschnitten wird
-							<ul {...combobox.listboxProps} className="suggestions static! sm:w-full">
+							// schwebt über dem Inhalt darunter (verschiebt nichts)
+							<ul {...combobox.listboxProps} className="suggestions sm:w-full">
 								{visible.map((suggestion, index) => (
 									<li key={suggestion.id} {...combobox.optionProps(index)}>
 										<span>{suggestion.name}</span>

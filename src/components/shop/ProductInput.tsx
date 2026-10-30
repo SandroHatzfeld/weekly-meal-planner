@@ -18,12 +18,10 @@ type ProductInputProps = {
 	inputClassName?: string
 	// false: Feld darf leer bleiben (z.B. innerhalb eines anderen Formulars)
 	required?: boolean
-	// Vorschläge im Fluss statt schwebend (in Popups, damit nichts abgeschnitten wird)
-	inlineSuggestions?: boolean
 }
 
 // Eingabe für Produkte mit Vorschlägen aus bekannten Produkten des Plans (auch bei Vertippern)
-export default function ProductInput({ value, onChange, onPick, memory, categories, placeholder, ariaLabel, className = "", inputClassName = "", required = true, inlineSuggestions = false }: ProductInputProps) {
+export default function ProductInput({ value, onChange, onPick, memory, categories, placeholder, ariaLabel, className = "", inputClassName = "", required = true }: ProductInputProps) {
 	const suggestions = suggestProducts(value, memory)
 		// exakt das Getippte vorzuschlagen bringt nichts (außer es bringt eine Kategorie mit)
 		.filter((suggestion) => suggestion.displayName !== value.trim() || (categories.length > 0 && suggestion.categoryId !== null))
@@ -49,7 +47,7 @@ export default function ProductInput({ value, onChange, onPick, memory, categori
 			{open && (
 				<ul
 					{...combobox.listboxProps}
-					className={`suggestions sm:w-full ${inlineSuggestions ? "static! sm:w-full" : ""}`}
+					className="suggestions sm:w-full"
 				>
 					{combobox.visible.map((suggestion, index) => (
 						<li key={suggestion.displayName} {...combobox.optionProps(index)}>
