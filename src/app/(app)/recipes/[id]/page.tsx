@@ -11,6 +11,7 @@ import StarRating from "@/components/recipes/StarRating"
 import { formatMinutes, ingredientLabel } from "@/lib/recipes/format"
 import { toTagDTO } from "@/lib/tags/icons"
 import { requireActivePlan } from "@/lib/session"
+import BackLink from "@/components/ui/BackLink"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
@@ -69,9 +70,8 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[id]">)
 		<article className="space-y-4">
 			{/* klebt unter der App-Kopfzeile (Höhe kommt aus --app-header-h) */}
 			<div className="sticky top-(--app-header-h) z-10 -mx-4 -mt-4 border-b border-(--border) bg-(--background)/95 px-4 py-2 backdrop-blur-md">
-				<Link href="/recipes" className="btn-link text-sm">
-					← Rezepte
-				</Link>
+				{/* zurück zur Rezeptliste oder z.B. zum geplanten Gericht, von dem aus das Rezept geöffnet wurde */}
+				<BackLink fallback="/recipes" />
 				<div className="flex items-center gap-2">
 					<h2 className="min-w-0 flex-1 truncate text-2xl font-semibold" title={recipe.name}>
 						{recipe.name}

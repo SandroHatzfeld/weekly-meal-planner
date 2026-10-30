@@ -9,6 +9,8 @@ import StarRating from "@/components/recipes/StarRating"
 import { useSortable } from "@/components/ui/useSortable"
 import ProductInput from "@/components/shop/ProductInput"
 import type { ProductMemoryDTO } from "@/lib/grocery/categories"
+import { canGoBackInApp } from "@/lib/navigation"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 // stabile Keys für Zutaten-Zeilen (Sortieren per Griff, Fokus bleibt beim Verschieben erhalten)
@@ -56,6 +58,7 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe, memory = [
 		setKeys((current) => current.filter((_, i) => i !== index))
 	}
 	const [error, setError] = useState<string | null>(null)
+	const router = useRouter()
 	const [saving, setSaving] = useState(false)
 
 	const setIngredient = (index: number, patch: Partial<RecipeInput["ingredients"][number]>) =>
@@ -71,10 +74,14 @@ export default function RecipeForm({ recipeId, initial = emptyRecipe, memory = [
 			onSubmit={async (event) => {
 				event.preventDefault()
 				setSaving(true)
-				// bei Erfolg leiten die Actions per redirect weiter
+				// Neu: die Action leitet zum Rezept weiter. Bearbeiten: zurück zur Rezeptseite, von der aus bearbeitet wurde
 				const result = recipeId ? await updateRecipe(recipeId, recipe) : await createRecipe(recipe)
 				setSaving(false)
-				if (result?.error) setError(result.error)
+				if (result && "error" in result && result.error) return setError(result.error)
+				if (recipeId && result && "ok" in result) {
+					if (canGoBackInApp()) router.back()
+					else router.replace(`/recipes/${recipeId}`)
+				}
 			}}
 		>
 			<label htmlFor="name">Name</label>

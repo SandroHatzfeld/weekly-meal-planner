@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
+import { redirect, RedirectType } from "next/navigation"
 import { auth } from "../auth/auth"
 import { isPastDay, PAST_DAY_MESSAGE, parseDateKey } from "../dates"
 import { toDishDTO } from "../dto"
@@ -92,7 +92,8 @@ export const createRecipe = async (input: RecipeInput) => {
 		data: { ...data, imageUrl: image.imageUrl, userId: user.id, ingredients: { create: data.ingredients } },
 	})
 	await rememberIngredients(user.activePlanId, data.ingredients)
-	redirect(`/recipes/${recipe.id}`)
+	// ersetzt /recipes/new im Verlauf: „Zurück“ führt dann nicht ins leere Formular
+	redirect(`/recipes/${recipe.id}`, RedirectType.replace)
 }
 
 // Rezepte sind nutzergebunden: nur der Owner editiert -> kein Konfliktfall
@@ -114,7 +115,9 @@ export const updateRecipe = async (recipeId: string, input: RecipeInput) => {
 	])
 	if (recipe.imageUrl !== image.imageUrl) await deleteImageIfUnused(recipe.imageUrl)
 	await rememberIngredients(user.activePlanId, data.ingredients)
-	redirect(`/recipes/${recipeId}`)
+	// kein redirect: das Formular geht im Verlauf zurück (sonst führt „Zurück“ auf der Rezeptseite ins Formular)
+	revalidatePath("/", "layout")
+	return { ok: true as const }
 }
 
 // Bewertung direkt auf der Rezeptseite ändern (nur der Besitzer), ohne das Rezept neu zu speichern
@@ -133,7 +136,7 @@ export const deleteRecipe = async (recipeId: string) => {
 	await prisma.recipe.delete({ where: { id: recipeId } })
 	// geplante Gerichte können das Bild als Snapshot weiter nutzen -> wird dann behalten
 	await deleteImageIfUnused(recipe.imageUrl)
-	redirect("/recipes")
+	redirect("/recipes", RedirectType.replace)
 }
 
 type DishBase = {
