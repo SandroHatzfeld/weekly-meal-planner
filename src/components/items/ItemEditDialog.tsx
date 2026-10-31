@@ -3,6 +3,7 @@
 import TagIcon from "@/components/tags/TagIcon"
 import type { CategoryDTO } from "@/lib/grocery/categories"
 import type { TagDTO } from "@/lib/tags/icons"
+import Dropdown from "@/components/ui/Dropdown"
 import Modal from "@/components/ui/Modal"
 import { useEffect, useRef, useState } from "react"
 
@@ -159,45 +160,39 @@ function EditForm<T extends EditableItem>({
 			/>
 			{lists.length > 1 && (
 				<>
-					<label htmlFor="item-list">Liste</label>
-					<select
-						id="item-list"
-						className="input"
+					<span className="text-sm font-medium">Liste</span>
+					<Dropdown
+						label="Liste"
 						value={listId}
-						onChange={(event) => {
-							setListId(event.target.value)
-							persist({ listId: event.target.value })
+						options={lists.map((list) => ({ value: list.id, label: list.name }))}
+						onChange={(value) => {
+							setListId(value)
+							persist({ listId: value })
 						}}
-					>
-						{lists.map((list) => (
-							<option key={list.id} value={list.id}>
-								{list.name}
-							</option>
-						))}
-					</select>
+						align="left"
+					/>
 				</>
 			)}
 			{(offered.length > 0 || categoryId === AUTO) && (
 				<>
-					<label htmlFor="item-category">Kategorie</label>
-					<select
-						id="item-category"
-						className="input"
+					<span className="text-sm font-medium">Kategorie</span>
+					<Dropdown
+						label="Kategorie"
 						value={categoryId}
-						onChange={(event) => {
-							setCategoryId(event.target.value)
-							if (event.target.value !== AUTO) persist({ categoryId: event.target.value || null })
+						options={[
+							...(categoryId === AUTO ? [{ value: AUTO, label: "Automatisch (zuletzt verwendete)" }] : []),
+							{ value: "", label: "Keine (Sonstiges)" },
+							...offered.map((category) => ({
+								value: category.id,
+								label: hiddenCategories[listId]?.includes(category.id) ? `${category.name} (hier ausgeblendet)` : category.name,
+							})),
+						]}
+						onChange={(value) => {
+							setCategoryId(value)
+							if (value !== AUTO) persist({ categoryId: value || null })
 						}}
-					>
-						{categoryId === AUTO && <option value={AUTO}>Automatisch (zuletzt verwendete)</option>}
-						<option value="">Keine (Sonstiges)</option>
-						{offered.map((category) => (
-							<option key={category.id} value={category.id}>
-								{category.name}
-								{hiddenCategories[listId]?.includes(category.id) && " (hier ausgeblendet)"}
-							</option>
-						))}
-					</select>
+						align="left"
+					/>
 				</>
 			)}
 			{tags.length > 0 && (

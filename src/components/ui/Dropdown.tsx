@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react"
 
 type Option<T extends string> = { value: T; label: string }
 
@@ -35,6 +35,31 @@ export default function Dropdown<T extends string>({
 	const listId = useId()
 	const current = options.find((option) => option.value === value) ?? (placeholder === undefined ? options[0] : undefined)
 	const list = useRef<HTMLUListElement>(null)
+	// reicht der Platz unter dem Feld nicht (Rand eines Popups oder des Bildschirms), klappt das Menü nach oben auf
+	const [up, setUp] = useState(false)
+	useLayoutEffect(() => {
+		const menu = list.current
+		const trigger = button.current
+		if (!open || !menu || !trigger) return
+		let bottom = window.innerHeight
+		let top = 0
+		for (let element = trigger.parentElement; element; element = element.parentElement) {
+			const { overflowY } = getComputedStyle(element)
+			if (overflowY === "auto" || overflowY === "scroll" || overflowY === "hidden" || element.tagName === "DIALOG") {
+				const rect = element.getBoundingClientRect()
+				bottom = Math.min(bottom, rect.bottom)
+				top = Math.max(top, rect.top)
+				break
+			}
+		}
+		const box = trigger.getBoundingClientRect()
+		const below = bottom - box.bottom
+		const above = box.top - top
+		const flip = menu.scrollHeight > below && above > below
+		setUp(flip)
+		// nie über den Rand hinaus: lange Listen scrollen im Menü
+		menu.style.maxHeight = `${Math.min(288, Math.max(120, (flip ? above : below) - 8))}px`
+	}, [open, options.length])
 
 	// lange Listen: aktive Option (Tastatur) sichtbar halten; von Hand, scrollIntoView würde auch das Tab-Karussell verschieben
 	useEffect(() => {
@@ -103,7 +128,7 @@ export default function Dropdown<T extends string>({
 					id={listId}
 					role="listbox"
 					aria-label={label}
-					className={`absolute top-full z-20 mt-1 max-h-72 min-w-full overflow-y-auto rounded border border-(--border) bg-(--surface) shadow-lg ${align === "left" ? "left-0" : "right-0"}`}
+					className={`absolute z-20 max-h-72 min-w-full overflow-y-auto rounded border border-(--border) bg-(--surface) shadow-lg ${up ? "bottom-full mb-1" : "top-full mt-1"} ${align === "left" ? "left-0" : "right-0"}`}
 				>
 					{options.map((option, index) => {
 						const selected = option.value === value
